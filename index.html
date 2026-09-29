@@ -757,10 +757,11 @@ function alternatives(exId){
 
 /* ---------- render ---------- */
 function render(){
-  const app=$('#app');
+  const app=$('#app'); const st0=$('#strip'); const sl0 = st0 ? st0.scrollLeft : null;
   if(ui.mode==='manual' && ui.man) app.innerHTML=viewManual();
   else if(ui.mode==='log' && A) app.innerHTML=viewLog();
   else { if(ui.mode==='manual') ui.mode='overview'; if(ui.mode==='log') ui.mode='overview'; app.innerHTML=({train:viewTrain,history:viewHistory,lib:viewLib,gear:viewGear})[ui.tab]() }
+  const st1=$('#strip'); if(st1 && sl0!=null) st1.scrollLeft=sl0;
   const tabs=$('#tabs'); tabs.hidden = ui.mode==='log' || ui.mode==='manual';
   tabs.innerHTML=`<div class="in">${[['train','Train'],['history','History'],['lib','Exercises'],['gear','Equipment']].map(([k,l])=>`<button data-act="tab" data-k="${k}" class="${ui.tab===k?'on':''}">${ICON[k==='history'?'hist':k]}${l}</button>`).join('')}</div>`;
   renderSheet(); tick(true);
