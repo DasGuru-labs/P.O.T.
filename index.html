@@ -94,7 +94,8 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .row{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 10px 10px 4px;touch-action:pan-y;transition:transform .15s}
 .row.dragging{transition:none;z-index:5;position:relative;box-shadow:0 8px 24px rgba(0,0,0,.18);border-color:var(--accent)}
-.row .handle{width:30px;height:40px;display:flex;align-items:center;justify-content:center;color:var(--muted);touch-action:none;cursor:grab;flex:0 0 auto}
+body.dragging-now{-webkit-user-select:none;user-select:none}
+.row .handle{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;width:30px;height:40px;display:flex;align-items:center;justify-content:center;color:var(--muted);touch-action:none;cursor:grab;flex:0 0 auto}
 .row .handle svg{width:14px;height:18px}
 .row .body{flex:1;min-width:0;text-align:left}
 .row .name{font-weight:600;font-size:15px;line-height:1.25}
@@ -266,6 +267,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .editbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:14px}
 .setrow.warm .sn{color:var(--warn);font-size:15px}
 .setrow.warm input,.setrow.warm select{font-size:16px}
+.keeprow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-weight:600;background:var(--surface2)}
+.keeprow input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent)}
 @media (prefers-reduced-motion:reduce){.row{transition:none}}
 </style>
 </head>
@@ -658,6 +661,8 @@ function chime(){
 async function wake(){ try{ if(navigator.wakeLock && !wl){ wl=await navigator.wakeLock.request('screen'); wl.addEventListener('release',()=>wl=null) } }catch(e){} }
 
 /* ---------- workout engine ---------- */
+function syncWarm(it){ const n=it.rows.filter(r=>r.warm).length; if(n) it.wu=n; else delete it.wu; const pit=planItemOf(it);
+  if(pit){ if(n) pit.wu=n; else delete pit.wu; saveState(); toast(n?`${n} warm-up${n>1?'s':''} saved to Day ${A.dayIdx+1}`:`Warm-up removed from Day ${A.dayIdx+1}`) } }
 function workRows(it){ return it.rows.filter(r=>!r.warm) }
 function wStep(){ return S.unit==='kg'?2.5:5 }
 function warmRow(it,k,firstWork,last){
@@ -685,7 +690,7 @@ function prefill(it){
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
   return warm.concat(rows);
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.ss) o.ss=it.ss; return o }
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.ss) o.ss=it.ss; return o }
 function effItem(day,it){ const t=day && day.tmp && day.tmp[it.uid]; if(!t) return it;
   const c={...it, ex:t, tmpSwap:true}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
   const e=lib(t); if(e.f){ c.lo=null; c.hi=null } else if(c.lo==null){ c.lo=10; c.hi=14 } return c }
@@ -698,7 +703,7 @@ function clockSecs(){ if(!A) return 0; const c=A.clock; return (c.acc + (c.since
 function startWorkout(dayIdx){
   const d=S.days[dayIdx];
   if(!d.items.length){ toast('Add an exercise first'); return }
-  const real=d.items.map(x=>effItem(d,x)).filter(x=>!x.ph); if(!real.length){ toast('Pick an exercise first'); return }
+  const real=d.items.map(x=>({...effItem(d,x), pu:x.uid})).filter(x=>!x.ph).concat((d.tmpAdd||[]).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
   A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(real.map(newActiveItem)), rest:null, inc:{}};
   ui.mode='log'; saveActive(); wake(); render();
   const nph=d.items.length-real.length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
@@ -739,7 +744,7 @@ function logSet(idx){
 }
 function isZero(r,ex){ return ex.u ? (num(r.rl)||0)===0 && (num(r.rr)||0)===0 : (num(r.r)||0)===0 }
 function countSaved(){ return A.items.filter(it=>!it.skipped).reduce((k,it)=>k+workRows(it).filter(r=>r.done&&!r.skip&&!isZero(r,lib(it.ex))).length,0) }
-function skipDay(i,note){ const now=Date.now(); saveSession({id:uid(), type:'skip', dayIdx:i, dayName:S.days[i].name, start:now, end:now, updatedAt:now, exercises:[]}); S.next=(i+1)%S.days.length; S.days[i].tmp={}; saveState() }
+function skipDay(i,note){ const now=Date.now(); saveSession({id:uid(), type:'skip', dayIdx:i, dayName:S.days[i].name, start:now, end:now, updatedAt:now, exercises:[]}); S.next=(i+1)%S.days.length; S.days[i].tmp={}; S.days[i].tmpAdd=[]; saveState() }
 function finishWorkout(){
   const now=Date.now();
   const s={id:A.id, type:'lift', dayIdx:A.dayIdx, dayName:A.dayName, start:A.created, end:now, updatedAt:now, dur:Math.round(clockSecs()),
@@ -751,7 +756,7 @@ function finishWorkout(){
     snap:clone(A)};
   for(const e of s.exercises) delete S.nextLoad[e.ex];
   Object.entries(A.inc||{}).forEach(([k,v])=>{ if(v!=null) S.nextLoad[k]=v });
-  S.next=(A.dayIdx+1)%S.days.length; if(S.days[A.dayIdx]) S.days[A.dayIdx].tmp={};
+  S.next=(A.dayIdx+1)%S.days.length; if(S.days[A.dayIdx]){ S.days[A.dayIdx].tmp={}; S.days[A.dayIdx].tmpAdd=[] }
   saveSession(s); A=null; ui.mode='overview'; ui.viewDay=null; saveActive(); saveState();
   try{ wl && wl.release() }catch(e){}
   closeSheet(); render(); toast(`Saved · ${s.exercises.reduce((n,e)=>n+e.sets.length,0)} sets`);
@@ -789,7 +794,7 @@ function viewTrain(){
   const vd = ui.viewDay ?? (A ? A.dayIdx : S.next);
   const day=S.days[vd], live = A && A.dayIdx===vd;
   const editing = !live && ui.editDay===vd;
-  const items = live ? A.items : editing ? day.items : day.items.map(it=>effItem(day,it));
+  const items = live ? A.items : editing ? day.items : day.items.map(it=>effItem(day,it)).concat((day.tmpAdd||[]).map(x=>({...x, tmpSwap:true})));
   let h=topbar();
   if(A && !live) h+=`<div class="banner"><span>Workout in progress · Day ${A.dayIdx+1}</span><button class="link" data-act="goLive">Return</button></div>`;
   h+=`<div class="strip" id="strip">${S.days.map((d,i)=>`<button class="chipday ${d.rest?'rest':''} ${i===S.next?'next':''} ${i===vd?'sel':''} ${A&&A.dayIdx===i?'live':''}" data-act="viewDay" data-i="${i}" aria-label="Day ${i+1}"><span class="n">${i+1}</span><span class="t">${i===S.next?'next':d.rest?'rest':'&nbsp;'}</span></button>`).join('')}</div>`;
@@ -827,8 +832,8 @@ function viewTrain(){
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
-  if(live || editing) h+=`<button class="addrow" data-act="add">+ Add exercise</button>`;
-  else h+=`<div class="note"><button class="link" data-act="editDay" data-i="${vd}">Edit this day's exercises</button></div>`;
+  if(live || editing || !A) h+=`<button class="addrow" data-act="add">+ Add exercise</button>`;
+  if(!live && !editing) h+=`<div class="note"><button class="link" data-act="editDay" data-i="${vd}">Edit this day's exercises</button></div>`;
   if(live) h+=`<div class="note">Changes during a workout apply to this workout only.</div>`;
   if(editing && !items.length) h+=`<div class="note"><button class="link" data-act="toggleRest" data-i="${vd}">Make this a rest day</button></div>`;
   return h;
@@ -1042,7 +1047,12 @@ function openSheet(s){ if(s.uid && s.ctx){ const l=ctxList(s.ctx,s.day); s.idx=l
 function closeSheet(){ ui.sheet=null; renderSheet(); if(pendingRS && ui.mode!=='manual' && applyPending()) setTimeout(render,0) }
 // find the exercise a popup refers to, even if the list was refreshed underneath it
 function sheetItem(s){ const l=ctxList(s.ctx,s.day); let it=l.find(x=>x.uid===s.uid); if(!it && s.exId){ it = (l[s.idx] && l[s.idx].ex===s.exId) ? l[s.idx] : l.find(x=>x.ex===s.exId); if(it) s.uid=it.uid } return it }
-function ctxList(ctx,dayIdx){ return ctx==='M' ? ui.man.items : ctx==='A' ? A.items : S.days[dayIdx].items }
+function ctxList(ctx,dayIdx){ if(ctx==='T'){ const d=S.days[dayIdx]; d.tmpAdd=d.tmpAdd||[]; return d.tmpAdd } return ctx==='M' ? ui.man.items : ctx==='A' ? A.items : S.days[dayIdx].items }
+function planItemOf(a){ return A && a && a.pu ? S.days[A.dayIdx].items.find(x=>x.uid===a.pu) : null }
+function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid];
+  if(pit.ph){ delete pit.ph; delete pit.phMus; delete pit.phSug; pit.rest=restFor(exId) }
+  pit.ex=exId; if(lib(exId).f){ pit.lo=null; pit.hi=null } else if(pit.lo==null){ pit.lo=10; pit.hi=14 } }
+function keepBox(s){ return `<label class="keeprow"><input type="checkbox" id="keepPlan" ${s.keep?'checked':''}><span>Keep for future Day ${s.day+1} workouts</span></label>` }
 function sheetCtx(){ if(ui.mode==='manual') return {ctx:'M', day:ui.man.dayIdx}; const vd = ui.viewDay ?? (A?A.dayIdx:S.next); const live = (ui.mode==='log') || (A && A.dayIdx===vd); return {ctx: live?'A':'P', day: live?A.dayIdx:vd} }
 function renderSheet(){
   const w=$('#sheetWrap'), sh=$('#sheet');
@@ -1057,10 +1067,10 @@ function renderSheet(){
   else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const ms=missing(ex);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${ms.length?`<div class="needs" style="padding-top:8px"><span>Needs ${ms.map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
-     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="swap" data-uid="${it.uid}">Swap exercise</button><button data-act="editItem" data-uid="${it.uid}">Edit sets, reps & rest</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${s.ctx==='A'?'this workout':'Day '+(s.day+1)}</button></div>`;
+     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="swap" data-uid="${it.uid}">Swap exercise</button><button data-act="editItem" data-uid="${it.uid}">Edit sets, reps & rest</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
   }
   else if(s.type==='edit'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const m=s.m||mode(it);
-    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'Applies to this workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>
+    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'':s.ctx==='T'?'For your next workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>${s.ctx==='A'&&it.pu?keepBox(s):''}
      <div class="sec">Sets</div><div class="stepper"><button data-act="edSets" data-d="-1">−</button><span class="v" id="edSetsV">${s.sets}</span><button data-act="edSets" data-d="1">+</button></div>
      <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['time','Timed'],['fail','To failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
      ${m!=='fail'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}<input id="edLo" inputmode="numeric" value="${s.lo??''}"></label><label class="f">To${m==='time'?' (sec)':''}<input id="edHi" inputmode="numeric" value="${s.hi??''}"></label></div>`:''}
@@ -1072,7 +1082,7 @@ function renderSheet(){
     const alts=alternatives(it.ex); const q=(s.q||'').toLowerCase(); const f=alts.filter(c=>!q||c.name.toLowerCase().includes(q));
     const rec=f.filter(avail), oth=f.filter(c=>!avail(c));
     const hasDone = s.ctx==='A' && it.rows && it.rows.some(r=>r.done);
-    h=`<h3>Swap ${esc(ex.name)}</h3><div class="shsub">Same target: ${ex.m.map(m=>MUS[m]).join(', ')}. ${s.tmp?'For your next Day '+(s.day+1)+' workout only.':s.ctx==='M'?'This entry only.':s.ctx==='A'?'This workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}${hasDone?' Logged sets stay with the original; the new exercise is added after it.':''}</div>
+    h=`<h3>Swap ${esc(ex.name)}</h3><div class="shsub">Same target: ${ex.m.map(m=>MUS[m]).join(', ')}. ${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'This entry only.':(s.tmp||s.ctx==='A')?'':'Saved to Day '+(s.day+1)+' for future workouts.'}${hasDone?' Logged sets stay with the original; the new exercise is added after it.':''}</div>${(s.tmp||(s.ctx==='A'&&it.pu))?keepBox(s):''}
      <input id="swapQ" data-bind="swapQ" placeholder="Search alternatives" value="${esc(s.q||'')}" style="margin-top:10px" autocomplete="off">
      <div class="sec">Recommended alternatives</div>${rec.length?exListHTML(rec,'doSwap'):'<div class="small muted">None with your current equipment.</div>'}
      <div class="sec">Other alternatives</div>${oth.length?exListHTML(oth,'doSwap'):'<div class="small muted">None.</div>'}
@@ -1080,7 +1090,7 @@ function renderSheet(){
   }
   else if(s.type==='add'){ const list=libFiltered(s.q,s.cat||'all',s.mus||'all');
     const sug=(s.sugs||[]).map(id=>lib(id)).filter(e=>e&&e.name);
-    h=`<h3>${s.ph?'Pick: '+esc(s.ph):s.replace?'Replace with any exercise':'Add exercise'}</h3><div class="shsub">${s.tmp?'For your next Day '+(s.day+1)+' workout only. Use Edit day to change it for good.':s.ctx==='M'?'Adds to this entry.':s.ctx==='A'?'This workout only.':s.replace?'Saved to Day '+(s.day+1)+' for future workouts.':'Adds to Day '+(s.day+1)+' for future workouts.'}</div>
+    h=`<h3>${s.ph?'Pick: '+esc(s.ph):s.replace?'Replace with any exercise':'Add exercise'}</h3><div class="shsub">${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'Adds to this entry.':(s.tmp||s.ctx==='A')?'':s.replace?'Saved to Day '+(s.day+1)+' for future workouts.':'Adds to Day '+(s.day+1)+' for future workouts.'}</div>${(s.tmp||s.ctx==='A')?keepBox(s):''}
      <div class="stack" style="margin-top:10px"><input id="addQ" data-bind="addQ" placeholder="Search" value="${esc(s.q||'')}" autocomplete="off">${filterBar('add',s.cat||'all',s.mus||'all')}</div>${sug.length&&!s.q?`<div class="sec">Suggested</div>${exListHTML(sug,'doAdd')}<div class="sec">All matching</div>`:''}${exListHTML(list,'doAdd')}
      <button class="addrow" data-act="customNew">+ Create your own exercise</button>`;
   }
@@ -1139,6 +1149,7 @@ function renderSheet(){
 /* ---------- actions ---------- */
 function toast(t){ const el=$('#toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,2200) }
 function saveCtx(ctx){ ctx==='M' ? saveDraft() : ctx==='A' ? saveActive() : saveState() }
+function scopeName(s){ return s.ctx==='A'?'this workout':s.ctx==='T'?'your next workout':'Day '+(s.day+1) }
 function mkItem(exId, ctx){ if(ctx==='M') return manItem(exId,3); const e=lib(exId); const it={uid:uid(), ex:exId, sets:3, lo:e.f?null:e.t?20:e.c?6:10, hi:e.f?null:e.t?40:e.c?10:14, rest:restFor(exId)}; return ctx==='A' ? newActiveItem(it) : it }
 const H = {
   tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
@@ -1155,7 +1166,9 @@ const H = {
   rename:el=>openSheet({type:'rename', day:+el.dataset.i}),
   rnSave:()=>{ const d=S.days[ui.sheet.day]; d.name=$('#rnName').value.trim()||d.name; d.sub=$('#rnSub').value.trim(); saveState(); closeSheet(); render() },
   rnReset:()=>{ const i=ui.sheet.day; S.days[i].name=PLAN_SEED[i]?.[0]||('Day '+(i+1)); S.days[i].sub=PLAN_SEED[i]?.[1]||''; saveState(); closeSheet(); render() },
-  rowMenu:el=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day; const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid);
+  rowMenu:el=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day;
+    if(c.tmp && (S.days[c.day].tmpAdd||[]).some(x=>x.uid===el.dataset.uid)){ openSheet({type:'rowMenu', uid:el.dataset.uid, ctx:'T', day:c.day}); return }
+    const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid);
     const swapped = c.tmp && it && S.days[c.day].tmp && S.days[c.day].tmp[it.uid];
     if(it && it.ph && !swapped){ openSheet({type:'add', ...c, replace:it.uid, uid:it.uid, ph:it.ph, sugs:it.phSug||[], q:'', cat:'all', mus:it.phMus||'all'}); return }
     openSheet({type:'rowMenu', uid:el.dataset.uid, ...c}) },
@@ -1170,8 +1183,8 @@ const H = {
   next:()=>{ const g=groupIdx(A.cur); const t = g.every(j=>itemDone(A.items[j])) ? Math.max(...g)+1 : A.cur+1; if(t<A.items.length){ A.cur=t; saveActive(); render(); window.scrollTo(0,0) } },
   logSet:el=>{ unlockAudio(); logSet(el.dataset.i!=null?+el.dataset.i:null) },
   addWarm:()=>{ const it=curItem(); const n=it.rows.filter(r=>r.warm).length; if(n>=3){ toast('Up to 3 warm-ups'); return }
-    it.rows.splice(n,0,warmRow(it,n,workRows(it)[0],lastFor(it.ex))); saveActive(); render() },
-  rmWarm:()=>{ const it=curItem(); for(let j=it.rows.length-1;j>=0;j--){ if(it.rows[j].warm && !it.rows[j].done){ it.rows.splice(j,1); break } } saveActive(); render() },
+    it.rows.splice(n,0,warmRow(it,n,workRows(it)[0],lastFor(it.ex))); syncWarm(it); saveActive(); render() },
+  rmWarm:()=>{ const it=curItem(); for(let j=it.rows.length-1;j>=0;j--){ if(it.rows[j].warm && !it.rows[j].done){ it.rows.splice(j,1); break } } syncWarm(it); saveActive(); render() },
   addSet:()=>{ const it=curItem(); const l=workRows(it)[workRows(it).length-1]||{w:'',r:'',rl:'',rr:''}; it.rows.push({w:l.w,band:l.band||'',add:l.add||'',r:l.r,rl:l.rl,rr:l.rr,rir:'',done:false,prev:''}); saveActive(); render() },
   rmSet:()=>{ const it=curItem(); const l=it.rows[it.rows.length-1]; if(workRows(it).length>1 && l && !l.warm && !l.done){ it.rows.pop(); saveActive(); render() } },
   incSave:()=>{ A.inc=A.inc||{}; const bs=$('#incB'); if(bs){ A.inc[curItem().ex]={band:bs.value} } else { const v=num($('#incW').value); if(v==null) return; A.inc[curItem().ex]=v } saveActive(); render(); toast('Saved for next session') },
@@ -1207,27 +1220,37 @@ const H = {
   restMinus:()=>{ if(!A?.rest) return; if(A.rest.paused) A.rest.left=Math.max(0,A.rest.left-15000); else A.rest.end-=15000; saveActive(); tick(true) },
   restPlus:()=>{ if(!A?.rest) return; if(A.rest.paused) A.rest.left+=15000; else { if(A.rest.chimed){A.rest.end=Date.now()+15000; A.rest.chimed=false} else A.rest.end+=15000 } saveActive(); tick(true) },
   restSkip:()=>{ if(A){ A.rest=null; saveActive(); tick(true) } },
-  swap:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp} : sheetCtx(); openSheet({type:'swap', uid:el.dataset.uid, ...c}) },
+  swap:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp} : sheetCtx(); openSheet({type:'swap', uid:el.dataset.uid, keep:false, ...c}) },
   swapFrom:el=>{ const di=+el.dataset.day; const all=ui.sheet.all; const live=A&&A.dayIdx===di&&!all; openSheet({type:'swap', uid:el.dataset.uid, ctx:live?'A':'P', day:di, tmp: !live && !all && ui.editDay!==di}) },
   doSwap:el=>doReplace(el.dataset.ex),
   missing:el=>openSheet({type:'missing', day:+el.dataset.i}),
   missingAll:()=>openSheet({type:'missing', all:true}),
-  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); openSheet({type:'edit', uid:el.dataset.uid, ...c, sets: c.ctx==='A'?workRows(it).length:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it)}) },
+  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets: c.ctx==='A'?workRows(it).length:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it)}) },
   edWu:el=>{ keepEd(); ui.sheet.wu=Math.max(0,Math.min(3,(ui.sheet.wu||0)+ +el.dataset.d)); renderSheet() },
   edSets:el=>{ ui.sheet.sets=Math.max(1,Math.min(10,ui.sheet.sets+ +el.dataset.d)); keepEd(); renderSheet() },
   edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(s.m==='fail'){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=s.m==='time'?20:8; s.hi=s.m==='time'?40:12 } renderSheet() },
   edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return }
     it.lo = s.m==='fail'?null:(num(s.lo)??8); it.hi = s.m==='fail'?null:Math.max(it.lo, num(s.hi)??it.lo); it.rest=num($('#edRest').value)??it.rest;
     if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; it.rows.push({w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||String(it.lo??''),rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:''}) }
-      while(workRows(it).length>s.sets){ const l=it.rows[it.rows.length-1]; if(!l || l.warm || l.done) break; it.rows.pop() } it.sets=workRows(it).length }
+      while(workRows(it).length>s.sets){ const l=it.rows[it.rows.length-1]; if(!l || l.warm || l.done) break; it.rows.pop() } it.sets=workRows(it).length;
+      const pit = s.keep ? planItemOf(it) : null; if(pit){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest; saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
     else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu }
     saveCtx(s.ctx); closeSheet(); render() },
   rmItem:el=>{ const s=ui.sheet; const list=ctxList(s.ctx,s.day); const it0=sheetItem(s); const i=it0?list.indexOf(it0):-1; if(i<0){ closeSheet(); return }
     list.splice(i,1); normalizeSS(list); if(s.ctx==='A'){ if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1) } saveCtx(s.ctx); closeSheet(); render() },
-  add:el=>{ const base = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp&&!!el.dataset.replace} : sheetCtx(); openSheet({type:'add', ...base, replace: el.dataset.replace||null, q:'', cat:'all', mus:'all'}) },
+  rmItemKeep:()=>{ const s=ui.sheet; const it=sheetItem(s); if(!it) return; const pit=planItemOf(it); const d=S.days[A.dayIdx];
+    if(pit){ d.items.splice(d.items.indexOf(pit),1); normalizeSS(d.items); saveState() }
+    const i=A.items.indexOf(it); A.items.splice(i,1); normalizeSS(A.items); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1);
+    saveActive(); closeSheet(); render(); toast(`Removed from Day ${A.dayIdx+1}`) },
+  add:el=>{ const base = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp&&!!el.dataset.replace, keep:!!ui.sheet.keep} : (()=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day; c.keep=false; return c })(); openSheet({type:'add', ...base, replace: el.dataset.replace||null, q:'', cat:'all', mus:'all'}) },
   addCat:el=>{ ui.sheet.cat=el.dataset.k; renderSheet() },
   doAdd:el=>{ const s=ui.sheet; if(s.replace){ s.uid=s.replace; doReplace(el.dataset.ex); return }
-    const list=ctxList(s.ctx,s.day); list.push(mkItem(el.dataset.ex,s.ctx)); saveCtx(s.ctx); closeSheet(); render(); toast(`Added to ${s.ctx==='M'?'this entry':s.ctx==='A'?'this workout':'Day '+(s.day+1)}`) },
+    const ex=el.dataset.ex;
+    if(s.ctx==='P' && s.tmp && !s.keep){ const d=S.days[s.day]; d.tmpAdd=d.tmpAdd||[]; d.tmpAdd.push(mkItem(ex,'P')); saveState(); closeSheet(); render(); toast('Added to your next workout'); return }
+    if(s.ctx==='A'){ const ni=mkItem(ex,'A'); ni.pu=null;
+      if(s.keep){ const pit=mkItem(ex,'P'); S.days[A.dayIdx].items.push(pit); ni.pu=pit.uid; saveState() }
+      A.items.push(ni); saveActive(); closeSheet(); render(); toast(s.keep?`Added to this workout and Day ${A.dayIdx+1}`:'Added to this workout'); return }
+    const list=ctxList(s.ctx,s.day); list.push(mkItem(ex,s.ctx)); saveCtx(s.ctx); closeSheet(); render(); toast(`Added to ${s.ctx==='M'?'this entry':'Day '+(s.day+1)}`) },
   libCat:el=>{ ui.libCat=el.dataset.k; render() },
   exInfo:el=>openSheet({type:'exInfo', ex:el.dataset.ex}),
   addToDay:el=>{ const di=+$('#toDay').value; S.days[di].items.push(mkItem(el.dataset.ex,'P')); S.days[di].rest=false; saveState(); closeSheet(); render(); toast(`Added to Day ${di+1}`) },
@@ -1265,18 +1288,19 @@ function doReplace(exId){
   const s=ui.sheet; const list=ctxList(s.ctx,s.day); sheetItem(s); const i=list.findIndex(x=>x.uid===s.uid); if(i<0){ closeSheet(); toast("Couldn't find that exercise. Try again."); return }
   const it=list[i];
   if(s.ctx==='M'){ list[i].ex=exId; saveDraft(); closeSheet(); render(); toast(`Swapped to ${lib(exId).name}`); return }
+  if(s.ctx==='T'){ it.ex=exId; if(lib(exId).f){ it.lo=null; it.hi=null } else if(it.lo==null){ it.lo=10; it.hi=14 } saveState(); closeSheet(); render(); toast(`${lib(exId).name} for your next workout`); return }
   if(s.ctx==='A'){
-    const base={ex:exId, sets:it.rows.length, lo:it.lo, hi:it.hi, rest:it.rest, ss:it.ss};
+    const base={ex:exId, sets:workRows(it).length, lo:it.lo, hi:it.hi, rest:it.rest, ss:it.ss, wu:it.wu, pu:it.pu};
     if(lib(exId).f){ base.lo=null; base.hi=null } else if(it.lo==null){ base.lo=10; base.hi=14 }
     const ni=newActiveItem(base);
-    if(it.rows.some(r=>r.done)){ delete it.ss; list.splice(i+1,0,ni); A.cur=i+1 } else { list[i]=ni }
-  } else if(s.tmp){
+    if(it.rows.some(r=>r.done)){ delete it.ss; delete it.pu; list.splice(i+1,0,ni); A.cur=i+1 } else { list[i]=ni }
+    const pit = s.keep ? planItemOf(ni) : null;
+    if(pit){ applyPlanSwap(S.days[A.dayIdx],pit,exId); saveState(); saveActive(); closeSheet(); render(); toast(`Swapped here and in Day ${A.dayIdx+1}`); return }
+  } else if(s.tmp && !s.keep){
     const d=S.days[s.day]; d.tmp=d.tmp||{}; if(exId===it.ex) delete d.tmp[it.uid]; else d.tmp[it.uid]=exId;
     saveState(); closeSheet(); render(); toast(`${lib(exId).name} for your next workout`); return
   } else {
-    if(S.days[s.day].tmp) delete S.days[s.day].tmp[it.uid];
-    if(it.ph){ delete it.ph; delete it.phMus; delete it.phSug; it.rest=restFor(exId) }
-    it.ex=exId; if(lib(exId).f){ it.lo=null; it.hi=null } else if(it.lo==null){ it.lo=10; it.hi=14 }
+    applyPlanSwap(S.days[s.day],it,exId);
   }
   saveCtx(s.ctx); closeSheet(); render(); toast(`Swapped to ${lib(exId).name}`);
 }
@@ -1293,6 +1317,7 @@ document.addEventListener('input',e=>{
     const it=ui.man.items[+el.dataset.mi], k=+el.dataset.ms, f=el.dataset.mf; it.rows[k][f]=el.value;
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveDraft,400); return }
+  if(el.id==='keepPlan' && ui.sheet){ ui.sheet.keep=el.checked; return }
   if(el.dataset.mb && ui.man){ const M=ui.man, b=el.dataset.mb;
     if(b==='date') M.date=el.value; else if(b==='dur') M.dur=el.value; else if(b==='adv') M.adv=el.checked;
     else if(b==='day'){ const di=+el.value; if(!M.id && !manHasData()) M.items=manFromDay(di); M.dayIdx=di; saveDraft(); render(); return }
@@ -1323,24 +1348,54 @@ document.addEventListener('focusin',e=>{ if(e.target.matches('.setrow input')) s
 
 /* ---------- drag & drop reorder ---------- */
 let drag=null;
-document.addEventListener('pointerdown',e=>{
-  const hd=e.target.closest('[data-drag]'); if(!hd) return;
-  const row=hd.closest('.row'), list=row.closest('.list'); e.preventDefault();
+// Drag to reorder. iPhone uses touch events (Safari otherwise turns the gesture into a page scroll and cancels it);
+// a mouse uses pointer events. The page auto-scrolls when you hold near the top or bottom edge.
+function dragStart(hd,y,id){
+  const row=hd.closest('.row'), list=row.closest('.list'); if(!row||!list) return;
   const rows=[...list.querySelectorAll('.row')]; const from=rows.indexOf(row);
   const rects=rows.map(r=>r.getBoundingClientRect()); const hgt=rects[from].height+6;
-  drag={row,list,rows,from,to:from,startY:e.clientY,mids:rects.map(r=>r.top+r.height/2),hgt,id:e.pointerId};
-  row.classList.add('dragging'); try{ hd.setPointerCapture(e.pointerId) }catch(x){}
-});
-document.addEventListener('pointermove',e=>{
-  if(!drag || e.pointerId!==drag.id) return; e.preventDefault();
-  const dy=e.clientY-drag.startY; drag.row.style.transform=`translateY(${dy}px)`;
+  drag={row,list,rows,from,to:from,startY:y,lastY:y,startScroll:window.scrollY,mids:rects.map(r=>r.top+r.height/2),hgt,id};
+  row.classList.add('dragging'); document.body.classList.add('dragging-now');
+  try{ navigator.vibrate && navigator.vibrate(10) }catch(x){}
+  requestAnimationFrame(dragLoop);
+}
+function dragLayout(){
+  if(!drag) return;
+  const dy=(drag.lastY-drag.startY)+(window.scrollY-drag.startScroll);
+  drag.row.style.transform=`translateY(${dy}px)`;
   const center=drag.mids[drag.from]+dy; let to=drag.from;
   drag.mids.forEach((m,i)=>{ if(i<drag.from && center<m) to=Math.min(to,i); if(i>drag.from && center>m) to=Math.max(to,i) });
   drag.to=to;
   drag.rows.forEach((r,i)=>{ if(i===drag.from) return; let t=0; if(drag.from<to && i>drag.from && i<=to) t=-drag.hgt; if(to<drag.from && i>=to && i<drag.from) t=drag.hgt; r.style.transform=t?`translateY(${t}px)`:'' });
+}
+function dragLoop(){
+  if(!drag) return;
+  const edge=80, bottomBar=90, H=window.innerHeight;
+  let v=0; if(drag.lastY<edge) v=-Math.ceil((edge-drag.lastY)/6); else if(drag.lastY>H-bottomBar-edge) v=Math.ceil((drag.lastY-(H-bottomBar-edge))/6);
+  if(v){ const before=window.scrollY; window.scrollBy(0,v); if(window.scrollY!==before) dragLayout() }
+  requestAnimationFrame(dragLoop);
+}
+document.addEventListener('touchstart',e=>{
+  const hd=e.target.closest('[data-drag]'); if(!hd || drag) return;
+  e.preventDefault(); dragStart(hd, e.touches[0].clientY, 'touch');
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(!drag || drag.id!=='touch') return; e.preventDefault();
+  drag.lastY=e.touches[0].clientY; dragLayout();
+},{passive:false});
+document.addEventListener('touchend',()=>{ if(drag && drag.id==='touch') endDrag() });
+document.addEventListener('touchcancel',()=>{ if(drag && drag.id==='touch') endDrag() });
+document.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch') return;
+  const hd=e.target.closest('[data-drag]'); if(!hd || drag) return; e.preventDefault();
+  dragStart(hd, e.clientY, e.pointerId); try{ hd.setPointerCapture(e.pointerId) }catch(x){}
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag || e.pointerId!==drag.id) return; e.preventDefault();
+  drag.lastY=e.clientY; dragLayout();
 },{passive:false});
 function endDrag(){
-  if(!drag) return; const {list,from,to}=drag; drag.rows.forEach(r=>{r.style.transform=''; r.classList.remove('dragging')}); drag=null;
+  if(!drag) return; const {list,from,to}=drag; drag.rows.forEach(r=>{r.style.transform=''; r.classList.remove('dragging')}); drag=null; document.body.classList.remove('dragging-now');
   if(from===to) return;
   const ctx=list.dataset.ctx, day=+list.dataset.day; const arr=ctxList(ctx,day);
   const curUid = ctx==='A' ? A.items[A.cur]?.uid : null;
@@ -1355,7 +1410,7 @@ function endDrag(){
   if(ctx==='A') A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid));
   saveCtx(ctx); render();
 }
-document.addEventListener('pointerup',endDrag); document.addEventListener('pointercancel',endDrag);
+document.addEventListener('pointerup',e=>{ if(drag && drag.id===e.pointerId) endDrag() }); document.addEventListener('pointercancel',e=>{ if(drag && drag.id===e.pointerId) endDrag() });
 
 /* ---------- timers ---------- */
 let lastRestKey='';
