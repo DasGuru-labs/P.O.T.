@@ -1,5 +1,5 @@
 // POT offline support: always try the network first (so updates arrive), fall back to the saved copy.
-const CACHE = 'pot-v6';
+const CACHE = 'pot-v7';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
