@@ -21,7 +21,8 @@ img{max-width:100%}
 <title>Progressive Overload Training</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap"></noscript>
 <style>
 :root{
   --bg:#edf2ee; --surface:#ffffff; --surface2:#f4f7f5; --ink:#13201a; --muted:#5b6c63; --line:#d9e2dc;
@@ -778,7 +779,8 @@ function alternatives(exId){
 }
 
 /* ---------- render ---------- */
-function render(){
+function render(){ try{ renderInner() }catch(err){ showRecovery(err) } }
+function renderInner(){
   const app=$('#app'); const st0=$('#strip'); const sl0 = st0 ? st0.scrollLeft : null;
   if(ui.mode==='manual' && ui.man) app.innerHTML=viewManual();
   else if(ui.mode==='log' && A) app.innerHTML=viewLog();
@@ -787,6 +789,18 @@ function render(){
   const tabs=$('#tabs'); tabs.hidden = ui.mode==='log' || ui.mode==='manual';
   tabs.innerHTML=`<div class="in">${[['train','Train'],['history','History'],['lib','Exercises'],['gear','Equipment']].map(([k,l])=>`<button data-act="tab" data-k="${k}" class="${ui.tab===k?'on':''}">${ICON[k==='history'?'hist':k]}${l}</button>`).join('')}</div>`;
   renderSheet(); tick(true);
+}
+function showRecovery(err){
+  try{ console.error(err) }catch(x){}
+  const app=document.getElementById('app'); if(!app) return;
+  try{ document.getElementById('tabs').hidden=true; document.getElementById('sheetWrap').hidden=true }catch(x){}
+  app.innerHTML=`<div class="top"><div class="brand"><i></i>POT</div></div>
+   <div class="card stack" style="margin-top:12px"><div style="font-weight:700;font-size:18px">POT couldn't open that screen</div>
+   <div class="small muted">Your plan and history are still saved. Try one of these:</div>
+   <button class="btn primary" data-act="recHome">Go to the Train tab</button>
+   <button class="btn ghost" data-act="recClearActive">Close the unfinished workout</button>
+   <button class="btn ghost" data-act="backup">Copy a backup</button>
+   <div class="small muted" style="word-break:break-word">Details: ${esc(String(err && (err.message||err)))}</div></div>`;
 }
 function topbar(){ const bw=bwNow(); return `<div class="top"><div class="brand"><i></i>POT<span class="brandsub">Progressive Overload Training</span></div><div class="topr"><button class="bwchip ${bw==null?'empty':''}" data-act="bwOpen">${bw==null?'Log body weight':bw+' '+S.unit}</button>${syncHTML()}</div></div>` }
 
@@ -1152,6 +1166,8 @@ function saveCtx(ctx){ ctx==='M' ? saveDraft() : ctx==='A' ? saveActive() : save
 function scopeName(s){ return s.ctx==='A'?'this workout':s.ctx==='T'?'your next workout':'Day '+(s.day+1) }
 function mkItem(exId, ctx){ if(ctx==='M') return manItem(exId,3); const e=lib(exId); const it={uid:uid(), ex:exId, sets:3, lo:e.f?null:e.t?20:e.c?6:10, hi:e.f?null:e.t?40:e.c?10:14, rest:restFor(exId)}; return ctx==='A' ? newActiveItem(it) : it }
 const H = {
+  recHome:()=>{ ui.mode='overview'; ui.tab='train'; ui.sheet=null; ui.viewDay=null; ui.editDay=null; ui.man=null; lsSet('rot.v1.draft',null); document.getElementById('tabs').hidden=false; render() },
+  recClearActive:()=>{ A=null; saveActive(); H.recHome() },
   tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
   closeSheet:()=>closeSheet(),
   viewDay:el=>{ ui.viewDay=+el.dataset.i; ui.editDay=null; render() },
@@ -1434,6 +1450,7 @@ setInterval(()=>tick(false),250);
 // migrate any missing fields
 S.gear=S.gear||{}; S.custom=S.custom||{}; S.nextLoad=S.nextLoad||{}; if(!S.unit) S.unit='lb'; if(!S.bw) S.bw=[]; if(!S.bands) S.bands=seedBands();
 const MIGRATED = migrate();
+if(A){ if(!Array.isArray(A.items) || !A.items.length){ A=null; ui.mode='overview' } else { A.cur=Math.max(0,Math.min(A.cur|0, A.items.length-1)); A.items.forEach(x=>{ if(!Array.isArray(x.rows)) x.rows=[] }) } }
 if(ui.man && !A){ ui.mode='manual' } else ui.man=null;
 render();
 if(MIGRATED) setTimeout(()=>toast('Loaded your updated 16-day list'),400);
