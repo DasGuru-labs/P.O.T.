@@ -270,6 +270,12 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .setrow.warm input,.setrow.warm select{font-size:16px}
 .keeprow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-weight:600;background:var(--surface2)}
 .keeprow input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent)}
+.row.ghost{background:transparent;border-style:dashed}
+.row.ghost .name{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
+.row.ghost .prog{color:var(--muted);font-size:13px;font-family:var(--f-body);font-weight:600}
+.row.standin{margin-left:26px;position:relative;overflow:visible}
+.row.standin::before{content:"";position:absolute;left:-18px;top:-8px;width:12px;height:calc(50% + 8px);border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);border-bottom-left-radius:8px;opacity:.6}
+.sitag{color:var(--accent);font-weight:600}
 @media (prefers-reduced-motion:reduce){.row{transition:none}}
 </style>
 </head>
@@ -286,7 +292,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
 const LIB_RAW = [
  // Lats / back
- ['latpd_close','Lat pulldown (close grip)','mach','lats bi','cable','c'],
+ ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
  ['latpd_wide','Lat pulldown (wide grip)','mach','lats bi','cable','c'],
  ['onearm_pd','One-arm cable pulldown','mach','lats','cable','u'],
  ['lat_cross','Lat crossover (single-arm cross-body pulldown)','mach','lats','cable','u'],
@@ -294,10 +300,13 @@ const LIB_RAW = [
  ['sa_pd_band','Band straight-arm pulldown (bar-anchored)','band','lats','band bar',''],
  ['pullover_ez','Lying EZ-bar lat pullover','bb','lats pecs','ez bench',''],
  ['pullover_cable','Lying cable lat pullover','mach','lats','cable bench',''],
- ['row_elev','Elevated barbell row','bb','lats traps bi','bb plate','c'],
+ ['row_elev','Elevated Pendlay row (on plates)','bb','lats traps bi','bb plate','c'],
  ['row_bb','Barbell bent-over row','bb','lats traps bi','bb plate','c'],
+ ['meadows','Meadows row (one-arm landmine)','bb','lats traps bi','bb plate','cu'],
+ ['tbar_cs','Chest-supported T-bar row','mach','lats traps bi','mach','c'],
+ ['rowm_close','Machine row (close grip)','mach','lats traps bi','mach','c'],
  ['tbar','Landmine T-bar row','bb','lats traps bi','bb plate','c'],
- ['row_db1','Single-arm dumbbell row','db','lats traps bi','db bench','cu'],
+ ['row_db1','Single-arm dumbbell row (neutral grip)','db','lats traps bi','db bench','cu'],
  ['row_csdb','Chest-supported dumbbell row','db','lats traps rdelt','db bench','c'],
  ['row_csm','Chest-supported machine row','mach','lats traps bi','mach','c'],
  ['row_cable','Seated cable row (close grip)','mach','lats traps bi','cable','c'],
@@ -330,8 +339,11 @@ const LIB_RAW = [
  ['revfly_band','Band pull-apart','band','rdelt traps','band',''],
  ['facepull','Rope face pull','mach','rdelt traps','cable','c'],
  ['facepull_band','Band face pull (anchored to rack)','band','rdelt traps','band rack',''],
+ ['rear_lying','Side-lying rear delt raise','db','rdelt','db bench','u'],
+ ['yraise_cable','Cable Y raise','mach','rdelt traps','cable',''],
+ ['lat_rom','Full-ROM lateral raise','db','mdelt traps','db',''],
  ['revpec','Reverse pec deck','mach','rdelt','mach',''],
- ['btb_lat','Behind-the-back cable lateral raise','mach','rdelt mdelt','cable','u'],
+ ['btb_lat','Behind-the-back cable lateral raise','mach','mdelt rdelt','cable','u'],
  ['lat_db','Dumbbell lateral raise','db','mdelt','db',''],
  ['lat_tilt','Tilted (leaning) lateral raise','db','mdelt','db','u'],
  ['lat_lying','Arnold lying raise (side-lying lateral raise)','db','mdelt','db bench','u'],
@@ -432,6 +444,7 @@ const LIB_RAW = [
  ['hipthrust_bb','Barbell hip thrust','bb','glutes quads','bb bench plate','c'],
  ['hipthrust_db','Dumbbell hip thrust','db','glutes','db bench','c'],
  ['hipthrust_bw','Bench hip thrust (bodyweight)','cal','glutes','bench',''],
+ ['cablekick','Cable glute kickback','mach','glutes','cable','u'],
  ['bridge','Glute bridge','cal','glutes','',''],
  ['bridge_sl','Single-leg glute bridge','cal','glutes','','u'],
  // Calves
@@ -455,6 +468,7 @@ const LIB_RAW = [
  ['revcrunch','Reverse crunch','cal','abs','',''],
  ['deadbug','Dead bug','cal','abs','',''],
  ['vup','V-up','cal','abs','','f'],
+ ['mtclimb','Mountain climbers','cal','abs','','f'],
  ['plank','Plank','cal','abs','','t'],
  ['sideplank_el','Elevated side plank','cal','obl','bench','tu'],
  ['sideplank','Side plank','cal','obl','','tu'],
@@ -486,23 +500,24 @@ const S_ = (ex,sets,lo,hi) => P(ex,sets,lo,hi,true);   // "+" in your list = sup
 const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pullover_db','pullover_ez','pullover_cable','sa_pd_band']];
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
-const PLAN_V = 2;
+const PLAN_V = 3;
+const F = (ex,sets,lo,hi,focus) => ({ex,sets,lo,hi,focus});   // focus = the regions you marked in your sheet
 const PLAN_SEED = [
- ['Lats · Biceps · Traps','Secondary: triceps, delts · Priority: lats, brachialis',[P('latpd_wide',3,10,14),P('upright_ez',3,6,10),P('row_elev',3,6,10),PH(PH_LATS,3,10,14),P('yraise',2,8,12),S_('curl_db',3,8,12),S_('tri_pd',3,10,14)]],
- ['Legs · Glutes · Abs','Priority: glutes',[P('crunch_plate',3,10,14),S_('squat_bb',3,6,10),S_('calf_bb',3,6,10),P('russian_plate',3,10,14),P('lunge_rev_db',3,8,12)]],
- ['Pecs · Triceps · Delts','Secondary: biceps · Priority: delts',[P('bench_m',3,6,10),P('lat_tilt',3,8,12),P('incl_db',2,8,12),P('bayes',3,10,14),S_('revfly_cable',2,10,14),S_('dips_rings',2,8,12)]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_wide',3,10,14,"lower lats \u00b7 brachialis"),F('row_db1',3,8,12,"upper lats \u00b7 biceps & brachialis \u00b7 upper traps"),F('facepull',3,10,14,"traps \u00b7 rear delts \u00b7 brachialis"),F('bayes',3,10,14,"biceps"),F('tri_pd',3,10,14,"lower triceps"),F('lat_tilt',2,8,10,"mid delts")]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('squat_bb',3,6,10,"quads \u00b7 mid glutes"),F('bulg_db',2,8,12,"quads \u00b7 mid glutes"),F('calf_bb',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('vup',3,null,null,"abs"),F('russian_plate',3,null,null,"abs")]],
+ ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_m',3,6,10,"pecs \u00b7 triceps"),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps"),F('dips_bar',2,null,null,"pecs \u00b7 lower triceps"),F('curl_ez',3,6,10,"biceps"),F('lat_cable',3,10,14,"mid delts"),F('revpec',2,10,14,"rear delts")]],
  ['Rest · Cardio','',null],
- ['Lats · Traps · Glutes · Abs','Priority: abs',[S_('rollout',3,null,null),S_('onearm_pd',3,10,14),P('rdl_bb',3,6,10),P('row_csm',3,6,10),PH(PH_ABS,3,10,14),P('shrug_dbs',3,8,12)]],
- ['Legs · Biceps · Triceps · Delts','Priority: biceps, triceps',[P('preacher_db',3,8,12),P('skull_ez',3,6,10),P('lat_db',3,8,12),S_('legpress',3,6,10),S_('calf_bb',3,6,10),P('hammer',3,8,12),P('yraise',2,8,12)]],
- ['Pecs · Glutes · Abs','Priority: pecs',[P('fly_cable',4,10,14),S_('hipthrust_bb',4,6,10),S_('windmill',4,null,null),P('fly_incl_cable',3,10,14)]],
+ ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('meadows',3,8,12,"upper lats"),F('onearm_pd',3,10,14,"lower lats"),F('row_csm',3,6,10,"mid traps"),F('rdl_bb',3,6,10,"lower glutes"),F('shrug_dbs',3,8,12,"upper traps"),F('crunch_cable',3,10,14,"abs"),F('mtclimb',3,null,null,"lower abs")]],
+ ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legpress',3,6,10,"quads"),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_ez',3,6,10,"lower biceps"),F('hammer',3,8,12,"biceps & brachialis"),F('calf_m',3,6,10,"calves"),F('skull_ez',3,6,10,"upper triceps"),F('rear_lying',3,8,12,"rear delts")]],
+ ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('lunge_rev_db',3,8,12,"mid glutes"),F('windmill',4,8,12,"obliques"),F('fly_cable',4,10,14,"pecs"),F('fly_incl_cable',3,10,14,"upper pecs")]],
  ['Rest · Cardio','',null],
- ['Lats · Biceps · Traps','Secondary: triceps, delts · Priority: lats, brachialis',[P('latpd_close',3,10,14),P('lat_db',3,8,12),P('row_db1',3,8,12),PH(PH_LATS,3,10,14),P('curl_horiz',3,8,12),S_('tri_sa',3,10,14),S_('facepull',3,10,14)]],
- ['Legs · Glutes · Abs','Priority: glutes',[P('lunge_deep',3,8,12),S_('crunch_cable',3,10,14),S_('sideplank_el',3,20,40),P('jefferson',3,6,10),P('calf_bb',3,6,10)]],
- ['Pecs · Triceps · Delts','Secondary: biceps · Priority: delts',[P('incl_bb',3,6,10),P('btb_lat',3,10,14),P('bench_db',2,8,12),P('preacher_ez',3,6,10),S_('ohp_db',3,8,12),S_('lat_lying',3,8,12)]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_close',3,10,14,"lower lats \u00b7 biceps & brachialis"),F('row_cable',3,10,14,"upper lats"),F('row_elev',3,6,10,"biceps & brachialis \u00b7 lower traps"),F('upright_ez',3,6,10,"upper traps \u00b7 rear delts \u00b7 brachialis"),F('curl_horiz',3,8,12,"lower biceps"),F('tri_sa',3,10,14,"triceps"),F('lat_rom',2,8,10,"mid delts")]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('lunge_deep',3,8,12,"legs \u00b7 glutes"),F('jefferson',2,6,10,"quads \u00b7 lower glutes"),F('calf_bb',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('rollout',3,null,null,"abs"),F('frog',3,null,null,"upper abs")]],
+ ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_db',3,8,12,"pecs \u00b7 triceps"),F('incl_bb',3,6,10,"front delts \u00b7 upper pecs \u00b7 triceps"),F('curl_db',3,8,12,"biceps"),F('btb_lat',3,10,14,"mid delts"),F('revfly_cable',2,10,14,"rear delts")]],
  ['Rest · Cardio','',null],
- ['Lats · Traps · Glutes · Abs','Priority: abs',[PH(PH_ABS,3,10,14,true),S_('lat_cross',3,10,14),P('bulg_db',2,8,12),P('row_cable',3,10,14),P('frog',3,null,null),P('shrug_bb1',3,6,10)]],
- ['Legs · Biceps · Triceps · Delts','Priority: biceps, triceps',[P('tri_oh_cable',3,10,14),P('curl_ez',3,6,10),P('yraise',3,8,12),S_('legext',3,10,14),S_('legcurl',3,10,14),P('preacher_hammer',2,8,12),P('lat_cablex',2,10,14)]],
- ['Pecs · Glutes · Abs','Priority: pecs',[P('fly_cablex',4,10,14),S_('stepup_db',4,8,12),S_('hlr',3,null,null),P('press_around',3,10,14)]],
+ ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('tbar_cs',3,8,12,"upper lats"),F('lat_cross',3,10,14,"lower lats"),F('rowm_close',3,10,14,"mid traps"),F('shrug_bb1',3,6,10,"upper traps"),F('hipthrust_bb',3,6,10,"mid glutes"),F('hlr',3,null,null,"lower abs"),F('crunch_plate',3,10,14,"upper abs")]],
+ ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legext',3,6,10,"quads"),F('legcurl',3,6,10,"hamstrings"),F('ohp_db',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_db',3,8,12,"lower biceps"),F('rev_curl',2,6,10,"biceps & brachialis"),F('tri_oh_cable',3,10,14,"upper triceps"),F('yraise_cable',3,10,14,"rear delts")]],
+ ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('stepup_db',3,8,12,"glutes"),F('sideplank_el',3,null,null,"obliques"),F('fly_cablex',4,10,14,"pecs"),F('press_around',3,10,14,"upper pecs")]],
  ['Rest · Cardio','',null],
 ];
 
@@ -541,7 +556,10 @@ function seedDays(){
     return {id:'d'+(i+1), name, sub, rest:!items, items:list} });
 }
 function migrate(){
-  if((S.planV||1)<PLAN_V){ S.days=seedDays(); S.planV=PLAN_V; if(!(S.next<S.days.length)) S.next=0; saveState(); return true }
+  if((S.planV||1)<PLAN_V){ const old=S.days||[]; S.days=seedDays();
+    // keep warm-ups you'd set for the same exercise on the same day
+    S.days.forEach((d,i)=>{ const od=old[i]; if(!od||!od.items) return; d.items.forEach(it=>{ const o=od.items.find(x=>x.ex===it.ex && x.wu); if(o) it.wu=o.wu }) });
+    S.planV=PLAN_V; if(!(S.next<S.days.length)) S.next=0; saveState(); return true }
   // v2 fix: "prone overhead" was really the lying lat pullover
   let fixed=false; (S.days||[]).forEach(d=>d.items.forEach(it=>{
     if(it.ex==='prone_oh'){ it.ex='pullover_db'; fixed=true }
@@ -691,12 +709,15 @@ function prefill(it){
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
   return warm.concat(rows);
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.ss) o.ss=it.ss; return o }
-function effItem(day,it){ const t=day && day.tmp && day.tmp[it.uid]; if(!t) return it;
-  const c={...it, ex:t, tmpSwap:true}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.ss) o.ss=it.ss;
+  if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
+function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
+  const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
   const e=lib(t); if(e.f){ c.lo=null; c.hi=null } else if(c.lo==null){ c.lo=10; c.hi=14 } return c }
-function normalizeSS(arr){ const pos={}; arr.forEach((x,i)=>{ if(x.ss) (pos[x.ss]=pos[x.ss]||[]).push(i) });
-  Object.values(pos).forEach(ix=>{ if(ix.length!==2 || ix[1]-ix[0]!==1) ix.forEach(i=>{ delete arr[i].ss }) }); return arr }
+function expandDay(day){ return day.items.flatMap(it=>{ const e=effItem(day,it); if(e===it || it.ph) return [e];
+  const g={...it, ghost:true, goalOf:it.uid}; delete g.ss; return [g, e] }) }
+function normalizeSS(arr){ const real=arr.filter(x=>!x.ghost); const pos={}; real.forEach((x,i)=>{ if(x.ss) (pos[x.ss]=pos[x.ss]||[]).push(i) });
+  Object.values(pos).forEach(ix=>{ if(ix.length!==2 || ix[1]-ix[0]!==1) ix.forEach(i=>{ delete real[i].ss }) }); return arr }
 function partnerOf(arr,it){ return it.ss ? arr.find(x=>x!==it && x.ss===it.ss) : null }
 function groupIdx(i){ const it=A.items[i]; if(!it||!it.ss) return [i]; return A.items.map((x,j)=>x.ss===it.ss?j:-1).filter(j=>j>=0) }
 function itemDone(x){ return x.skipped || x.rows.every(r=>r.done) }
@@ -704,8 +725,8 @@ function clockSecs(){ if(!A) return 0; const c=A.clock; return (c.acc + (c.since
 function startWorkout(dayIdx){
   const d=S.days[dayIdx];
   if(!d.items.length){ toast('Add an exercise first'); return }
-  const real=d.items.map(x=>({...effItem(d,x), pu:x.uid})).filter(x=>!x.ph).concat((d.tmpAdd||[]).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
-  A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(real.map(newActiveItem)), rest:null, inc:{}};
+  const real=expandDay(d).map(x=>x.ghost?{...x, pu:null}:{...x, pu:x.uid}).filter(x=>!x.ph).concat((d.tmpAdd||[]).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
+  A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(real.map(newActiveItem)), rest:null, inc:{}}; A.cur=Math.max(0,A.items.findIndex(x=>!x.skipped));
   ui.mode='log'; saveActive(); wake(); render();
   const nph=d.items.length-real.length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
 }
@@ -808,7 +829,7 @@ function viewTrain(){
   const vd = ui.viewDay ?? (A ? A.dayIdx : S.next);
   const day=S.days[vd], live = A && A.dayIdx===vd;
   const editing = !live && ui.editDay===vd;
-  const items = live ? A.items : editing ? day.items : day.items.map(it=>effItem(day,it)).concat((day.tmpAdd||[]).map(x=>({...x, tmpSwap:true})));
+  const items = live ? A.items : editing ? day.items : expandDay(day).concat((day.tmpAdd||[]).map(x=>({...x, tmpSwap:true})));
   let h=topbar();
   if(A && !live) h+=`<div class="banner"><span>Workout in progress · Day ${A.dayIdx+1}</span><button class="link" data-act="goLive">Return</button></div>`;
   h+=`<div class="strip" id="strip">${S.days.map((d,i)=>`<button class="chipday ${d.rest?'rest':''} ${i===S.next?'next':''} ${i===vd?'sel':''} ${A&&A.dayIdx===i?'live':''}" data-act="viewDay" data-i="${i}" aria-label="Day ${i+1}"><span class="n">${i+1}</span><span class="t">${i===S.next?'next':d.rest?'rest':'&nbsp;'}</span></button>`).join('')}</div>`;
@@ -828,21 +849,26 @@ function viewTrain(){
   else h+=`<button class="btn primary" data-act="start" data-i="${vd}">Start workout</button>`;
   if(!A && !editing && vd!==S.next) h+=`<div class="note"><button class="link" data-act="makeNext" data-i="${vd}">Make Day ${vd+1} next in the rotation</button></div>`;
   if(!A && !editing && vd===S.next) h+=`<div class="note"><button class="link" data-act="skipDayAsk">${ui.skipArm?'Tap again to skip Day '+(vd+1):'Skip Day '+(vd+1)+' today'}</button></div>`;
-  const miss = items.filter(it=>!it.ph && !avail(lib(it.ex)));
+  const miss = items.filter(it=>!it.ph && !it.ghost && !avail(lib(it.ex)));
   if(miss.length) h+=`<div class="needs" style="margin-top:10px"><span>${miss.length} need equipment you don't have</span><button class="link" data-act="missing" data-i="${vd}">Swap</button></div>`;
   h+=`<div class="list" id="dlist" data-ctx="${live?'A':'P'}" data-day="${vd}">`;
   items.forEach((it,ix)=>{
-    const opens = it.ss && items[ix+1] && items[ix+1].ss===it.ss && !(items[ix-1] && items[ix-1].ss===it.ss);
-    const closes = it.ss && items[ix-1] && items[ix-1].ss===it.ss;
+    const nb=d=>{ let j=ix+d; while(items[j] && items[j].ghost) j+=d; return items[j] };
+    const opens = it.ss && nb(1) && nb(1).ss===it.ss && !(nb(-1) && nb(-1).ss===it.ss);
+    const closes = it.ss && nb(-1) && nb(-1).ss===it.ss;
     if(opens) h+=`<div class="ssgroup"><div class="sslbl">Superset</div>`;
     const canDrag = live || editing; const hdl = canDrag ? `<span class="handle" data-drag="1" aria-label="Drag to reorder">${ICON.drag}</span>` : '';
     if(it.ph){ h+=`<div class="row ph ${canDrag?'':'fixed'}" data-uid="${it.uid}">${hdl}<button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">Pick: ${esc(it.ph)}</div><div class="meta">${targetText(it)} · tap to choose</div></button></div>`; if(closes) h+=`</div>`; return }
+    if(it.ghost){ const ge=lib(it.ex); const si=live ? A.items.find(x=>x.pu===it.goalOf) : effItem(day,day.items.find(x=>x.uid===it.goalOf)||it);
+      h+=`<div class="row ghost ${canDrag?'':'fixed'}" data-uid="${it.uid}">${hdl}<button class="body" data-act="${live?'rowMenu':'ghostMenu'}" data-uid="${it.uid}" data-goal="${it.goalOf}"><div class="name">${esc(ge.name)}</div><div class="meta">Goal · using ${esc(si?lib(si.ex).name:'a stand-in')} for now</div></button><span class="prog">${live&&!it.skipped?'Doing it':'Skipped'}</span></div>`;
+      if(closes) h+=`</div>`; return }
     const ex=lib(it.ex), last=lastFor(it.ex);
     let right='';
     if(live){ const wr=workRows(it); const d=wr.filter(r=>r.done).length; right= it.skipped ? `<span class="prog skip">Skipped</span>` : `<span class="prog ${d===wr.length?'full':''}">${d}/${wr.length}</span>` }
     const lastTxt = last ? ` · <span class="num">${last.sets.map(s=>fmtSet(s,ex)).join(', ')}</span>` : '';
-    h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'}" data-uid="${it.uid}">${hdl}
-      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+    const isSI = it.standIn || (live && it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu));
+    h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''}" data-uid="${it.uid}">${hdl}
+      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
@@ -861,13 +887,15 @@ function viewLog(){
   const pr=partnerOf(A.items,it);
   if(pr){ const g=groupIdx(A.cur); h+=`<div class="ssbar"><div class="sslbl">Superset · alternate sets, rest after both</div><div class="in">${g.map(j=>{const x=A.items[j];return `<button data-act="jump" data-i="${j}" class="${j===A.cur?'on':''}">${esc(lib(x.ex).name)}<span>${x.skipped?'Skipped':x.rows.filter(r=>r.done).length+'/'+x.rows.length}</span></button>`}).join('')}</div></div>` }
   h+=`<div class="exhead"><div><div class="small muted">Exercise ${A.cur+1} of ${A.items.length}</div><h2>${esc(ex.name)}</h2>
-    <div class="exmeta"><span class="num">${targetText(it)}</span> · rest ${fmtRest(it.rest)}</div></div></div>
+    <div class="exmeta"><span class="num">${targetText(it)}</span> · rest ${fmtRest(it.rest)}</div>${it.focus?`<div class="small muted" style="margin-top:3px">Focus: ${esc(it.focus)}</div>`:''}</div></div>
     <div class="chips">${ex.m.map((mm,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
     <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Sets & rest</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
   const cur = it.rows.findIndex(r=>!r.done);
   const repLbl = m==='time'?'Sec':'Reps';
   const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : unit;
-  if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
+  if(it.ghost && it.skipped){ const si=A.items.find(x=>x.pu===it.goalOf); h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Goal exercise · skipped</div><div class="small muted">You're using ${esc(si?lib(si.ex).name:'a stand-in')} for now. Your history for both is kept separately.</div><button class="btn sm primary" style="align-self:center" data-act="useGoal">Do this one today instead</button></div>` }
+  else if(it.ghost){ h+=`<div class="small muted" style="margin-top:8px">Doing your goal exercise today. <button class="link" data-act="useStandIn">Use the stand-in instead</button></div>` }
+  if(it.ghost && it.skipped){} else if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
   h+=`<div class="sets ${ex.u?'uni':''}"><div class="sethead"><span style="text-align:center">Set</span><span>Last</span><span style="text-align:center">${wLbl}</span>${ex.u?`<span style="text-align:center">L</span><span style="text-align:center">R</span>`:`<span style="text-align:center">${repLbl}</span>`}<span style="text-align:center">RiR</span><span></span></div>`;
   it.rows.forEach((r,i)=>{
     const rir=`<select data-set="${i}" data-f="rir" aria-label="Reps in reserve">${['','0','1','2','3','4','5'].map(v=>`<option value="${v}" ${String(r.rir)===v?'selected':''}>${v===''?'–':v}</option>`).join('')}</select>`;
@@ -1063,23 +1091,28 @@ function closeSheet(){ ui.sheet=null; renderSheet(); if(pendingRS && ui.mode!=='
 function sheetItem(s){ const l=ctxList(s.ctx,s.day); let it=l.find(x=>x.uid===s.uid); if(!it && s.exId){ it = (l[s.idx] && l[s.idx].ex===s.exId) ? l[s.idx] : l.find(x=>x.ex===s.exId); if(it) s.uid=it.uid } return it }
 function ctxList(ctx,dayIdx){ if(ctx==='T'){ const d=S.days[dayIdx]; d.tmpAdd=d.tmpAdd||[]; return d.tmpAdd } return ctx==='M' ? ui.man.items : ctx==='A' ? A.items : S.days[dayIdx].items }
 function planItemOf(a){ return A && a && a.pu ? S.days[A.dayIdx].items.find(x=>x.uid===a.pu) : null }
-function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid];
+function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid]; delete pit.sub;
   if(pit.ph){ delete pit.ph; delete pit.phMus; delete pit.phSug; pit.rest=restFor(exId) }
   pit.ex=exId; if(lib(exId).f){ pit.lo=null; pit.hi=null } else if(pit.lo==null){ pit.lo=10; pit.hi=14 } }
-function keepBox(s){ return `<label class="keeprow"><input type="checkbox" id="keepPlan" ${s.keep?'checked':''}><span>Keep for future Day ${s.day+1} workouts</span></label>` }
+function keepBox(s,txt){ return `<label class="keeprow"><input type="checkbox" id="keepPlan" ${s.keep?'checked':''}><span>${txt||'Keep for future Day '+(s.day+1)+' workouts'}</span></label>` }
 function sheetCtx(){ if(ui.mode==='manual') return {ctx:'M', day:ui.man.dayIdx}; const vd = ui.viewDay ?? (A?A.dayIdx:S.next); const live = (ui.mode==='log') || (A && A.dayIdx===vd); return {ctx: live?'A':'P', day: live?A.dayIdx:vd} }
 function renderSheet(){
   const w=$('#sheetWrap'), sh=$('#sheet');
   if(!ui.sheet){ w.hidden=true; sh.innerHTML=''; return }
   w.hidden=false; const s=ui.sheet; let h='';
   const findIt = () => sheetItem(s);
-  if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=!!e.tmpSwap;
-    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(e)} · rest ${fmtRest(e.rest)} · ${ex.m.map(m=>MUS[m]).join(', ')}</div>
-     ${sw?`<div class="needs" style="padding-top:8px"><span>Swapped for your next Day ${s.day+1} workout only</span></div>`:''}
-     <div class="menu"><button data-act="swap" data-uid="${it.uid}">Swap for next workout</button>${sw?`<button data-act="tmpUndo">Undo swap (back to ${esc(it.ph?'Pick: '+it.ph:lib(it.ex).name)})</button>`:''}<button data-act="exInfo" data-ex="${ex.id}">History</button><button data-act="editDay" data-i="${s.day}">Edit Day ${s.day+1} for good</button></div>`;
+  if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=e!==it;
+    const goalName = it.ph ? 'Pick: '+it.ph : lib(it.ex).name;
+    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(e)} · rest ${fmtRest(e.rest)} · ${e.focus?esc(e.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
+     ${sw?`<div class="needs" style="padding-top:8px"><span>${e.tmpSwap?'Next workout only':'Stand-in'} for ${esc(goalName)}</span></div>`:''}
+     <div class="menu"><button data-act="swap" data-uid="${it.uid}">${sw?'Swap the stand-in':'Swap exercise'}</button>${sw?`<button data-act="goalBack">Switch back to ${esc(goalName)}</button>`:''}<button data-act="exInfo" data-ex="${ex.id}">History</button><button data-act="editDay" data-i="${s.day}">Edit Day ${s.day+1}</button></div>`;
+  }
+  else if(s.type==='ghostMenu'){ const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(!it){closeSheet();return} const e=effItem(d,it); const ge=lib(it.ex);
+    h=`<h3>${esc(ge.name)}</h3><div class="shsub">Your goal exercise. You're using ${esc(lib(e.ex).name)} until you switch back.</div>
+     <div class="menu"><button data-act="goalBack">Switch back to ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${ge.id}">History for ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${e.ex}">History for ${esc(lib(e.ex).name)}</button></div>`;
   }
   else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const ms=missing(ex);
-    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${ex.m.map(m=>MUS[m]).join(', ')}</div>
+    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${it.focus?esc(it.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${ms.length?`<div class="needs" style="padding-top:8px"><span>Needs ${ms.map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
      <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="swap" data-uid="${it.uid}">Swap exercise</button><button data-act="editItem" data-uid="${it.uid}">Edit sets, reps & rest</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
   }
@@ -1096,7 +1129,7 @@ function renderSheet(){
     const alts=alternatives(it.ex); const q=(s.q||'').toLowerCase(); const f=alts.filter(c=>!q||c.name.toLowerCase().includes(q));
     const rec=f.filter(avail), oth=f.filter(c=>!avail(c));
     const hasDone = s.ctx==='A' && it.rows && it.rows.some(r=>r.done);
-    h=`<h3>Swap ${esc(ex.name)}</h3><div class="shsub">Same target: ${ex.m.map(m=>MUS[m]).join(', ')}. ${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'This entry only.':(s.tmp||s.ctx==='A')?'':'Saved to Day '+(s.day+1)+' for future workouts.'}${hasDone?' Logged sets stay with the original; the new exercise is added after it.':''}</div>${(s.tmp||(s.ctx==='A'&&it.pu))?keepBox(s):''}
+    h=`<h3>Swap ${esc(ex.name)}</h3><div class="shsub">Same target: ${ex.m.map(m=>MUS[m]).join(', ')}. ${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'This entry only.':(s.tmp||s.ctx==='A')?'':'Saved to Day '+(s.day+1)+' for future workouts.'}${hasDone?' Logged sets stay with the original; the new exercise is added after it.':''}</div>${(s.tmp&&!it0.ph)||(s.ctx==='A'&&(it.pu||it.ghost))?keepBox(s,'Keep using it every Day '+(s.day+1)+' workout until I switch back'):s.tmp?keepBox(s):''}<div class="small muted" style="margin-top:6px">${s.ctx==='P'&&!s.tmp?'':'The original stays in your list as a skipped goal.'}</div>
      <input id="swapQ" data-bind="swapQ" placeholder="Search alternatives" value="${esc(s.q||'')}" style="margin-top:10px" autocomplete="off">
      <div class="sec">Recommended alternatives</div>${rec.length?exListHTML(rec,'doSwap'):'<div class="small muted">None with your current equipment.</div>'}
      <div class="sec">Other alternatives</div>${oth.length?exListHTML(oth,'doSwap'):'<div class="small muted">None.</div>'}
@@ -1190,6 +1223,10 @@ const H = {
     openSheet({type:'rowMenu', uid:el.dataset.uid, ...c}) },
   editDay:el=>{ ui.editDay=+el.dataset.i; ui.viewDay=+el.dataset.i; closeSheet(); render(); window.scrollTo(0,0) },
   editDone:()=>{ ui.editDay=null; render(); toast('Day saved') },
+  ghostMenu:el=>{ const c=sheetCtx(); openSheet({type:'ghostMenu', uid:el.dataset.goal, day:c.day}) },
+  goalBack:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it){ delete it.sub; if(d.tmp) delete d.tmp[it.uid] } saveState(); closeSheet(); render(); toast(it?`Back to ${lib(it.ex).name||'the plan'}`:'Back to the plan') },
+  useGoal:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=A.items.find(x=>x.pu===g.goalOf); g.skipped=false; if(si) si.skipped=true; saveActive(); render(); toast('Doing the goal exercise today') },
+  useStandIn:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=A.items.find(x=>x.pu===g.goalOf); g.skipped=true; if(si){ si.skipped=false; A.cur=A.items.indexOf(si) } saveActive(); render() },
   tmpUndo:()=>{ const s=ui.sheet; const d=S.days[s.day]; if(d.tmp) delete d.tmp[s.uid]; saveState(); closeSheet(); render(); toast('Back to the planned exercise') },
   ssJoin:()=>{ const s=ui.sheet; const l=ctxList(s.ctx,s.day); const it=sheetItem(s); const i=l.indexOf(it); if(i<0||!l[i+1]) return; const g='s'+uid(); it.ss=g; l[i+1].ss=g; normalizeSS(l); saveCtx(s.ctx); closeSheet(); render(); toast('Superset created') },
   ssSplit:()=>{ const s=ui.sheet; const l=ctxList(s.ctx,s.day); const it=sheetItem(s); const p=partnerOf(l,it); if(it) delete it.ss; if(p) delete p.ss; saveCtx(s.ctx); closeSheet(); render(); toast('Superset split') },
@@ -1236,7 +1273,7 @@ const H = {
   restMinus:()=>{ if(!A?.rest) return; if(A.rest.paused) A.rest.left=Math.max(0,A.rest.left-15000); else A.rest.end-=15000; saveActive(); tick(true) },
   restPlus:()=>{ if(!A?.rest) return; if(A.rest.paused) A.rest.left+=15000; else { if(A.rest.chimed){A.rest.end=Date.now()+15000; A.rest.chimed=false} else A.rest.end+=15000 } saveActive(); tick(true) },
   restSkip:()=>{ if(A){ A.rest=null; saveActive(); tick(true) } },
-  swap:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp} : sheetCtx(); openSheet({type:'swap', uid:el.dataset.uid, keep:false, ...c}) },
+  swap:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp} : sheetCtx(); openSheet({type:'swap', uid:el.dataset.uid, keep: c.ctx==='A' || !!c.tmp, ...c}) },
   swapFrom:el=>{ const di=+el.dataset.day; const all=ui.sheet.all; const live=A&&A.dayIdx===di&&!all; openSheet({type:'swap', uid:el.dataset.uid, ctx:live?'A':'P', day:di, tmp: !live && !all && ui.editDay!==di}) },
   doSwap:el=>doReplace(el.dataset.ex),
   missing:el=>openSheet({type:'missing', day:+el.dataset.i}),
@@ -1306,12 +1343,23 @@ function doReplace(exId){
   if(s.ctx==='M'){ list[i].ex=exId; saveDraft(); closeSheet(); render(); toast(`Swapped to ${lib(exId).name}`); return }
   if(s.ctx==='T'){ it.ex=exId; if(lib(exId).f){ it.lo=null; it.hi=null } else if(it.lo==null){ it.lo=10; it.hi=14 } saveState(); closeSheet(); render(); toast(`${lib(exId).name} for your next workout`); return }
   if(s.ctx==='A'){
-    const base={ex:exId, sets:workRows(it).length, lo:it.lo, hi:it.hi, rest:it.rest, ss:it.ss, wu:it.wu, pu:it.pu};
-    if(lib(exId).f){ base.lo=null; base.hi=null } else if(it.lo==null){ base.lo=10; base.hi=14 }
+    // swapping the skipped goal itself = choose a different stand-in
+    let tgt=it, ti=i; if(it.ghost){ const si=list.find(x=>x.pu===it.goalOf); if(si){ tgt=si; ti=list.indexOf(si) } }
+    const pu = tgt.pu || (tgt.ghost?tgt.goalOf:null);
+    const base={ex:exId, sets:workRows(tgt).length, lo:tgt.lo, hi:tgt.hi, rest:tgt.rest, ss:tgt.ss, wu:tgt.wu, pu:pu, focus:tgt.focus};
+    if(lib(exId).f){ base.lo=null; base.hi=null } else if(tgt.lo==null){ base.lo=10; base.hi=14 }
     const ni=newActiveItem(base);
-    if(it.rows.some(r=>r.done)){ delete it.ss; delete it.pu; list.splice(i+1,0,ni); A.cur=i+1 } else { list[i]=ni }
-    const pit = s.keep ? planItemOf(ni) : null;
-    if(pit){ applyPlanSwap(S.days[A.dayIdx],pit,exId); saveState(); saveActive(); closeSheet(); render(); toast(`Swapped here and in Day ${A.dayIdx+1}`); return }
+    const hasGoal = list.some(x=>x.ghost && x.goalOf===pu);
+    const pit0 = pu ? S.days[A.dayIdx].items.find(x=>x.uid===pu) : null;
+    if(tgt.rows.some(r=>r.done)){ delete tgt.ss; delete tgt.pu; list.splice(ti+1,0,ni); A.cur=ti+1 }
+    else if(hasGoal || !pu || (pit0 && pit0.ex===exId)){ list[ti]=ni; A.cur=ti }
+    else { tgt.ghost=true; tgt.goalOf=pu; tgt.skipped=true; delete tgt.pu; delete tgt.ss; list.splice(ti+1,0,ni); A.cur=ti+1 }
+    if(pit0 && pit0.ex===exId){ const g=list.find(x=>x.ghost && x.goalOf===pu); if(g) list.splice(list.indexOf(g),1); A.cur=Math.max(0,list.indexOf(ni)) }
+    normalizeSS(list);
+    if(s.keep && pit0){ if(pit0.ex===exId) delete pit0.sub; else pit0.sub=exId; if(S.days[A.dayIdx].tmp) delete S.days[A.dayIdx].tmp[pit0.uid]; saveState(); saveActive(); closeSheet(); render(); toast(pit0.ex===exId?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return }
+  } else if(s.tmp && s.keep && !it.ph){
+    const d=S.days[s.day]; if(d.tmp) delete d.tmp[it.uid]; if(exId===it.ex) delete it.sub; else it.sub=exId;
+    saveState(); closeSheet(); render(); toast(exId===it.ex?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return
   } else if(s.tmp && !s.keep){
     const d=S.days[s.day]; d.tmp=d.tmp||{}; if(exId===it.ex) delete d.tmp[it.uid]; else d.tmp[it.uid]=exId;
     saveState(); closeSheet(); render(); toast(`${lib(exId).name} for your next workout`); return

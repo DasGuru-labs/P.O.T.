@@ -2,7 +2,7 @@
 // - Opening the app: try the network for up to 4 seconds (so updates arrive), otherwise use the saved copy.
 // - Safari shows a blank page if a service worker hands it a redirected response
 //   (GitHub redirects /P.O.T. to /P.O.T./), so redirected responses are rebuilt as plain ones.
-const CACHE = 'pot-v10';
+const CACHE = 'pot-v12';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
