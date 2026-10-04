@@ -291,7 +291,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.05-a';
+const APP_VERSION = '2026.10.05-b';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -359,7 +359,7 @@ const LIB_RAW = [
  ['lat_cable','Single-arm cable lateral raise','mach','mdelt','cable','u'],
  ['lat_band','Band lateral raise','band','mdelt','band',''],
  ['lat_lying_incl','Incline ({°}) side-lying lateral raise','db','mdelt','db bench','u'],
- ['lat_landmine','Landmine lateral raise','bb','mdelt','bb','u'],
+ ['lat_landmine','Incline ({°}) side-braced landmine lateral raise','bb','mdelt','bb bench','u'],
  ['ohp_db','Seated ({°}) dumbbell shoulder press','db','fdelt pecs tri','db bench','c'],
  ['ohp_bb','Standing barbell overhead press','bb','fdelt tri','bb rack','c'],
  ['arnold','Arnold press','db','fdelt mdelt tri','db bench','c'],
@@ -514,7 +514,7 @@ const GEAR = [
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
 const LIB = {};
 const BENCH = [0,20,35,50,65,85,90];
-const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35};
+const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35};
 function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEFAULT[id] }
 function applyDeg(){ Object.values(LIB).forEach(e=>{ if(e.tpl) e.name=e.tpl.replace('{°}', degOf(e.id)+'°') }) }
 LIB_RAW.forEach(([id,name,cat,m,req,fl])=>{LIB[id]={id,name,tpl:name.includes('{°}')?name:null,cat,m:m.split(' '),req:req?req.split(' '):[],c:fl.includes('c'),u:fl.includes('u'),t:fl.includes('t'),f:fl.includes('f'),a:fl.includes('a'),w:fl.includes('w')}});
