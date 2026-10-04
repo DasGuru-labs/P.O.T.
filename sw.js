@@ -1,8 +1,9 @@
 // POT offline support.
-// - Opening the app: try the network for up to 4 seconds (so updates arrive), otherwise use the saved copy.
+// - Opening the app: ask GitHub for the newest copy (skipping the phone's 10-minute file cache),
+//   wait up to 4 seconds, otherwise use the saved copy so the app still opens at the gym.
 // - Safari shows a blank page if a service worker hands it a redirected response
 //   (GitHub redirects /P.O.T. to /P.O.T./), so redirected responses are rebuilt as plain ones.
-const CACHE = 'pot-v12';
+const CACHE = 'pot-v15';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -28,7 +29,7 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       try {
-        const r = await clean(await withTimeout(fetch(req), 4000));
+        const r = await clean(await withTimeout(fetch(req.url, { cache: 'no-store', credentials: 'same-origin' }), 4000));
         if (r && r.ok) { const c = await caches.open(CACHE); c.put('./index.html', r.clone()); return r; }
         throw new Error('bad response');
       } catch (err) {
@@ -42,7 +43,7 @@ self.addEventListener('fetch', e => {
   if (url.origin === self.location.origin) {
     e.respondWith((async () => {
       try {
-        const r = await clean(await withTimeout(fetch(req), 4000));
+        const r = await clean(await withTimeout(fetch(req, { cache: 'no-cache' }), 4000));
         if (r && r.ok) { const c = await caches.open(CACHE); c.put(req, r.clone()); }
         return r;
       } catch (err) { return (await caches.match(req)) || Response.error(); }

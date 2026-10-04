@@ -290,6 +290,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
+const APP_VERSION = '2026.10.03-d';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -316,7 +317,8 @@ const LIB_RAW = [
  ['chinup','Chin-up','cal','lats bi','bar','ca'],
  ['pullup_w','Weighted pull-up','cal','lats bi','bar','cw'],
  ['chinup_w','Weighted chin-up','cal','lats bi','bar','cw'],
- ['pullup_band','Band-assisted pull-up','band','lats bi','bar band','ca'],
+ ['pullup_band','Band-assisted pull-up (wide grip)','band','lats bi','bar band','ca'],
+ ['pullup_band_n','Band-assisted pull-up (neutral grip)','band','lats bi brach','bar band','ca'],
  ['neg_pull','Negative pull-up','cal','lats bi','bar','ca'],
  ['pullover_db','Lying dumbbell lat pullover','db','lats pecs','db bench',''],
  // Traps
@@ -369,6 +371,7 @@ const LIB_RAW = [
  ['decl_db','Decline dumbbell press','db','lpec tri','db bench','c'],
  ['dips_rings','Ring dip','cal','lpec fdelt tri','rings','ca'],
  ['dips_bar','Parallel-bar dip','cal','lpec fdelt tri','dip','ca'],
+ ['dips_band','Band-assisted dip','band','lpec fdelt tri','dip band','ca'],
  ['dips_w','Weighted dip','cal','lpec fdelt tri','dip','cw'],
  ['dips_bench','Bench dip','cal','tri lpec','bench','c'],
  ['pushup','Push-up','cal','pecs tri fdelt','','c'],
@@ -874,6 +877,7 @@ function viewTrain(){
   h+=`</div>`;
   if(live || editing || !A) h+=`<button class="addrow" data-act="add">+ Add exercise</button>`;
   if(!live && !editing) h+=`<div class="note"><button class="link" data-act="editDay" data-i="${vd}">Edit this day's exercises</button></div>`;
+  if(live && A.orderDirty) h+=`<div class="editbar" style="margin-top:10px"><span>Keep this order for future Day ${vd+1} workouts?</span><button class="btn sm primary" data-act="saveOrder">Save order</button></div>`;
   if(live) h+=`<div class="note">Changes during a workout apply to this workout only.</div>`;
   if(editing && !items.length) h+=`<div class="note"><button class="link" data-act="toggleRest" data-i="${vd}">Make this a rest day</button></div>`;
   return h;
@@ -1078,7 +1082,8 @@ function viewGear(){
    <div class="bands" style="margin-top:6px">${(S.bands||[]).map(b=>`<div class="bandrow"><span class="sw" style="background:${swatch(b.name)}"></span><input class="bn" data-band="${b.id}" data-bf="name" value="${esc(b.name)}" aria-label="Band name"><input data-band="${b.id}" data-bf="lo" inputmode="decimal" value="${esc(b.lo)}" aria-label="From"><input data-band="${b.id}" data-bf="hi" inputmode="decimal" value="${esc(b.hi)}" aria-label="To"><span class="md" id="md_${b.id}">${bandMed(b)}</span><button data-act="bandDel" data-id="${b.id}" aria-label="Delete band">×</button></div>`).join('')}</div>
    <button class="addrow" data-act="bandAdd">+ Add band</button>`;
   h+=`<div class="sec">Units</div><div class="seg"><button data-act="unit" data-k="lb" class="${S.unit==='lb'?'on':''}">Pounds (lb)</button><button data-act="unit" data-k="kg" class="${S.unit==='kg'?'on':''}">Kilograms (kg)</button></div>`;
-  h+=`<div class="sec">Data</div><div class="card stack small"><div>${syncState==='on'?'Your plan and logs sync through your claude.ai account, so your phone and computer show the same data.':syncState==='err'?'Sync is paused. Everything is still saved on this device and will sync when the connection returns.':window.POT_STANDALONE?'Saved on this phone only. Save a backup file now and then, and use it to move your logs to another device.':'Saved on this device.'}</div>
+  h+=`<div class="sec">Data</div><div class="small muted" style="margin-bottom:6px">App version ${APP_VERSION}${window.POT_STANDALONE?' · <button class="link" data-act="checkUpdate">Check for update</button>':''}</div>`;
+  h+=`<div class="card stack small"><div>${syncState==='on'?'Your plan and logs sync through your claude.ai account, so your phone and computer show the same data.':syncState==='err'?'Sync is paused. Everything is still saved on this device and will sync when the connection returns.':window.POT_STANDALONE?'Saved on this phone only. Save a backup file now and then, and use it to move your logs to another device.':'Saved on this device.'}</div>
     ${window.POT_STANDALONE?'<div class="rowline"><button class="btn sm primary" data-act="backupFile">Save backup file</button><label class="btn sm ghost" style="cursor:pointer">Open backup file<input type="file" id="restoreFile" accept=".json,application/json,text/plain" hidden></label></div>':''}
     <div class="rowline"><button class="btn sm ghost" data-act="backup">Copy backup</button><button class="btn sm ghost" data-act="restoreOpen">Restore from backup</button><button class="btn sm ghost" data-act="resetPlanAsk">Reset plan</button></div></div>`;
   return h;
@@ -1201,6 +1206,11 @@ function mkItem(exId, ctx){ if(ctx==='M') return manItem(exId,3); const e=lib(ex
 const H = {
   recHome:()=>{ ui.mode='overview'; ui.tab='train'; ui.sheet=null; ui.viewDay=null; ui.editDay=null; ui.man=null; lsSet('rot.v1.draft',null); document.getElementById('tabs').hidden=false; render() },
   recClearActive:()=>{ A=null; saveActive(); H.recHome() },
+  checkUpdate:()=>{ toast('Checking for an update…'); if(window.potCheckUpdate) window.potCheckUpdate().then(()=>setTimeout(()=>{ if(!document.hidden) toast('You have the latest version') },2500)) },
+  saveOrder:()=>{ const d=S.days[A.dayIdx]; const rank=new Map();
+    A.items.forEach((x,i)=>{ const pu = x.ghost ? x.goalOf : x.pu; if(pu && !rank.has(pu)) rank.set(pu,i) });
+    let last=-1; const r=d.items.map(it=>{ if(rank.has(it.uid)){ last=rank.get(it.uid); return [it,last] } return [it,last+0.5] });
+    d.items=r.sort((a,b)=>a[1]-b[1]).map(x=>x[0]); normalizeSS(d.items); A.orderDirty=false; saveState(); saveActive(); render(); toast(`Order saved to Day ${A.dayIdx+1}`) },
   tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
   closeSheet:()=>closeSheet(),
   viewDay:el=>{ ui.viewDay=+el.dataset.i; ui.editDay=null; render() },
@@ -1471,7 +1481,7 @@ function endDrag(){
   { const bi=Math.min(arr.indexOf(m), p?arr.indexOf(p):1e9), be=Math.max(arr.indexOf(m), p?arr.indexOf(p):-1); const a=arr[bi-1], b=arr[be+1];
     if(a && b && a.ss && a.ss===b.ss){ const blk=arr.splice(bi, be-bi+1); const at=arr.indexOf(b)+1; arr.splice(at,0,...blk) } }
   normalizeSS(arr);
-  if(ctx==='A') A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid));
+  if(ctx==='A'){ A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid)); A.orderDirty=true }
   saveCtx(ctx); render();
 }
 document.addEventListener('pointerup',e=>{ if(drag && drag.id===e.pointerId) endDrag() }); document.addEventListener('pointercancel',e=>{ if(drag && drag.id===e.pointerId) endDrag() });
@@ -1505,7 +1515,20 @@ if(MIGRATED) setTimeout(()=>toast('Loaded your updated 16-day list'),400);
 setTimeout(()=>{ const sel=document.querySelector('.chipday.sel'); if(sel) sel.scrollIntoView({inline:'center',block:'nearest'}) },50);
 initSync();
 if(window.POT_STANDALONE){
-  try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js') }catch(e){}
+  try{ if('serviceWorker' in navigator){
+    const hadController = !!navigator.serviceWorker.controller; let reloading=false;
+    navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).catch(()=>{});
+    // a newer version took over: reload right away if nothing is in progress, otherwise say so
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(!hadController || reloading) return;
+      if(!A && !ui.sheet && ui.mode!=='manual'){ reloading=true; location.reload() }
+      else toast('Update downloaded. It applies the next time you open POT.');
+    });
+    const check = ()=>navigator.serviceWorker.getRegistration().then(r=>r && r.update()).catch(()=>{});
+    setTimeout(check, 1500);
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') check() });
+    window.potCheckUpdate = check;
+  } }catch(e){}
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist() }catch(e){}
 }
 </script>
