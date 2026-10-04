@@ -276,6 +276,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .row.standin{margin-left:26px;position:relative;overflow:visible}
 .row.standin::before{content:"";position:absolute;left:-18px;top:-8px;width:12px;height:calc(50% + 8px);border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);border-bottom-left-radius:8px;opacity:.6}
 .sitag{color:var(--accent);font-weight:600}
+.bwcell{font-family:var(--f-num);font-weight:700;font-size:15px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:reduce){.row{transition:none}}
 </style>
 </head>
@@ -290,7 +291,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.03-d';
+const APP_VERSION = '2026.10.05-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -299,6 +300,8 @@ const LIB_RAW = [
  ['lat_cross','Lat crossover (single-arm cross-body pulldown)','mach','lats','cable','u'],
  ['sa_pd','Straight-arm cable pulldown','mach','lats','cable',''],
  ['sa_pd_band','Band straight-arm pulldown (bar-anchored)','band','lats','band bar',''],
+ ['xbody_pd_band','Single-arm cross-body band pulldown','band','lats','band bar','u'],
+ ['pd_band1','Half-kneeling single-arm band pulldown','band','lats','band bar','u'],
  ['pullover_ez','Lying EZ-bar lat pullover','bb','lats pecs','ez bench',''],
  ['pullover_cable','Lying cable lat pullover','mach','lats','cable bench',''],
  ['row_elev','Elevated Pendlay row (on plates)','bb','lats traps bi','bb plate','c'],
@@ -308,7 +311,8 @@ const LIB_RAW = [
  ['rowm_close','Machine row (close grip)','mach','lats traps bi','mach','c'],
  ['tbar','Landmine T-bar row','bb','lats traps bi','bb plate','c'],
  ['row_db1','Single-arm dumbbell row (neutral grip)','db','lats traps bi','db bench','cu'],
- ['row_csdb','Chest-supported dumbbell row','db','lats traps rdelt','db bench','c'],
+ ['helms_row','Helms row (chest braced on {°} bench)','db','lats traps bi','db bench','c'],
+ ['row_csdb','Chest-supported incline ({°}) dumbbell row','db','lats traps rdelt','db bench','c'],
  ['row_csm','Chest-supported machine row','mach','lats traps bi','mach','c'],
  ['row_cable','Seated cable row (close grip)','mach','lats traps bi','cable','c'],
  ['row_band','Bench-supported band row','band','lats traps bi','band bench','c'],
@@ -334,13 +338,15 @@ const LIB_RAW = [
  ['upright_db','Dumbbell upright row','db','mdelt traps','db','c'],
  ['upright_band','Band upright row','band','mdelt traps','band','c'],
  ['yraise','Seated Y raise','db','rdelt traps','db bench',''],
- ['yraise_incl','Incline prone Y raise','db','rdelt traps','db bench',''],
+ ['yraise_incl','Incline ({°}) prone Y raise','db','rdelt traps','db bench',''],
  ['revfly_cable','Cable reverse fly','mach','rdelt','cable',''],
  ['revfly_db','Bent-over dumbbell reverse fly','db','rdelt','db',''],
- ['revfly_incl','Chest-supported rear-delt raise','db','rdelt','db bench',''],
+ ['revfly_incl','Chest-supported incline ({°}) rear-delt raise','db','rdelt','db bench',''],
+ ['revfly_incl_b','Chest-supported incline ({°}) rear-delt raise','db','rdelt','db bench',''],
  ['revfly_band','Band pull-apart','band','rdelt traps','band',''],
  ['facepull','Rope face pull','mach','rdelt traps','cable','c'],
  ['facepull_band','Band face pull (anchored to rack)','band','rdelt traps','band rack',''],
+ ['facepull_db','Incline ({°}) prone dumbbell face pull','db','rdelt traps','db bench','c'],
  ['rear_lying','Side-lying rear delt raise','db','rdelt','db bench','u'],
  ['yraise_cable','Cable Y raise','mach','rdelt traps','cable',''],
  ['lat_rom','Full-ROM lateral raise','db','mdelt traps','db',''],
@@ -352,7 +358,9 @@ const LIB_RAW = [
  ['lat_cablex','Lateral cable crossover raise','mach','mdelt','cable',''],
  ['lat_cable','Single-arm cable lateral raise','mach','mdelt','cable','u'],
  ['lat_band','Band lateral raise','band','mdelt','band',''],
- ['ohp_db','Seated dumbbell shoulder press','db','fdelt pecs tri','db bench','c'],
+ ['lat_lying_incl','Incline ({°}) side-lying lateral raise','db','mdelt','db bench','u'],
+ ['lat_landmine','Landmine lateral raise','bb','mdelt','bb','u'],
+ ['ohp_db','Seated ({°}) dumbbell shoulder press','db','fdelt pecs tri','db bench','c'],
  ['ohp_bb','Standing barbell overhead press','bb','fdelt tri','bb rack','c'],
  ['arnold','Arnold press','db','fdelt mdelt tri','db bench','c'],
  ['ohp_sqz','Dumbbell squeeze overhead press','db','fdelt tri','db bench','c'],
@@ -365,9 +373,9 @@ const LIB_RAW = [
  ['bench_bb','Barbell bench press','bb','pecs tri fdelt','bb bench rack','c'],
  ['bench_db','Dumbbell bench press','db','pecs tri fdelt','db bench','c'],
  ['hex','Dumbbell squeeze (hex) press','db','pecs tri','db bench','c'],
- ['incl_bb','Incline barbell bench press','bb','upec tri fdelt','bb bench rack','c'],
- ['incl_db','Incline dumbbell press','db','upec tri fdelt','db bench','c'],
- ['incl_smith','Smith machine incline press','mach','upec tri fdelt','mach','c'],
+ ['incl_bb','Incline ({°}) barbell bench press','bb','upec tri fdelt','bb bench rack','c'],
+ ['incl_db','Incline ({°}) dumbbell press','db','upec tri fdelt','db bench','c'],
+ ['incl_smith','Smith machine incline ({°}) press','mach','upec tri fdelt','mach','c'],
  ['decl_db','Decline dumbbell press','db','lpec tri','db bench','c'],
  ['dips_rings','Ring dip','cal','lpec fdelt tri','rings','ca'],
  ['dips_bar','Parallel-bar dip','cal','lpec fdelt tri','dip','ca'],
@@ -380,11 +388,13 @@ const LIB_RAW = [
  ['incl_push','Incline push-up (hands on bench)','cal','lpec tri','bench','c'],
  ['fly_cable','Cable pec fly','mach','pecs','cable',''],
  ['fly_cablex','Pec fly crossover (high to low)','mach','lpec pecs','cable',''],
- ['fly_incl_cable','Incline cable pec fly (low to high)','mach','upec','cable',''],
+ ['fly_incl_cable','Incline ({°}) cable pec fly','mach','upec','cable',''],
+ ['lm_press_incl','Single-arm incline ({°}) back-braced supine landmine press','bb','upec pecs tri','bb bench','cu'],
  ['press_around','Cable pec press-around','mach','pecs','cable','u'],
  ['pecdeck','Pec deck','mach','pecs','mach',''],
  ['fly_db','Dumbbell chest fly','db','pecs','db bench',''],
- ['fly_incl_db','Incline dumbbell fly','db','upec','db bench',''],
+ ['fly_press','Dumbbell fly-press (lower like a fly, press up)','db','pecs','db bench',''],
+ ['fly_incl_db','Incline ({°}) dumbbell fly','db','upec','db bench',''],
  ['fly_band','Band dynamic hug','band','pecs','band',''],
  ['svend','Plate squeeze press','other','pecs','plate',''],
  // Triceps
@@ -395,8 +405,10 @@ const LIB_RAW = [
  ['skull_bb','Barbell skull crusher','bb','tri','bb bench',''],
  ['skull_db','Dumbbell skull crusher','db','tri','db bench',''],
  ['tri_oh_db','Seated overhead dumbbell extension','db','tri','db bench',''],
- ['tri_incl_db','Incline dumbbell triceps extension','db','tri','db bench',''],
+ ['tri_incl_db','Incline ({°}) dumbbell triceps extension','db','tri','db bench',''],
  ['kickback','Dumbbell kickback','db','tri','db','u'],
+ ['tate_ez','EZ-bar Tate press','bb','tri','ez bench',''],
+ ['xbody_ext','Cross-body single-arm dumbbell extension (lying flat)','db','tri','db bench','u'],
  ['tri_band','Band overhead triceps extension','band','tri','band',''],
  ['tri_pd_band','Band triceps pushdown (bar-anchored)','band','tri','band bar',''],
  ['closegrip','Close-grip bench press','bb','tri pecs','bb bench rack','c'],
@@ -404,7 +416,8 @@ const LIB_RAW = [
  // Biceps
  ['curl_db','Standing dumbbell curl','db','bi','db',''],
  ['curl_horiz','Horizontal (lying) dumbbell curl','db','bi','db bench',''],
- ['curl_incl','Incline dumbbell curl','db','bi','db bench',''],
+ ['curl_incl','Incline ({°}) dumbbell curl','db','bi','db bench',''],
+ ['spider_incl','Incline ({°}) prone spider curl','db','bi','db bench',''],
  ['preacher_db','Dumbbell preacher curl','db','bi','db bench','u'],
  ['preacher_ez','EZ-bar preacher curl','bb','bi','ez bench',''],
  ['preacher_hammer','Preacher hammer curl','db','bi brach','db bench','u'],
@@ -426,6 +439,7 @@ const LIB_RAW = [
  ['bw_sq','Bodyweight squat','cal','quads glutes','','c'],
  ['legpress','Leg press','mach','quads glutes','mach','c'],
  ['hack','Hack squat','mach','quads glutes','mach','c'],
+ ['hack_landmine','Landmine hack squat','bb','quads glutes','bb plate','c'],
  ['legext','Leg extension','mach','quads','mach',''],
  ['sissy','Sissy squat','cal','quads','',''],
  ['lunge_rev_db','Dumbbell reverse lunge','db','glutes quads','db','cu'],
@@ -444,15 +458,18 @@ const LIB_RAW = [
  ['legcurl','Seated leg curl','mach','hams','mach',''],
  ['legcurl_ly','Lying leg curl','mach','hams','mach',''],
  ['slider_curl','Sliding leg curl','cal','hams glutes','',''],
+ ['nordic','Nordic curl (feet anchored)','cal','hams','','f'],
  ['hipthrust_bb','Barbell hip thrust','bb','glutes quads','bb bench plate','c'],
  ['hipthrust_db','Dumbbell hip thrust','db','glutes','db bench','c'],
  ['hipthrust_bw','Bench hip thrust (bodyweight)','cal','glutes','bench',''],
  ['cablekick','Cable glute kickback','mach','glutes','cable','u'],
+ ['kick_band','Band glute kickback (ankle loop)','band','glutes','band','u'],
  ['bridge','Glute bridge','cal','glutes','',''],
  ['bridge_sl','Single-leg glute bridge','cal','glutes','','u'],
  // Calves
  ['calf_bb','Barbell standing calf raise','bb','calves','bb rack plate',''],
  ['calf_db','Dumbbell calf raise','db','calves','db',''],
+ ['calf_db_sl','Single-leg dumbbell calf raise (off a step)','db','calves','db','u'],
  ['calf_seat','Seated calf raise (dumbbells on knees)','db','calves','db bench',''],
  ['calf_m','Calf raise machine','mach','calves','mach',''],
  ['calf_sl','Single-leg calf raise','cal','calves','','u'],
@@ -461,6 +478,7 @@ const LIB_RAW = [
  ['crunch_plate','Weighted crunch (plate)','other','abs','plate',''],
  ['crunch_cable','Kneeling cable crunch','mach','abs','cable',''],
  ['crunch','Crunch','cal','abs','',''],
+ ['situp_db','Weighted sit-up (dumbbell at chest)','db','abs','db',''],
  ['russian_plate','Russian twist (plate)','other','obl abs','plate',''],
  ['russian','Russian twist (bodyweight)','cal','obl abs','',''],
  ['legraise','Lying leg raise','cal','abs','','f'],
@@ -495,7 +513,11 @@ const GEAR = [
 ];
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
 const LIB = {};
-LIB_RAW.forEach(([id,name,cat,m,req,fl])=>{LIB[id]={id,name,cat,m:m.split(' '),req:req?req.split(' '):[],c:fl.includes('c'),u:fl.includes('u'),t:fl.includes('t'),f:fl.includes('f'),a:fl.includes('a'),w:fl.includes('w')}});
+const BENCH = [0,20,35,50,65,85,90];
+const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35};
+function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEFAULT[id] }
+function applyDeg(){ Object.values(LIB).forEach(e=>{ if(e.tpl) e.name=e.tpl.replace('{°}', degOf(e.id)+'°') }) }
+LIB_RAW.forEach(([id,name,cat,m,req,fl])=>{LIB[id]={id,name,tpl:name.includes('{°}')?name:null,cat,m:m.split(' '),req:req?req.split(' '):[],c:fl.includes('c'),u:fl.includes('u'),t:fl.includes('t'),f:fl.includes('f'),a:fl.includes('a'),w:fl.includes('w')}});
 
 /* ---------- Your 16-day plan ---------- */
 const P = (ex,sets,lo,hi,ss) => ({ex,sets,lo,hi,ss:!!ss});
@@ -503,26 +525,28 @@ const S_ = (ex,sets,lo,hi) => P(ex,sets,lo,hi,true);   // "+" in your list = sup
 const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pullover_db','pullover_ez','pullover_cable','sa_pd_band']];
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
-const PLAN_V = 3;
+const PLAN_V = 4;
 const F = (ex,sets,lo,hi,focus) => ({ex,sets,lo,hi,focus});   // focus = the regions you marked in your sheet
 const PLAN_SEED = [
  ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_wide',3,10,14,"lower lats \u00b7 brachialis"),F('row_db1',3,8,12,"upper lats \u00b7 biceps & brachialis \u00b7 upper traps"),F('facepull',3,10,14,"traps \u00b7 rear delts \u00b7 brachialis"),F('bayes',3,10,14,"biceps"),F('tri_pd',3,10,14,"lower triceps"),F('lat_tilt',2,8,10,"mid delts")]],
  ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('squat_bb',3,6,10,"quads \u00b7 mid glutes"),F('bulg_db',2,8,12,"quads \u00b7 mid glutes"),F('calf_bb',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('vup',3,null,null,"abs"),F('russian_plate',3,null,null,"abs")]],
  ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_m',3,6,10,"pecs \u00b7 triceps"),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps"),F('dips_bar',2,null,null,"pecs \u00b7 lower triceps"),F('curl_ez',3,6,10,"biceps"),F('lat_cable',3,10,14,"mid delts"),F('revpec',2,10,14,"rear delts")]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('meadows',3,8,12,"upper lats"),F('onearm_pd',3,10,14,"lower lats"),F('row_csm',3,6,10,"mid traps"),F('rdl_bb',3,6,10,"lower glutes"),F('shrug_dbs',3,8,12,"upper traps"),F('crunch_cable',3,10,14,"abs"),F('mtclimb',3,null,null,"lower abs")]],
+ ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('meadows',3,8,12,"upper lats \u00b7 mid traps"),F('onearm_pd',3,10,14,"lower lats"),F('rdl_bb',3,6,10,"lower glutes"),F('shrug_dbs',3,8,12,"upper traps"),F('crunch_cable',3,10,14,"abs"),F('mtclimb',3,null,null,"lower abs")]],
  ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legpress',3,6,10,"quads"),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_ez',3,6,10,"lower biceps"),F('hammer',3,8,12,"biceps & brachialis"),F('calf_m',3,6,10,"calves"),F('skull_ez',3,6,10,"upper triceps"),F('rear_lying',3,8,12,"rear delts")]],
  ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('lunge_rev_db',3,8,12,"mid glutes"),F('windmill',4,8,12,"obliques"),F('fly_cable',4,10,14,"pecs"),F('fly_incl_cable',3,10,14,"upper pecs")]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_close',3,10,14,"lower lats \u00b7 biceps & brachialis"),F('row_cable',3,10,14,"upper lats"),F('row_elev',3,6,10,"biceps & brachialis \u00b7 lower traps"),F('upright_ez',3,6,10,"upper traps \u00b7 rear delts \u00b7 brachialis"),F('curl_horiz',3,8,12,"lower biceps"),F('tri_sa',3,10,14,"triceps"),F('lat_rom',2,8,10,"mid delts")]],
- ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('lunge_deep',3,8,12,"legs \u00b7 glutes"),F('jefferson',2,6,10,"quads \u00b7 lower glutes"),F('calf_bb',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('rollout',3,null,null,"abs"),F('frog',3,null,null,"upper abs")]],
- ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_db',3,8,12,"pecs \u00b7 triceps"),F('incl_bb',3,6,10,"front delts \u00b7 upper pecs \u00b7 triceps"),F('curl_db',3,8,12,"biceps"),F('btb_lat',3,10,14,"mid delts"),F('revfly_cable',2,10,14,"rear delts")]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_close',3,10,14,"lower lats \u00b7 biceps & brachialis"),F('row_cable',3,10,14,"upper lats \u00b7 biceps & brachialis"),F('upright_ez',3,6,10,"upper traps \u00b7 rear delts \u00b7 brachialis"),F('row_elev',3,6,10,"lower traps"),F('curl_horiz',3,8,12,"lower biceps"),F('tri_sa',3,10,14,"triceps"),F('lat_rom',2,8,10,"mid delts")]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('lunge_deep',3,8,12,"legs \u00b7 glutes"),F('jefferson',2,6,10,"quads \u00b7 lower glutes"),F('calf_db_sl',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('rollout',3,null,null,"abs"),F('frog',3,null,null,"upper abs")]],
+ ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('incl_bb',3,6,10,"upper pecs \u00b7 triceps \u00b7 front delts"),F('bench_db',3,8,12,"pecs \u00b7 triceps"),F('curl_db',3,8,12,"biceps"),F('btb_lat',3,10,14,"mid delts"),F('revfly_cable',2,10,14,"rear delts")]],
  ['Rest · Cardio','',null],
  ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('tbar_cs',3,8,12,"upper lats"),F('lat_cross',3,10,14,"lower lats"),F('rowm_close',3,10,14,"mid traps"),F('shrug_bb1',3,6,10,"upper traps"),F('hipthrust_bb',3,6,10,"mid glutes"),F('hlr',3,null,null,"lower abs"),F('crunch_plate',3,10,14,"upper abs")]],
- ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legext',3,6,10,"quads"),F('legcurl',3,6,10,"hamstrings"),F('ohp_db',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_db',3,8,12,"lower biceps"),F('rev_curl',2,6,10,"biceps & brachialis"),F('tri_oh_cable',3,10,14,"upper triceps"),F('yraise_cable',3,10,14,"rear delts")]],
+ ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legext',3,6,10,"quads"),F('legcurl',3,6,10,"hamstrings"),F('arnold',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_db',3,8,12,"lower biceps"),F('rev_curl',2,6,10,"biceps & brachialis"),F('tri_oh_cable',3,10,14,"upper triceps"),F('yraise_cable',3,10,14,"rear delts")]],
  ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('stepup_db',3,8,12,"glutes"),F('sideplank_el',3,null,null,"obliques"),F('fly_cablex',4,10,14,"pecs"),F('press_around',3,10,14,"upper pecs")]],
  ['Rest · Cardio','',null],
 ];
+// the previous sheet, used to tell your own changes apart from sheet changes
+const PREV_SEED = [["Lats · Biceps · Traps · Delts",["latpd_wide","row_db1","facepull","bayes","tri_pd","lat_tilt"]],["Legs · Glutes · Abs",["squat_bb","bulg_db","calf_bb","cablekick","vup","russian_plate"]],["Pecs · Triceps · Delts",["bench_m","incl_db","dips_bar","curl_ez","lat_cable","revpec"]],["Rest · Cardio",null],["Lats · Traps · Abs",["meadows","onearm_pd","row_csm","rdl_bb","shrug_dbs","crunch_cable","mtclimb"]],["Biceps · Legs · Triceps · Delts",["legpress","ohp_m","preacher_ez","hammer","calf_m","skull_ez","rear_lying"]],["Glutes · Pecs",["lunge_rev_db","windmill","fly_cable","fly_incl_cable"]],["Rest · Cardio",null],["Lats · Biceps · Traps · Delts",["latpd_close","row_cable","row_elev","upright_ez","curl_horiz","tri_sa","lat_rom"]],["Legs · Glutes · Abs",["lunge_deep","jefferson","calf_bb","cablekick","rollout","frog"]],["Pecs · Triceps · Delts",["bench_db","incl_bb","curl_db","btb_lat","revfly_cable"]],["Rest · Cardio",null],["Lats · Traps · Abs",["tbar_cs","lat_cross","rowm_close","shrug_bb1","hipthrust_bb","hlr","crunch_plate"]],["Biceps · Legs · Triceps · Delts",["legext","legcurl","ohp_db","preacher_db","rev_curl","tri_oh_cable","yraise_cable"]],["Glutes · Pecs",["stepup_db","sideplank_el","fly_cablex","press_around"]],["Rest · Cardio",null]];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -559,6 +583,7 @@ function seedDays(){
     return {id:'d'+(i+1), name, sub, rest:!items, items:list} });
 }
 function migrate(){
+  if((S.planV||1)===3 && PLAN_V===4){ mergeSheet(); S.planV=PLAN_V; saveState(); return true }
   if((S.planV||1)<PLAN_V){ const old=S.days||[]; S.days=seedDays();
     // keep warm-ups you'd set for the same exercise on the same day
     S.days.forEach((d,i)=>{ const od=old[i]; if(!od||!od.items) return; d.items.forEach(it=>{ const o=od.items.find(x=>x.ex===it.ex && x.wu); if(o) it.wu=o.wu }) });
@@ -568,7 +593,36 @@ function migrate(){
     if(it.ex==='prone_oh'){ it.ex='pullover_db'; fixed=true }
     if(it.ph && /prone overhead/i.test(it.ph)){ it.ph=PH_LATS[0]; it.phSug=PH_LATS[2]; fixed=true } }));
   if(S.nextLoad && S.nextLoad.prone_oh!=null){ S.nextLoad.pullover_db=S.nextLoad.prone_oh; delete S.nextLoad.prone_oh; fixed=true }
+  // you're using bands for glute kickbacks for now (Days 2 and 10): set once as a stand-in
+  if(!S.fixKickBand){ (S.days||[]).forEach(d=>d.items.forEach(it=>{ if(it.ex==='cablekick' && !it.sub) it.sub='kick_band' })); S.fixKickBand=true; fixed=true }
+  // Day 10: single-leg dumbbell calf raise instead of repeating Day 2's barbell raise
+  if(!S.fixD10calf){ const d=(S.days||[])[9]; const it=d&&d.items.find(x=>x.ex==='calf_bb'); if(it){ it.ex='calf_db_sl'; delete it.sub } S.fixD10calf=true; fixed=true }
+  // use every 1:1 as a stand-in (goal stays visible as skipped; tap it to switch back)
+  if(!S.fixAllSwaps){ (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.ph || it.sub) return; const a=alt1(it.ex); if(a) it.sub=a })); S.fixAllSwaps=true; fixed=true }
   if(fixed) saveState(); return false }
+// Load a new sheet without losing your own work: stand-ins, warm-ups, supersets, rest times,
+// exercises you added, renamed days, and your order (if you'd reordered a day).
+function mergeSheet(){
+  const old=S.days||[]; const fresh=seedDays();
+  fresh.forEach((nd,i)=>{
+    const od=old[i]; if(!od || !Array.isArray(od.items)) return;
+    const prev=(PREV_SEED[i]&&PREV_SEED[i][1])||[]; const prevName=PREV_SEED[i]&&PREV_SEED[i][0];
+    if(od.name && od.name!==prevName){ nd.name=od.name; nd.sub=od.sub }
+    nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[];
+    nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
+      ni.uid=oi.uid; ['wu','sub','ss','rest'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
+    const added = od.items.filter(x=>!x.ph && !prev.includes(x.ex) && !nd.items.some(n=>n.ex===x.ex));
+    const keptOld = od.items.filter(x=>prev.includes(x.ex)).map(x=>x.ex);
+    const reordered = JSON.stringify(keptOld) !== JSON.stringify(prev.filter(e=>keptOld.includes(e)));
+    const insertAfterPrev=(list,item,seq)=>{ const k=seq.indexOf(item); for(let j=k-1;j>=0;j--){ const at=list.indexOf(seq[j]); if(at>=0){ list.splice(at+1,0,item); return } } list.unshift(item) };
+    let res;
+    if(!reordered){ res=nd.items.slice(); const seq=od.items; added.forEach(x=>insertAfterPrev(res,x,seq.map(o=>res.find(r=>r.uid===o.uid)||o))) }
+    else { res=[]; od.items.forEach(oi=>{ const m=nd.items.find(n=>n.ex===oi.ex); if(m) res.push(m); else if(added.includes(oi)) res.push(oi) });
+      nd.items.filter(n=>!res.includes(n)).forEach(n=>insertAfterPrev(res,n,nd.items)) }
+    nd.items=normalizeSS(res);
+  });
+  S.days=fresh;
+}
 function seedBands(){ return [['Yellow',5,15],['Red',15,35],['Black',25,65],['Purple',35,85],['Green',50,125],['Blue',65,175]].map(([name,lo,hi])=>({id:'b_'+name.toLowerCase(),name,lo,hi})) }
 function restFor(exId){ const e=lib(exId); return e&&e.c ? 120 : 75 }
 let S = lsGet('rot.v1.state') || defaultState();
@@ -587,7 +641,7 @@ function targetText(it){ if(it.ph) return `${it.sets} × ${it.lo??''}–${it.hi?
 function liveSessions(){ return SESS.filter(s=>!s.deleted).sort((a,b)=>b.end-a.end) }
 function lastFor(exId){ for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(e) return {...e, date:s.end} } return null }
 function repOf(s,ex){ return ex.u ? Math.min(num(s.rl)??0, num(s.rr)??0) : (num(s.r)??0) }
-function loadMode(ex){ return ex.lm || (ex.w?'add':ex.a?'assist':ex.cat==='band'?'band':'wt') }
+function loadMode(ex){ return ex.lm || (ex.w?'add':ex.a?'assist':ex.cat==='band'?'band':(ex.cat==='cal'||(ex.req||[]).includes('abw'))?'bw':'wt') }
 function bandById(id){ return (S.bands||[]).find(b=>b.id===id) }
 function bandMed(b){ return b ? Math.round(((num(b.lo)||0)+(num(b.hi)||0))/2*10)/10 : 0 }
 function bandName(id){ const b=bandById(id); return b ? b.name : (id==='none'||!id ? 'No band' : 'Band') }
@@ -598,6 +652,7 @@ function eff(r,ex,bw){ const lm=loadMode(ex);
   if(lm==='assist'){ if(bw==null) return null; const b=bandById(r.band); return Math.round((bw-(b?bandMed(b):0))*10)/10 }
   if(lm==='band'){ const b=bandById(r.band); return b?bandMed(b):null }
   if(lm==='add'){ if(bw==null) return null; return Math.round((bw+(num(r.add)||0))*10)/10 }
+  if(lm==='bw') return null;
   return num(r.w) }
 function fmtSet(s,ex){
   const lm=loadMode(ex); const reps = ex.u ? `${s.rl??'–'}/${s.rr??'–'}` : `${s.r??'–'}`;
@@ -643,7 +698,7 @@ async function pullAll(){
   if(!db) return;
   let changed=false;
   const rs = unwrap(await db.doc('app/state').get());
-  if(rs && rs.days && (rs.updatedAt||0) > (S.updatedAt||0)){ if(ui.sheet || ui.mode==='manual' || drag){ pendingRS=rs } else { S=rs; lsSet('rot.v1.state',S); migrate(); changed=true } }
+  if(rs && rs.days && (rs.updatedAt||0) > (S.updatedAt||0)){ if(ui.sheet || ui.mode==='manual' || drag){ pendingRS=rs } else { S=rs; lsSet('rot.v1.state',S); migrate(); applyDeg(); changed=true } }
   else if(!rs || (S.updatedAt||0) > (rs.updatedAt||0)){ if(!S.updatedAt) S.updatedAt=Date.now(); lsSet('rot.v1.state',S); queue('app/state',S) }
   const ra = unwrap(await db.doc('app/active').get());
   if(ra && (ra.updatedAt||0) > (LA.updatedAt||0)){ LA={a:ra.empty?null:ra.a, updatedAt:ra.updatedAt}; A=LA.a; lsSet('rot.v1.active',LA); changed=true; if(!A && ui.mode==='log') ui.mode='overview' }
@@ -794,6 +849,18 @@ function resumeSession(id){
 }
 
 /* ---------- alternatives ---------- */
+const ALT1 = {
+  latpd_wide:'pullup_band', latpd_close:'pullup_band_n', onearm_pd:'pd_band1', lat_cross:'xbody_pd_band', sa_pd:'pullover_db',
+  row_cable:'helms_row', row_csm:'row_csdb', rowm_close:'row_csdb', tbar_cs:'tbar',
+  facepull:'facepull_db', revfly_cable:'revfly_incl_b', revpec:'revfly_incl', yraise_cable:'yraise_incl',
+  lat_cable:'lat_landmine', lat_cablex:'lat_db', btb_lat:'lat_lying_incl',
+  bayes:'spider_incl', curl_cable:'curl_db', tri_pd:'tate_ez', tri_sa:'xbody_ext', tri_oh_cable:'tri_oh_db',
+  fly_cable:'fly_db', fly_cablex:'fly_press', fly_incl_cable:'fly_incl_db', press_around:'lm_press_incl', pecdeck:'fly_db',
+  bench_m:'bench_bb', dips_bar:'dips_band', dips_rings:'dips_band', incl_smith:'incl_db', ohp_m:'ohp_db',
+  legpress:'hack_landmine', hack:'front_sq', legext:'sissy', legcurl:'nordic', legcurl_ly:'nordic', calf_m:'calf_db',
+  cablekick:'kick_band', crunch_cable:'situp_db', woodchop:'woodchop_band'
+};
+function alt1(exId){ const a=(S.alt1&&S.alt1[exId]) || ALT1[exId]; return a && (LIB[a]||(S.custom||{})[a]) ? a : null }
 function alternatives(exId){
   const ex=lib(exId), g0=grp(ex.m[0]), gs=new Set(ex.m.map(grp));
   return allEx().filter(c=>c.id!==exId && c.m.some(m=>grp(m)===g0) && gs.has(grp(c.m[0])))
@@ -896,7 +963,7 @@ function viewLog(){
     <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Sets & rest</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
   const cur = it.rows.findIndex(r=>!r.done);
   const repLbl = m==='time'?'Sec':'Reps';
-  const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : unit;
+  const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : lm==='bw' ? 'Load' : unit;
   if(it.ghost && it.skipped){ const si=A.items.find(x=>x.pu===it.goalOf); h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Goal exercise · skipped</div><div class="small muted">You're using ${esc(si?lib(si.ex).name:'a stand-in')} for now. Your history for both is kept separately.</div><button class="btn sm primary" style="align-self:center" data-act="useGoal">Do this one today instead</button></div>` }
   else if(it.ghost){ h+=`<div class="small muted" style="margin-top:8px">Doing your goal exercise today. <button class="link" data-act="useStandIn">Use the stand-in instead</button></div>` }
   if(it.ghost && it.skipped){} else if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
@@ -904,13 +971,13 @@ function viewLog(){
   it.rows.forEach((r,i)=>{
     const rir=`<select data-set="${i}" data-f="rir" aria-label="Reps in reserve">${['','0','1','2','3','4','5'].map(v=>`<option value="${v}" ${String(r.rir)===v?'selected':''}>${v===''?'–':v}</option>`).join('')}</select>`;
     const reps = ex.u ? `<input data-set="${i}" data-f="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input data-set="${i}" data-f="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">`
-                     : `<input data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" aria-label="${repLbl}">`;
+                     : `<input data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" placeholder="${m==='fail'?'max':''}" aria-label="${repLbl}">`;
     h+=`<div class="setrow ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':(workRows(it).indexOf(r)+1)}</span><span class="pv">${esc(r.prev||'—')}</span>
       ${wCell(r,i,lm)}${reps}${rir}
       <button class="check" data-act="logSet" data-i="${i}" aria-label="Log set ${i+1}">${ICON.check}</button></div>`;
   });
   h+=`</div>${loadLine(it,ex)}<div class="setops"><button data-act="addSet">+ Set</button><button data-act="addWarm">+ Warm-up</button>${it.rows.some(r=>r.warm&&!r.done)?'<button data-act="rmWarm">− Warm-up</button>':''}${cur>=0?'<button data-act="skipSet">Skip set</button>':''}${workRows(it).length>1&&!it.rows[it.rows.length-1].done?'<button data-act="rmSet">− Set</button>':''}</div>`;
-  if(cur<0 && workRows(it).length && m!=='fail' && workRows(it).some(r=>!r.skip)){
+  if(cur<0 && workRows(it).length && m!=='fail' && lm!=='bw' && workRows(it).some(r=>!r.skip)){
     const hitTop = workRows(it).every(r=>repOf(r,ex)>=it.hi);
     const lastRow=workRows(it)[workRows(it).length-1]; const step = unit==='kg'?2.5:5;
     const set = A.inc && A.inc[it.ex]!=null; const iv = set ? A.inc[it.ex] : null;
@@ -941,6 +1008,7 @@ function wCell(r,i,lm){
     return `<select class="bandsel" data-set="${i}" data-f="band" aria-label="Band">${opts}</select>`;
   }
   if(lm==='add') return `<input data-set="${i}" data-f="add" inputmode="decimal" value="${esc(r.add)}" placeholder="+0" aria-label="Added weight">`;
+  if(lm==='bw') return `<span class="bwcell">BW</span>`;
   return `<input data-set="${i}" data-f="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="Weight">`;
 }
 function loadLine(it,ex){
@@ -998,6 +1066,7 @@ function viewManual(){
     it.rows.forEach((r,k)=>{ const a=`data-mi="${ii}" data-ms="${k}"`;
       let wc; if(lm==='assist'||lm==='band'){ wc=`<select class="bandsel" ${a} data-mf="band" aria-label="Band">${(lm==='assist'?`<option value="none" ${r.band==='none'||!r.band?'selected':''}>None</option>`:`<option value="" ${!r.band?'selected':''}>–</option>`)+bandsSorted().map(b=>`<option value="${b.id}" ${r.band===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select>` }
       else if(lm==='add') wc=`<input ${a} data-mf="add" inputmode="decimal" value="${esc(r.add)}" placeholder="+0" aria-label="Added weight">`;
+      else if(lm==='bw') wc=`<span class="bwcell">BW</span>`;
       else wc=`<input ${a} data-mf="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="Weight">`;
       const reps = ex.u ? `<input ${a} data-mf="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input ${a} data-mf="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">` : `<input ${a} data-mf="r" inputmode="numeric" value="${esc(r.r)}" aria-label="${m}">`;
       const rir=`<select ${a} data-mf="rir" aria-label="Reps in reserve">${['','0','1','2','3','4','5'].map(v=>`<option value="${v}" ${String(r.rir)===v?'selected':''}>${v===''?'–':v}</option>`).join('')}</select>`;
@@ -1135,6 +1204,10 @@ function renderSheet(){
     const rec=f.filter(avail), oth=f.filter(c=>!avail(c));
     const hasDone = s.ctx==='A' && it.rows && it.rows.some(r=>r.done);
     h=`<h3>Swap ${esc(ex.name)}</h3><div class="shsub">Same target: ${ex.m.map(m=>MUS[m]).join(', ')}. ${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'This entry only.':(s.tmp||s.ctx==='A')?'':'Saved to Day '+(s.day+1)+' for future workouts.'}${hasDone?' Logged sets stay with the original; the new exercise is added after it.':''}</div>${(s.tmp&&!it0.ph)||(s.ctx==='A'&&(it.pu||it.ghost))?keepBox(s,'Keep using it every Day '+(s.day+1)+' workout until I switch back'):s.tmp?keepBox(s):''}<div class="small muted" style="margin-top:6px">${s.ctx==='P'&&!s.tmp?'':'The original stays in your list as a skipped goal.'}</div>
+     ${(()=>{ s.forEx=ex.id; const a=alt1(ex.id);
+        if(s.set1) return `<div class="needs" style="padding-top:10px"><span>Tap an exercise to make it your 1:1 for ${esc(ex.name)}</span><button class="link" data-act="set1Toggle">Cancel</button></div>`;
+        return a ? `<div class="sec">Your 1:1 alternative</div>${exListHTML([lib(a)],'doSwap')}<div class="small" style="margin-top:4px"><button class="link" data-act="set1Toggle">Change 1:1</button></div>`
+                 : `<div class="small" style="margin-top:8px"><button class="link" data-act="set1Toggle">Set a 1:1 alternative</button></div>` })()}
      <input id="swapQ" data-bind="swapQ" placeholder="Search alternatives" value="${esc(s.q||'')}" style="margin-top:10px" autocomplete="off">
      <div class="sec">Recommended alternatives</div>${rec.length?exListHTML(rec,'doSwap'):'<div class="small muted">None with your current equipment.</div>'}
      <div class="sec">Other alternatives</div>${oth.length?exListHTML(oth,'doSwap'):'<div class="small muted">None.</div>'}
@@ -1164,7 +1237,8 @@ function renderSheet(){
   else if(s.type==='exInfo'){ const ex=lib(s.ex);
     const hist=liveSessions().filter(x=>x.type==='lift').map(x=>({x,e:x.exercises.find(e=>e.ex===s.ex)})).filter(o=>o.e).slice(0,8);
     const best = hist.reduce((b,o)=>Math.max(b,...o.e.sets.map(z=>z.w||0)),0);
-    h=`<h3>${esc(ex.name)}</h3><div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
+    const angle = ex.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '';
+    h=`<h3>${esc(ex.name)}</h3>${angle}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
      <div class="chips">${ex.m.map((m,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[m]||m}</span>`).join('')}</div>
      ${missing(ex).length?`<div class="needs" style="padding-top:10px"><span>You don't have: ${missing(ex).map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
      <div class="sec">History${best?` · best ${best} ${S.unit}`:''}</div>${hist.length?`<div class="hx stack">${hist.map(o=>`<div><div class="small muted">${fmtDate(o.x.end)}</div><div class="num">${o.e.sets.map(z=>fmtSetFull(z,ex)).join('  ·  ')}</div></div>`).join('')}</div>`:'<div class="small muted">Not logged yet.</div>'}
@@ -1211,6 +1285,7 @@ const H = {
     A.items.forEach((x,i)=>{ const pu = x.ghost ? x.goalOf : x.pu; if(pu && !rank.has(pu)) rank.set(pu,i) });
     let last=-1; const r=d.items.map(it=>{ if(rank.has(it.uid)){ last=rank.get(it.uid); return [it,last] } return [it,last+0.5] });
     d.items=r.sort((a,b)=>a[1]-b[1]).map(x=>x[0]); normalizeSS(d.items); A.orderDirty=false; saveState(); saveActive(); render(); toast(`Order saved to Day ${A.dayIdx+1}`) },
+  setDeg:el=>{ S.deg=S.deg||{}; S.deg[el.dataset.ex]=+el.dataset.d; applyDeg(); saveState(); render(); toast(`${lib(el.dataset.ex).name}`) },
   tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
   closeSheet:()=>closeSheet(),
   viewDay:el=>{ ui.viewDay=+el.dataset.i; ui.editDay=null; render() },
@@ -1285,7 +1360,8 @@ const H = {
   restSkip:()=>{ if(A){ A.rest=null; saveActive(); tick(true) } },
   swap:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp} : sheetCtx(); openSheet({type:'swap', uid:el.dataset.uid, keep: c.ctx==='A' || !!c.tmp, ...c}) },
   swapFrom:el=>{ const di=+el.dataset.day; const all=ui.sheet.all; const live=A&&A.dayIdx===di&&!all; openSheet({type:'swap', uid:el.dataset.uid, ctx:live?'A':'P', day:di, tmp: !live && !all && ui.editDay!==di}) },
-  doSwap:el=>doReplace(el.dataset.ex),
+  doSwap:el=>{ const s=ui.sheet; if(s && s.set1){ S.alt1=S.alt1||{}; S.alt1[s.forEx]=el.dataset.ex; s.set1=false; saveState(); renderSheet(); toast(`${lib(el.dataset.ex).name} is your 1:1 for ${lib(s.forEx).name}`); return } doReplace(el.dataset.ex) },
+  set1Toggle:()=>{ ui.sheet.set1=!ui.sheet.set1; renderSheet() },
   missing:el=>openSheet({type:'missing', day:+el.dataset.i}),
   missingAll:()=>openSheet({type:'missing', all:true}),
   editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets: c.ctx==='A'?workRows(it).length:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it)}) },
@@ -1508,6 +1584,7 @@ setInterval(()=>tick(false),250);
 // migrate any missing fields
 S.gear=S.gear||{}; S.custom=S.custom||{}; S.nextLoad=S.nextLoad||{}; if(!S.unit) S.unit='lb'; if(!S.bw) S.bw=[]; if(!S.bands) S.bands=seedBands();
 const MIGRATED = migrate();
+applyDeg();
 if(A){ if(!Array.isArray(A.items) || !A.items.length){ A=null; ui.mode='overview' } else { A.cur=Math.max(0,Math.min(A.cur|0, A.items.length-1)); A.items.forEach(x=>{ if(!Array.isArray(x.rows)) x.rows=[] }) } }
 if(ui.man && !A){ ui.mode='manual' } else ui.man=null;
 render();
