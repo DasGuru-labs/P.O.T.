@@ -277,6 +277,12 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .row.standin::before{content:"";position:absolute;left:-18px;top:-8px;width:12px;height:calc(50% + 8px);border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);border-bottom-left-radius:8px;opacity:.6}
 .sitag{color:var(--accent);font-weight:600}
 .bwcell{font-family:var(--f-num);font-weight:700;font-size:15px;color:var(--muted);text-align:center}
+.armtag{font-weight:600;color:var(--ink)}
+.emtag{font-weight:700;font-size:12px;letter-spacing:.02em}
+.emtag.sq{color:var(--danger)}
+.chip.sq{background:transparent;border-color:var(--danger);color:var(--danger)}
+.chip.el{background:transparent;border-color:var(--warn);color:var(--warn)}
+.emtag.el{color:var(--warn)}
 @media (prefers-reduced-motion:reduce){.row{transition:none}}
 </style>
 </head>
@@ -291,13 +297,17 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.05-b';
+const APP_VERSION = '2026.10.07-b';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
  ['latpd_wide','Lat pulldown (wide grip)','mach','lats bi','cable','c'],
  ['onearm_pd','One-arm cable pulldown','mach','lats','cable','u'],
- ['lat_cross','Lat crossover (single-arm cross-body pulldown)','mach','lats','cable','u'],
+ ['onearm_pd_sup','One-arm cable pulldown (supinated grip)','mach','lats bi','cable','u'],
+ ['flappy','Flappy bird (straight-arm cable pulldown, T-pose)','mach','lats','cable',''],
+ ['lat_xover','Lat crossover (straight-arm, cables crossed overhead, supinated)','mach','lats','cable',''],
+ ['flappy_band','Band flappy bird (band over pull-up bar)','band','lats','band bar',''],
+ ['lat_cross','Cross-body single-arm pulldown (cable at 90°)','mach','lats','cable','u'],
  ['sa_pd','Straight-arm cable pulldown','mach','lats','cable',''],
  ['sa_pd_band','Band straight-arm pulldown (bar-anchored)','band','lats','band bar',''],
  ['xbody_pd_band','Single-arm cross-body band pulldown','band','lats','band bar','u'],
@@ -315,6 +325,9 @@ const LIB_RAW = [
  ['row_csdb','Chest-supported incline ({°}) dumbbell row','db','lats traps rdelt','db bench','c'],
  ['row_csm','Chest-supported machine row','mach','lats traps bi','mach','c'],
  ['row_cable','Seated cable row (close grip)','mach','lats traps bi','cable','c'],
+ ['row_cable_wide','Wide-grip cable row (pronated)','mach','lats traps rdelt','cable','c'],
+ ['seal_row_pro','Pronated barbell seal row','bb','lats traps rdelt','bb bench plate','c'],
+ ['row_csdb_pro','Chest-supported incline ({°}) pronated dumbbell row','db','lats traps rdelt','db bench','c'],
  ['row_band','Bench-supported band row','band','lats traps bi','band bench','c'],
  ['inv_row','Inverted row (bar in rack)','cal','lats traps bi','rack bb','c'],
  ['pullup','Pull-up','cal','lats bi','bar','ca'],
@@ -328,6 +341,7 @@ const LIB_RAW = [
  // Traps
  ['shrug_dbs','Seated dumbbell shrug','db','traps','db bench',''],
  ['shrug_db','Standing dumbbell shrug','db','traps','db',''],
+ ['shrug_tilt','Single-arm tilted dumbbell shrug','db','traps','db','u'],
  ['shrug_bb1','Single-arm barbell shrug','bb','traps','bb plate','u'],
  ['shrug_bb','Barbell shrug','bb','traps','bb plate',''],
  ['shrug_band','Band shrug','band','traps','band',''],
@@ -342,16 +356,16 @@ const LIB_RAW = [
  ['revfly_cable','Cable reverse fly','mach','rdelt','cable',''],
  ['revfly_db','Bent-over dumbbell reverse fly','db','rdelt','db',''],
  ['revfly_incl','Chest-supported incline ({°}) rear-delt raise','db','rdelt','db bench',''],
- ['revfly_incl_b','Chest-supported incline ({°}) rear-delt raise','db','rdelt','db bench',''],
+ ['revfly_incl_b','Chest-supported incline ({°}) rear-delt raise','db','rdelt','db bench','u'],
  ['revfly_band','Band pull-apart','band','rdelt traps','band',''],
  ['facepull','Rope face pull','mach','rdelt traps','cable','c'],
  ['facepull_band','Band face pull (anchored to rack)','band','rdelt traps','band rack',''],
  ['facepull_db','Incline ({°}) prone dumbbell face pull','db','rdelt traps','db bench','c'],
  ['rear_lying','Side-lying rear delt raise','db','rdelt','db bench','u'],
- ['yraise_cable','Cable Y raise','mach','rdelt traps','cable',''],
+ ['yraise_cable','Standing cable Y raise','mach','rdelt traps','cable',''],
  ['lat_rom','Full-ROM lateral raise','db','mdelt traps','db',''],
  ['revpec','Reverse pec deck','mach','rdelt','mach',''],
- ['btb_lat','Behind-the-back cable lateral raise','mach','mdelt rdelt','cable','u'],
+ ['btb_lat','Behind-the-back cable X raise','mach','mdelt rdelt','cable','u'],
  ['lat_db','Dumbbell lateral raise','db','mdelt','db',''],
  ['lat_tilt','Tilted (leaning) lateral raise','db','mdelt','db','u'],
  ['lat_lying','Arnold lying raise (side-lying lateral raise)','db','mdelt','db bench','u'],
@@ -411,6 +425,7 @@ const LIB_RAW = [
  ['xbody_ext','Cross-body single-arm dumbbell extension (lying flat)','db','tri','db bench','u'],
  ['tri_band','Band overhead triceps extension','band','tri','band',''],
  ['tri_pd_band','Band triceps pushdown (bar-anchored)','band','tri','band bar',''],
+ ['closegrip_ez','EZ-bar close-grip bench press','bb','tri pecs','ez bench','c'],
  ['closegrip','Close-grip bench press','bb','tri pecs','bb bench rack','c'],
  ['diamond','Diamond push-up','cal','tri pecs','','c'],
  // Biceps
@@ -418,6 +433,7 @@ const LIB_RAW = [
  ['curl_horiz','Horizontal (lying) dumbbell curl','db','bi','db bench',''],
  ['curl_incl','Incline ({°}) dumbbell curl','db','bi','db bench',''],
  ['spider_incl','Incline ({°}) prone spider curl','db','bi','db bench',''],
+ ['spider_bb','Incline ({°}) prone barbell spider curl','bb','bi','bb bench',''],
  ['preacher_db','Dumbbell preacher curl','db','bi','db bench','u'],
  ['preacher_ez','EZ-bar preacher curl','bb','bi','ez bench',''],
  ['preacher_hammer','Preacher hammer curl','db','bi brach','db bench','u'],
@@ -489,6 +505,7 @@ const LIB_RAW = [
  ['revcrunch','Reverse crunch','cal','abs','',''],
  ['deadbug','Dead bug','cal','abs','',''],
  ['vup','V-up','cal','abs','','f'],
+ ['bicycle','Bicycle crunch (elbow to knee)','cal','obl abs','','f'],
  ['mtclimb','Mountain climbers','cal','abs','','f'],
  ['plank','Plank','cal','abs','','t'],
  ['sideplank_el','Elevated side plank','cal','obl','bench','tu'],
@@ -514,9 +531,16 @@ const GEAR = [
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
 const LIB = {};
 const BENCH = [0,20,35,50,65,85,90];
-const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35};
+const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35, row_csdb_pro:35, spider_bb:35};
 function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEFAULT[id] }
-function applyDeg(){ Object.values(LIB).forEach(e=>{ if(e.tpl) e.name=e.tpl.replace('{°}', degOf(e.id)+'°') }) }
+// dumbbells held at once (for the total), and your one-arm / both-arm choice per exercise
+const ONE_DB = new Set(['goblet','pullover_db','tri_oh_db','tri_incl_db','situp_db','hipthrust_db','windmill','side_bend','calf_db_sl','rdl_sl','skull_db']);
+const LEG_2DB = new Set(['lunge_rev_db','lunge_deep','bulg_db','stepup_db','dbsplit','dblunge','dbstep']);
+function dbCount(ex){ if(!ex || ex.cat!=='db') return 0; if(ONE_DB.has(ex.id)) return 1; if(LEG_2DB.has(ex.id)) return 2; return ex.u ? 1 : 2 }
+function applyDeg(){ Object.values(LIB).forEach(e=>{ if(e.tpl) e.name=e.tpl.replace('{°}', degOf(e.id)+'°');
+  if(e.u0===undefined) e.u0=e.u; const a=S && S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 }) }
+function emphTag(it){ return it && it.emph ? `<span class="emtag ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>` : '' }
+function armLabel(ex){ if(ex.cat!=='db' || LEG_2DB.has(ex.id)) return ''; return ex.u ? '1 arm' : (ONE_DB.has(ex.id) ? '1 DB, both hands' : '2 arms') }
 LIB_RAW.forEach(([id,name,cat,m,req,fl])=>{LIB[id]={id,name,tpl:name.includes('{°}')?name:null,cat,m:m.split(' '),req:req?req.split(' '):[],c:fl.includes('c'),u:fl.includes('u'),t:fl.includes('t'),f:fl.includes('f'),a:fl.includes('a'),w:fl.includes('w')}});
 
 /* ---------- Your 16-day plan ---------- */
@@ -525,28 +549,28 @@ const S_ = (ex,sets,lo,hi) => P(ex,sets,lo,hi,true);   // "+" in your list = sup
 const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pullover_db','pullover_ez','pullover_cable','sa_pd_band']];
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
-const PLAN_V = 4;
-const F = (ex,sets,lo,hi,focus) => ({ex,sets,lo,hi,focus});   // focus = the regions you marked in your sheet
+const PLAN_V = 5;
+const F = (ex,sets,lo,hi,focus,emph) => emph ? ({ex,sets,lo,hi,focus,emph}) : ({ex,sets,lo,hi,focus});   // emph = Squeeze / Elongate from your Target column   // focus = the regions you marked in your sheet
 const PLAN_SEED = [
- ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_wide',3,10,14,"lower lats \u00b7 brachialis"),F('row_db1',3,8,12,"upper lats \u00b7 biceps & brachialis \u00b7 upper traps"),F('facepull',3,10,14,"traps \u00b7 rear delts \u00b7 brachialis"),F('bayes',3,10,14,"biceps"),F('tri_pd',3,10,14,"lower triceps"),F('lat_tilt',2,8,10,"mid delts")]],
- ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('squat_bb',3,6,10,"quads \u00b7 mid glutes"),F('bulg_db',2,8,12,"quads \u00b7 mid glutes"),F('calf_bb',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('vup',3,null,null,"abs"),F('russian_plate',3,null,null,"abs")]],
- ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_m',3,6,10,"pecs \u00b7 triceps"),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps"),F('dips_bar',2,null,null,"pecs \u00b7 lower triceps"),F('curl_ez',3,6,10,"biceps"),F('lat_cable',3,10,14,"mid delts"),F('revpec',2,10,14,"rear delts")]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_wide',3,10,14,"lats (squeeze) \u00b7 brachialis","Squeeze"),F('onearm_pd_sup',2,10,14,"lats (elongated) \u00b7 biceps","Elongate"),F('row_db1',3,8,12,"traps (squeeze) \u00b7 lats \u00b7 biceps & brachialis","Squeeze"),F('facepull',3,10,14,"traps \u00b7 rear delts \u00b7 brachialis",null),F('bayes',3,10,14,"biceps",null),F('tri_pd',3,10,14,"triceps (squeeze)","Squeeze"),F('lat_tilt',2,8,10,"mid delts",null)]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('squat_bb',3,6,10,"quads \u00b7 glutes",null),F('bulg_db',2,8,12,"quads \u00b7 glutes (elongated)","Elongate"),F('calf_bb',3,10,14,"calves",null),F('cablekick',2,10,14,"glutes (squeeze)","Squeeze"),F('vup',3,null,null,"abs",null),F('russian_plate',3,null,null,"abs",null)]],
+ ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('bench_m',3,6,10,"pecs \u00b7 triceps",null),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps",null),F('dips_bar',2,null,null,"pecs \u00b7 triceps (elongated)","Elongate"),F('curl_ez',3,6,10,"biceps",null),F('lat_cable',3,10,14,"mid delts",null),F('revpec',2,10,14,"rear delts",null)]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('meadows',3,8,12,"upper lats \u00b7 mid traps"),F('onearm_pd',3,10,14,"lower lats"),F('rdl_bb',3,6,10,"lower glutes"),F('shrug_dbs',3,8,12,"upper traps"),F('crunch_cable',3,10,14,"abs"),F('mtclimb',3,null,null,"lower abs")]],
- ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legpress',3,6,10,"quads"),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_ez',3,6,10,"lower biceps"),F('hammer',3,8,12,"biceps & brachialis"),F('calf_m',3,6,10,"calves"),F('skull_ez',3,6,10,"upper triceps"),F('rear_lying',3,8,12,"rear delts")]],
- ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('lunge_rev_db',3,8,12,"mid glutes"),F('windmill',4,8,12,"obliques"),F('fly_cable',4,10,14,"pecs"),F('fly_incl_cable',3,10,14,"upper pecs")]],
+ ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('meadows',3,8,12,"lats (elongated) \u00b7 traps (elongated)","Elongate"),F('row_cable_wide',2,10,14,"lats \u00b7 traps",null),F('rdl_bb',3,6,10,"glutes",null),F('lat_xover',3,10,14,"lower lats",null),F('shrug_dbs',3,8,12,"traps (squeeze)","Squeeze"),F('crunch_cable',3,10,14,"abs (squeeze)","Squeeze"),F('mtclimb',3,null,null,"lower abs",null)]],
+ ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legpress',3,6,10,"quads",null),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts",null),F('preacher_ez',3,6,10,"biceps (elongated)","Elongate"),F('conc',2,10,14,"biceps (squeeze)","Squeeze"),F('hammer',3,8,12,"biceps & brachialis",null),F('calf_m',3,6,10,"calves",null),F('skull_ez',3,6,10,"triceps (elongated)","Elongate"),F('rear_lying',3,8,12,"rear delts",null)]],
+ ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('lunge_rev_db',3,8,12,"glutes (elongated)","Elongate"),F('windmill',4,8,12,"obliques",null),F('fly_cable',4,10,14,"pecs",null),F('fly_incl_cable',3,10,14,"upper pecs",null)]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_close',3,10,14,"lower lats \u00b7 biceps & brachialis"),F('row_cable',3,10,14,"upper lats \u00b7 biceps & brachialis"),F('upright_ez',3,6,10,"upper traps \u00b7 rear delts \u00b7 brachialis"),F('row_elev',3,6,10,"lower traps"),F('curl_horiz',3,8,12,"lower biceps"),F('tri_sa',3,10,14,"triceps"),F('lat_rom',2,8,10,"mid delts")]],
- ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('lunge_deep',3,8,12,"legs \u00b7 glutes"),F('jefferson',2,6,10,"quads \u00b7 lower glutes"),F('calf_db_sl',3,10,14,"calves"),F('cablekick',2,10,14,"upper glutes"),F('rollout',3,null,null,"abs"),F('frog',3,null,null,"upper abs")]],
- ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('incl_bb',3,6,10,"upper pecs \u00b7 triceps \u00b7 front delts"),F('bench_db',3,8,12,"pecs \u00b7 triceps"),F('curl_db',3,8,12,"biceps"),F('btb_lat',3,10,14,"mid delts"),F('revfly_cable',2,10,14,"rear delts")]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Delts","Priority: lats \u00b7 Light: triceps",[F('latpd_close',3,10,14,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze"),F('row_cable',3,10,14,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze"),F('upright_ez',3,6,10,"brachialis \u00b7 traps (squeeze) \u00b7 rear delts","Squeeze"),F('row_elev',3,6,10,"traps (elongated)","Elongate"),F('lat_cross',2,10,14,"lats (elongated) \u00b7 biceps & brachialis","Elongate"),F('curl_horiz',3,8,12,"lower biceps",null),F('tri_sa',3,10,14,"triceps (squeeze)","Squeeze"),F('lat_rom',2,8,10,"mid delts",null)]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority: glutes",[F('lunge_deep',3,8,12,"legs \u00b7 glutes (elongated)","Elongate"),F('jefferson',2,6,10,"quads \u00b7 glutes",null),F('calf_db_sl',3,10,14,"calves",null),F('cablekick',2,10,14,"glutes (squeeze)","Squeeze"),F('bicycle',3,null,null,"abs",null),F('frog',3,null,null,"upper abs",null)]],
+ ["Pecs \u00b7 Triceps \u00b7 Delts","Priority: delts \u00b7 Light: biceps",[F('incl_bb',3,6,10,"upper pecs \u00b7 triceps \u00b7 front delts",null),F('bench_db',2,8,12,"pecs \u00b7 triceps",null),F('closegrip_ez',2,8,12,"pecs \u00b7 triceps",null),F('curl_db',3,8,12,"biceps",null),F('btb_lat',3,10,14,"mid delts",null),F('revfly_cable',2,10,14,"rear delts",null)]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('tbar_cs',3,8,12,"upper lats"),F('lat_cross',3,10,14,"lower lats"),F('rowm_close',3,10,14,"mid traps"),F('shrug_bb1',3,6,10,"upper traps"),F('hipthrust_bb',3,6,10,"mid glutes"),F('hlr',3,null,null,"lower abs"),F('crunch_plate',3,10,14,"upper abs")]],
- ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legext',3,6,10,"quads"),F('legcurl',3,6,10,"hamstrings"),F('arnold',3,8,12,"triceps \u00b7 front/mid delts"),F('preacher_db',3,8,12,"lower biceps"),F('rev_curl',2,6,10,"biceps & brachialis"),F('tri_oh_cable',3,10,14,"upper triceps"),F('yraise_cable',3,10,14,"rear delts")]],
- ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('stepup_db',3,8,12,"glutes"),F('sideplank_el',3,null,null,"obliques"),F('fly_cablex',4,10,14,"pecs"),F('press_around',3,10,14,"upper pecs")]],
+ ["Lats \u00b7 Traps \u00b7 Abs","Priority: abs \u00b7 Light: glutes",[F('tbar_cs',3,8,12,"lats (squeeze) \u00b7 traps","Squeeze"),F('seal_row_pro',2,8,12,"lats \u00b7 traps",null),F('flappy',3,10,14,"lats (elongated)","Elongate"),F('shrug_tilt',3,8,12,"traps (squeeze)","Squeeze"),F('hipthrust_bb',3,6,10,"glutes (squeeze)","Squeeze"),F('hlr',3,null,null,"lower abs",null),F('crunch_plate',3,10,14,"upper abs",null)]],
+ ["Biceps \u00b7 Legs \u00b7 Triceps \u00b7 Delts","Priority: biceps, legs, triceps",[F('legext',3,6,10,"quads",null),F('legcurl',3,6,10,"hamstrings",null),F('arnold',3,8,12,"triceps \u00b7 front/mid delts",null),F('preacher_db',3,8,12,"biceps (elongated)","Elongate"),F('spider_bb',2,8,12,"biceps (squeeze)","Squeeze"),F('rev_curl',2,6,10,"biceps & brachialis",null),F('tri_oh_cable',3,10,14,"triceps (elongated)","Elongate"),F('yraise_cable',3,10,14,"rear delts",null)]],
+ ["Glutes \u00b7 Pecs","Priority: pecs \u00b7 Light: abs",[F('stepup_db',3,8,12,"glutes (elongated)","Elongate"),F('sideplank_el',3,null,null,"obliques",null),F('fly_cablex',4,10,14,"pecs",null),F('press_around',3,10,14,"upper pecs",null)]],
  ['Rest · Cardio','',null],
 ];
 // the previous sheet, used to tell your own changes apart from sheet changes
-const PREV_SEED = [["Lats · Biceps · Traps · Delts",["latpd_wide","row_db1","facepull","bayes","tri_pd","lat_tilt"]],["Legs · Glutes · Abs",["squat_bb","bulg_db","calf_bb","cablekick","vup","russian_plate"]],["Pecs · Triceps · Delts",["bench_m","incl_db","dips_bar","curl_ez","lat_cable","revpec"]],["Rest · Cardio",null],["Lats · Traps · Abs",["meadows","onearm_pd","row_csm","rdl_bb","shrug_dbs","crunch_cable","mtclimb"]],["Biceps · Legs · Triceps · Delts",["legpress","ohp_m","preacher_ez","hammer","calf_m","skull_ez","rear_lying"]],["Glutes · Pecs",["lunge_rev_db","windmill","fly_cable","fly_incl_cable"]],["Rest · Cardio",null],["Lats · Biceps · Traps · Delts",["latpd_close","row_cable","row_elev","upright_ez","curl_horiz","tri_sa","lat_rom"]],["Legs · Glutes · Abs",["lunge_deep","jefferson","calf_bb","cablekick","rollout","frog"]],["Pecs · Triceps · Delts",["bench_db","incl_bb","curl_db","btb_lat","revfly_cable"]],["Rest · Cardio",null],["Lats · Traps · Abs",["tbar_cs","lat_cross","rowm_close","shrug_bb1","hipthrust_bb","hlr","crunch_plate"]],["Biceps · Legs · Triceps · Delts",["legext","legcurl","ohp_db","preacher_db","rev_curl","tri_oh_cable","yraise_cable"]],["Glutes · Pecs",["stepup_db","sideplank_el","fly_cablex","press_around"]],["Rest · Cardio",null]];
+const PREV_SEED = [["Lats · Biceps · Traps · Delts",["latpd_wide","row_db1","facepull","bayes","tri_pd","lat_tilt"]],["Legs · Glutes · Abs",["squat_bb","bulg_db","calf_bb","cablekick","vup","russian_plate"]],["Pecs · Triceps · Delts",["bench_m","incl_db","dips_bar","curl_ez","lat_cable","revpec"]],["Rest · Cardio",null],["Lats · Traps · Abs",["meadows","onearm_pd","rdl_bb","shrug_dbs","crunch_cable","mtclimb"]],["Biceps · Legs · Triceps · Delts",["legpress","ohp_m","preacher_ez","hammer","calf_m","skull_ez","rear_lying"]],["Glutes · Pecs",["lunge_rev_db","windmill","fly_cable","fly_incl_cable"]],["Rest · Cardio",null],["Lats · Biceps · Traps · Delts",["latpd_close","row_cable","upright_ez","row_elev","curl_horiz","tri_sa","lat_rom"]],["Legs · Glutes · Abs",["lunge_deep","jefferson","calf_db_sl","cablekick","rollout","frog"]],["Pecs · Triceps · Delts",["incl_bb","bench_db","closegrip_ez","curl_db","btb_lat","revfly_cable"]],["Rest · Cardio",null],["Lats · Traps · Abs",["tbar_cs","lat_cross","rowm_close","shrug_bb1","hipthrust_bb","hlr","crunch_plate"]],["Biceps · Legs · Triceps · Delts",["legext","legcurl","arnold","preacher_db","rev_curl","tri_oh_cable","yraise_cable"]],["Glutes · Pecs",["stepup_db","sideplank_el","fly_cablex","press_around"]],["Rest · Cardio",null]];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -582,12 +606,12 @@ function seedDays(){
       return it });
     return {id:'d'+(i+1), name, sub, rest:!items, items:list} });
 }
-function migrate(){
-  if((S.planV||1)===3 && PLAN_V===4){ mergeSheet(); S.planV=PLAN_V; saveState(); return true }
+function migrate(){ let did=false;
+  if((S.planV||1)>=3 && (S.planV||1)<PLAN_V){ mergeSheet(); S.planV=PLAN_V; did=true }
   if((S.planV||1)<PLAN_V){ const old=S.days||[]; S.days=seedDays();
     // keep warm-ups you'd set for the same exercise on the same day
     S.days.forEach((d,i)=>{ const od=old[i]; if(!od||!od.items) return; d.items.forEach(it=>{ const o=od.items.find(x=>x.ex===it.ex && x.wu); if(o) it.wu=o.wu }) });
-    S.planV=PLAN_V; if(!(S.next<S.days.length)) S.next=0; saveState(); return true }
+    S.planV=PLAN_V; if(!(S.next<S.days.length)) S.next=0; did=true }
   // v2 fix: "prone overhead" was really the lying lat pullover
   let fixed=false; (S.days||[]).forEach(d=>d.items.forEach(it=>{
     if(it.ex==='prone_oh'){ it.ex='pullover_db'; fixed=true }
@@ -599,7 +623,10 @@ function migrate(){
   if(!S.fixD10calf){ const d=(S.days||[])[9]; const it=d&&d.items.find(x=>x.ex==='calf_bb'); if(it){ it.ex='calf_db_sl'; delete it.sub } S.fixD10calf=true; fixed=true }
   // use every 1:1 as a stand-in (goal stays visible as skipped; tap it to switch back)
   if(!S.fixAllSwaps){ (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.ph || it.sub) return; const a=alt1(it.ex); if(a) it.sub=a })); S.fixAllSwaps=true; fixed=true }
-  if(fixed) saveState(); return false }
+  if(!S.fixD11cg){ const d=(S.days||[])[10]; if(d && !d.items.some(x=>x.ex==='closegrip_ez')){ const it={uid:'d11_cg', ex:'closegrip_ez', sets:3, lo:6, hi:10, rest:120, focus:'triceps · pecs'}; const at=d.items.findIndex(x=>x.ex==='bench_db'); d.items.splice(at>=0?at+1:d.items.length,0,it) } S.fixD11cg=true; fixed=true }
+  // Day 5's lat crossover is its own exercise (straight-arm, cables crossed overhead), not the cross-body pulldown
+  if(!S.fixLatX){ const d=(S.days||[])[4]; const it=d&&d.items.find(x=>x.ex==='lat_cross'); if(it){ it.ex='lat_xover'; if(it.sub==='xbody_pd_band') it.sub=alt1('lat_xover')||undefined; if(!it.sub) delete it.sub } S.fixLatX=true; fixed=true }
+  if(fixed||did) saveState(); return did }
 // Load a new sheet without losing your own work: stand-ins, warm-ups, supersets, rest times,
 // exercises you added, renamed days, and your order (if you'd reordered a day).
 function mergeSheet(){
@@ -611,6 +638,8 @@ function mergeSheet(){
     nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[];
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
       ni.uid=oi.uid; ['wu','sub','ss','rest'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
+    // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
+    nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
     const added = od.items.filter(x=>!x.ph && !prev.includes(x.ex) && !nd.items.some(n=>n.ex===x.ex));
     const keptOld = od.items.filter(x=>prev.includes(x.ex)).map(x=>x.ex);
     const reordered = JSON.stringify(keptOld) !== JSON.stringify(prev.filter(e=>keptOld.includes(e)));
@@ -640,7 +669,7 @@ function mode(it){ if(it.ph) return 'reps'; const e=lib(it.ex); return it.lo==nu
 function targetText(it){ if(it.ph) return `${it.sets} × ${it.lo??''}–${it.hi??''}`; const m=mode(it); return m==='fail' ? `${it.sets} × failure` : m==='time' ? `${it.sets} × ${it.lo}–${it.hi}s` : `${it.sets} × ${it.lo}–${it.hi}` }
 function liveSessions(){ return SESS.filter(s=>!s.deleted).sort((a,b)=>b.end-a.end) }
 function lastFor(exId){ for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(e) return {...e, date:s.end} } return null }
-function repOf(s,ex){ return ex.u ? Math.min(num(s.rl)??0, num(s.rr)??0) : (num(s.r)??0) }
+function repOf(s,ex){ if(ex.u && s.rl==null && s.rr==null) return num(s.r)??0; if(!ex.u && s.r==null && (s.rl!=null||s.rr!=null)) return Math.min(num(s.rl)??0, num(s.rr)??0); return ex.u ? Math.min(num(s.rl)??0, num(s.rr)??0) : (num(s.r)??0) }
 function loadMode(ex){ return ex.lm || (ex.w?'add':ex.a?'assist':ex.cat==='band'?'band':(ex.cat==='cal'||(ex.req||[]).includes('abw'))?'bw':'wt') }
 function bandById(id){ return (S.bands||[]).find(b=>b.id===id) }
 function bandMed(b){ return b ? Math.round(((num(b.lo)||0)+(num(b.hi)||0))/2*10)/10 : 0 }
@@ -655,7 +684,7 @@ function eff(r,ex,bw){ const lm=loadMode(ex);
   if(lm==='bw') return null;
   return num(r.w) }
 function fmtSet(s,ex){
-  const lm=loadMode(ex); const reps = ex.u ? `${s.rl??'–'}/${s.rr??'–'}` : `${s.r??'–'}`;
+  const lm=loadMode(ex); const reps = (ex.u && (s.rl!=null||s.rr!=null)) ? `${s.rl??'–'}/${s.rr??'–'}` : (s.r!=null ? `${s.r}` : (s.rl!=null||s.rr!=null) ? `${s.rl??'–'}/${s.rr??'–'}` : '–');
   const r = ex.t ? reps+'s' : reps;
   if(lm==='assist') return `${bandName(s.band)}×${r}`;
   if(lm==='band') return s.band&&s.band!=='none' ? `${bandName(s.band)}×${r}` : r;
@@ -745,7 +774,7 @@ function wStep(){ return S.unit==='kg'?2.5:5 }
 function warmRow(it,k,firstWork,last){
   const ex=lib(it.ex), lm=loadMode(ex); const lw = last && last.warm ? last.warm[k] : null;
   let w=''; if(lm==='wt'){ if(lw && lw.w!=null) w=lw.w; else if(num(firstWork&&firstWork.w)){ const st=wStep(); w=Math.max(st, Math.round(num(firstWork.w)*0.5/st)*st) } }
-  const r = lw ? (repOf(lw,ex)||10) : 10;
+  const r = lw ? (repOf(lw,ex)||'') : '';
   return {warm:true, autoW: !(lw && lw.w!=null), w:String(w), band: lw&&lw.band ? lw.band : (firstWork?firstWork.band:''), add: lm==='add' ? String(lw&&lw.add!=null?lw.add:0) : '',
     r:ex.u?'':String(r), rl:ex.u?String(r):'', rr:ex.u?String(r):'', rir:'', done:false, prev: lw?fmtSet(lw,ex):''} }
 function prefill(it){
@@ -758,16 +787,16 @@ function prefill(it){
     const lm = loadMode(ex);
     let band = (nl && typeof nl==='object') ? nl.band : (ls && ls.band ? ls.band : ''); if(lm==='assist' && !band) band='none';
     const add = (lm==='add' && typeof nl==='number') ? nl : (ls && ls.add!=null ? ls.add : '');
-    let r;
-    if(m==='fail') r = ls ? repOf(ls,ex)||'' : '';
-    else if(nl!=null || !ls) r = it.lo;
-    else r = allTop ? it.hi : Math.min(it.hi, repOf(ls,ex)+1);
-    rows.push({w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:ex.u?'':String(r), rl:ex.u?String(r):'', rr:ex.u?String(r):'', rir:'', done:false, prev: ls?fmtSet(ls,ex):''});
+    // reps: exactly what you did last time; blank if there's no history
+    const hv = v => (v==null||v==='') ? '' : String(v);
+    const same = ls ? repOf(ls,ex) : null;
+    const rl = ls ? hv(ls.rl!=null ? ls.rl : ls.r) : '', rr = ls ? hv(ls.rr!=null ? ls.rr : ls.r) : '';
+    rows.push({w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:ex.u?'':(ls?hv(same||''):''), rl:ex.u?rl:'', rr:ex.u?rr:'', rir:'', done:false, prev: ls?fmtSet(ls,ex):''});
   }
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
   return warm.concat(rows);
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.ss) o.ss=it.ss;
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.ss) o.ss=it.ss;
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
 function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
   const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
@@ -850,7 +879,7 @@ function resumeSession(id){
 
 /* ---------- alternatives ---------- */
 const ALT1 = {
-  latpd_wide:'pullup_band', latpd_close:'pullup_band_n', onearm_pd:'pd_band1', lat_cross:'xbody_pd_band', sa_pd:'pullover_db',
+  latpd_wide:'pullup_band', onearm_pd_sup:'pd_band1', row_cable_wide:'row_csdb_pro', flappy:'flappy_band', lat_xover:'sa_pd_band', latpd_close:'pullup_band_n', onearm_pd:'pd_band1', lat_cross:'xbody_pd_band', sa_pd:'pullover_db',
   row_cable:'helms_row', row_csm:'row_csdb', rowm_close:'row_csdb', tbar_cs:'tbar',
   facepull:'facepull_db', revfly_cable:'revfly_incl_b', revpec:'revfly_incl', yraise_cable:'yraise_incl',
   lat_cable:'lat_landmine', lat_cablex:'lat_db', btb_lat:'lat_lying_incl',
@@ -938,7 +967,7 @@ function viewTrain(){
     const lastTxt = last ? ` · <span class="num">${last.sets.map(s=>fmtSet(s,ex)).join(', ')}</span>` : '';
     const isSI = it.standIn || (live && it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu));
     h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''}" data-uid="${it.uid}">${hdl}
-      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
@@ -959,11 +988,11 @@ function viewLog(){
   if(pr){ const g=groupIdx(A.cur); h+=`<div class="ssbar"><div class="sslbl">Superset · alternate sets, rest after both</div><div class="in">${g.map(j=>{const x=A.items[j];return `<button data-act="jump" data-i="${j}" class="${j===A.cur?'on':''}">${esc(lib(x.ex).name)}<span>${x.skipped?'Skipped':x.rows.filter(r=>r.done).length+'/'+x.rows.length}</span></button>`}).join('')}</div></div>` }
   h+=`<div class="exhead"><div><div class="small muted">Exercise ${A.cur+1} of ${A.items.length}</div><h2>${esc(ex.name)}</h2>
     <div class="exmeta"><span class="num">${targetText(it)}</span> · rest ${fmtRest(it.rest)}</div>${it.focus?`<div class="small muted" style="margin-top:3px">Focus: ${esc(it.focus)}</div>`:''}</div></div>
-    <div class="chips">${ex.m.map((mm,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
+    <div class="chips">${it.emph?`<span class="chip ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>`:''}${armLabel(ex)?`<span class="chip pri">${armLabel(ex)}</span>`:''}${ex.m.map((mm,i)=>`<span class="chip ${i===0&&!armLabel(ex)?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
     <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Sets & rest</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
   const cur = it.rows.findIndex(r=>!r.done);
   const repLbl = m==='time'?'Sec':'Reps';
-  const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : lm==='bw' ? 'Load' : unit;
+  const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : lm==='bw' ? 'Load' : (dbCount(ex)===2 ? unit+' ea' : unit);
   if(it.ghost && it.skipped){ const si=A.items.find(x=>x.pu===it.goalOf); h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Goal exercise · skipped</div><div class="small muted">You're using ${esc(si?lib(si.ex).name:'a stand-in')} for now. Your history for both is kept separately.</div><button class="btn sm primary" style="align-self:center" data-act="useGoal">Do this one today instead</button></div>` }
   else if(it.ghost){ h+=`<div class="small muted" style="margin-top:8px">Doing your goal exercise today. <button class="link" data-act="useStandIn">Use the stand-in instead</button></div>` }
   if(it.ghost && it.skipped){} else if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
@@ -1012,7 +1041,10 @@ function wCell(r,i,lm){
   return `<input data-set="${i}" data-f="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="Weight">`;
 }
 function loadLine(it,ex){
-  const lm=loadMode(ex); if(lm==='wt') return '';
+  const lm=loadMode(ex);
+  if(lm==='wt'){ const n=dbCount(ex); if(n!==2) return '';
+    const r=it.rows.find(x=>!x.done&&!x.warm)||it.rows[it.rows.length-1]; const w=num(r&&r.w);
+    return `<div class="loadline" id="loadline">${w?`Each dumbbell ${w} ${S.unit} · total <b>${w*2} ${S.unit}</b>`:'Enter the weight of one dumbbell; the total is worked out for you.'}</div>` }
   const r=it.rows.find(x=>!x.done)||it.rows[it.rows.length-1]; if(!r) return '';
   const bw=bwNow(), u=S.unit, b=bandById(r.band);
   let t;
@@ -1108,11 +1140,11 @@ function viewHistory(){
   ss.forEach((s,i)=>{
     const open=ui.histOpen===s.id;
     const sets=(s.exercises||[]).reduce((n,e)=>n+e.sets.length,0);
-    const vol=(s.exercises||[]).reduce((n,e)=>n+e.sets.reduce((m,x)=>m+(x.w||0)*((x.r??Math.min(x.rl||0,x.rr||0))||0),0),0);
+    const vol=(s.exercises||[]).reduce((n,e)=>{ const k=dbCount(lib(e.ex))===2?2:1; return n+e.sets.reduce((m,x)=>m+(x.w||0)*k*((x.r??Math.min(x.rl||0,x.rr||0))||0),0) },0);
     h+=`<div class="hcard"><button class="hh" data-act="histOpen" data-id="${s.id}"><div><div class="hd">${fmtDate(s.end)} · Day ${s.dayIdx+1}</div><div class="ht">${esc(s.dayName)}</div></div>
       <div class="num" style="font-size:16px;text-align:right">${s.manual&&s.type==='lift'?'<span class="small muted" style="font-family:var(--f-body)">entered · </span>':''}${s.type==='skip'?'Skipped':s.type==='rest'?(s.cardio?s.cardio+' min cardio':'Rest'):`${fmtDur(s.dur||0)} · ${sets} sets`}</div></button>`;
     if(open){
-      if(s.type==='lift'){ h+=`<div class="hx">${s.exercises.map(e=>{const ex=lib(e.ex);return `<div><div style="font-weight:600">${esc(ex.name)}</div>${e.warm&&e.warm.length?`<div class="small muted">Warm-up ${e.warm.map(x=>fmtSet(x,ex)).join(' · ')}</div>`:''}<div class="num muted">${e.sets.map(x=>fmtSetFull(x,ex)+(x.rir!=null?` @${x.rir}`:'')).join('  ·  ')}</div></div>`}).join('')}${vol?`<div class="small muted">Volume ${Math.round(vol).toLocaleString()} ${S.unit}</div>`:''}</div>` }
+      if(s.type==='lift'){ h+=`<div class="hx">${s.exercises.map(e=>{const ex=lib(e.ex);return `<div><div style="font-weight:600">${esc(ex.name)}${dbCount(ex)===2?' <span class="small muted" style="font-weight:500">(per dumbbell)</span>':''}</div>${e.warm&&e.warm.length?`<div class="small muted">Warm-up ${e.warm.map(x=>fmtSet(x,ex)).join(' · ')}</div>`:''}<div class="num muted">${e.sets.map(x=>fmtSetFull(x,ex)+(x.rir!=null?` @${x.rir}`:'')).join('  ·  ')}</div></div>`}).join('')}${vol?`<div class="small muted">Volume ${Math.round(vol).toLocaleString()} ${S.unit}</div>`:''}</div>` }
       h+=`<div class="hops">${i===0&&s.snap&&!A?`<button class="btn sm ghost" data-act="resume" data-id="${s.id}">Resume this workout</button>`:''}${s.type==='lift'?`<button class="btn sm ghost" data-act="manEdit" data-id="${s.id}">Edit</button>`:''}<button class="btn sm danger" data-act="delSess" data-id="${s.id}">${ui.delArm===s.id?'Tap again to delete':'Delete'}</button></div>`;
     }
     h+=`</div>`;
@@ -1237,7 +1269,8 @@ function renderSheet(){
   else if(s.type==='exInfo'){ const ex=lib(s.ex);
     const hist=liveSessions().filter(x=>x.type==='lift').map(x=>({x,e:x.exercises.find(e=>e.ex===s.ex)})).filter(o=>o.e).slice(0,8);
     const best = hist.reduce((b,o)=>Math.max(b,...o.e.sets.map(z=>z.w||0)),0);
-    const angle = ex.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '';
+    const arms = (ex.cat==='db' && !LEG_2DB.has(ex.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">Both arms</button></div>` : '';
+    const angle = arms + (ex.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '');
     h=`<h3>${esc(ex.name)}</h3>${angle}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
      <div class="chips">${ex.m.map((m,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[m]||m}</span>`).join('')}</div>
      ${missing(ex).length?`<div class="needs" style="padding-top:10px"><span>You don't have: ${missing(ex).map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
@@ -1285,6 +1318,7 @@ const H = {
     A.items.forEach((x,i)=>{ const pu = x.ghost ? x.goalOf : x.pu; if(pu && !rank.has(pu)) rank.set(pu,i) });
     let last=-1; const r=d.items.map(it=>{ if(rank.has(it.uid)){ last=rank.get(it.uid); return [it,last] } return [it,last+0.5] });
     d.items=r.sort((a,b)=>a[1]-b[1]).map(x=>x[0]); normalizeSS(d.items); A.orderDirty=false; saveState(); saveActive(); render(); toast(`Order saved to Day ${A.dayIdx+1}`) },
+  setArm:el=>{ S.arm=S.arm||{}; const e=LIB[el.dataset.ex]; const k=el.dataset.k; if(e && (k==='one')===!!e.u0) delete S.arm[el.dataset.ex]; else S.arm[el.dataset.ex]=k; applyDeg(); saveState(); render(); toast(k==='one'?'One arm at a time: log left and right':'Both arms together') },
   setDeg:el=>{ S.deg=S.deg||{}; S.deg[el.dataset.ex]=+el.dataset.d; applyDeg(); saveState(); render(); toast(`${lib(el.dataset.ex).name}`) },
   tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
   closeSheet:()=>closeSheet(),
@@ -1370,7 +1404,7 @@ const H = {
   edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(s.m==='fail'){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=s.m==='time'?20:8; s.hi=s.m==='time'?40:12 } renderSheet() },
   edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return }
     it.lo = s.m==='fail'?null:(num(s.lo)??8); it.hi = s.m==='fail'?null:Math.max(it.lo, num(s.hi)??it.lo); it.rest=num($('#edRest').value)??it.rest;
-    if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; it.rows.push({w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||String(it.lo??''),rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:''}) }
+    if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; it.rows.push({w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||'',rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:''}) }
       while(workRows(it).length>s.sets){ const l=it.rows[it.rows.length-1]; if(!l || l.warm || l.done) break; it.rows.pop() } it.sets=workRows(it).length;
       const pit = s.keep ? planItemOf(it) : null; if(pit){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest; saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
     else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu }

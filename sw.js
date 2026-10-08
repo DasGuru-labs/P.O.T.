@@ -3,7 +3,7 @@
 //   wait up to 4 seconds, otherwise use the saved copy so the app still opens at the gym.
 // - Safari shows a blank page if a service worker hands it a redirected response
 //   (GitHub redirects /P.O.T. to /P.O.T./), so redirected responses are rebuilt as plain ones.
-const CACHE = 'pot-v33';
+const CACHE = 'pot-v36';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
