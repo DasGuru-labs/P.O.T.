@@ -304,7 +304,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.10-c';
+const APP_VERSION = '2026.10.10-d';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -948,6 +948,7 @@ function showRecovery(err){
    <button class="btn ghost" data-act="backup">Copy a backup</button>
    <div class="small muted" style="word-break:break-word">Details: ${esc(String(err && (err.message||err)))}</div></div>`;
 }
+async function liveVersion(){ try{ const r=await fetch('index.html?check='+Date.now(),{cache:'no-store'}); if(!r.ok) return null; const t=await r.text(); const m=t.match(/APP_VERSION = '([^']+)'/); return m?m[1]:null }catch(e){ return null } }
 function topbar(){ const bw=bwNow(); return `<div class="top"><div class="brand"><i></i>POT<span class="brandsub">Progressive Overload Training</span></div><div class="topr"><button class="bwchip ${bw==null?'empty':''}" data-act="bwOpen">${bw==null?'Log body weight':bw+' '+S.unit}</button>${syncHTML()}</div></div>` }
 
 function viewTrain(){
@@ -1209,7 +1210,7 @@ function viewGear(){
    <div class="bands" style="margin-top:6px">${(S.bands||[]).map(b=>`<div class="bandrow"><span class="sw" style="background:${swatch(b.name)}"></span><input class="bn" data-band="${b.id}" data-bf="name" value="${esc(b.name)}" aria-label="Band name"><input data-band="${b.id}" data-bf="lo" inputmode="decimal" value="${esc(b.lo)}" aria-label="From"><input data-band="${b.id}" data-bf="hi" inputmode="decimal" value="${esc(b.hi)}" aria-label="To"><span class="md" id="md_${b.id}">${bandMed(b)}</span><button data-act="bandDel" data-id="${b.id}" aria-label="Delete band">×</button></div>`).join('')}</div>
    <button class="addrow" data-act="bandAdd">+ Add band</button>`;
   h+=`<div class="sec">Units</div><div class="seg"><button data-act="unit" data-k="lb" class="${S.unit==='lb'?'on':''}">Pounds (lb)</button><button data-act="unit" data-k="kg" class="${S.unit==='kg'?'on':''}">Kilograms (kg)</button></div>`;
-  h+=`<div class="sec">Data</div><div class="small muted" style="margin-bottom:6px">App version ${APP_VERSION}${window.POT_STANDALONE?' · <button class="link" data-act="checkUpdate">Check for update</button>':''}</div>`;
+  h+=`<div class="sec">Data</div><div class="small muted" style="margin-bottom:6px">App version ${APP_VERSION}${window.POT_STANDALONE?' · <button class="link" data-act="checkUpdate">Check for update</button>':''}${ui.newVersion?` · <button class="btn sm primary" data-act="forceUpdate">Update now to ${esc(ui.newVersion)}</button>`:''}</div>`;
   h+=`<div class="card stack small"><div>${syncState==='on'?'Your plan and logs sync through your claude.ai account, so your phone and computer show the same data.':syncState==='err'?'Sync is paused. Everything is still saved on this device and will sync when the connection returns.':window.POT_STANDALONE?'Saved on this phone only. Save a backup file now and then, and use it to move your logs to another device.':'Saved on this device.'}</div>
     ${window.POT_STANDALONE?'<div class="rowline"><button class="btn sm primary" data-act="backupFile">Save backup file</button><label class="btn sm ghost" style="cursor:pointer">Open backup file<input type="file" id="restoreFile" accept=".json,application/json,text/plain" hidden></label></div>':''}
     <div class="rowline"><button class="btn sm ghost" data-act="backup">Copy backup</button><button class="btn sm ghost" data-act="restoreOpen">Restore from backup</button><button class="btn sm ghost" data-act="resetPlanAsk">Reset plan</button></div></div>`;
@@ -1343,7 +1344,11 @@ function mkItem(exId, ctx){ if(ctx==='M') return manItem(exId,3); const e=lib(ex
 const H = {
   recHome:()=>{ ui.mode='overview'; ui.tab='train'; ui.sheet=null; ui.viewDay=null; ui.editDay=null; ui.man=null; lsSet('rot.v1.draft',null); document.getElementById('tabs').hidden=false; render() },
   recClearActive:()=>{ A=null; saveActive(); H.recHome() },
-  checkUpdate:()=>{ toast('Checking for an update…'); if(window.potCheckUpdate) window.potCheckUpdate().then(()=>setTimeout(()=>{ if(!document.hidden) toast('You have the latest version') },2500)) },
+  checkUpdate:async ()=>{ toast('Checking for an update…'); const v=await liveVersion(); if(!v){ toast("Couldn't reach the site. Check your signal."); return }
+    if(v===APP_VERSION){ toast('You have the latest version ('+v+')'); return } ui.newVersion=v; render(); toast('Version '+v+' is available') },
+  forceUpdate:async ()=>{ toast('Updating…'); try{ const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister())) }catch(e){}
+    try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))) }catch(e){}
+    location.replace(location.pathname+'?v='+Date.now()) },
   saveOrder:()=>{ const d=S.days[A.dayIdx]; const rank=new Map();
     A.items.forEach((x,i)=>{ const pu = x.ghost ? x.goalOf : x.pu; if(pu && !rank.has(pu)) rank.set(pu,i) });
     let last=-1; const r=d.items.map(it=>{ if(rank.has(it.uid)){ last=rank.get(it.uid); return [it,last] } return [it,last+0.5] });
@@ -1677,6 +1682,11 @@ if(window.POT_STANDALONE){
     setTimeout(check, 1500);
     document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') check() });
     window.potCheckUpdate = check;
+    setTimeout(async ()=>{ const v=await liveVersion(); if(!v || v===APP_VERSION) return; ui.newVersion=v;
+      let tried=false; try{ tried=sessionStorage.getItem('pot.upd')===v }catch(e){}
+      if(!A && !ui.sheet && ui.mode!=='manual' && !tried){ try{ sessionStorage.setItem('pot.upd',v) }catch(e){} H.forceUpdate() }
+      else { toast('Version '+v+' is ready: Equipment → Update now'); render() } }, 2500);
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') setTimeout(async ()=>{ const v=await liveVersion(); if(v && v!==APP_VERSION){ ui.newVersion=v; if(!A && !ui.sheet && ui.mode!=='manual') H.forceUpdate(); else render() } }, 1500) });
   } }catch(e){}
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist() }catch(e){}
 }
