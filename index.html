@@ -304,7 +304,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.10-d';
+const APP_VERSION = '2026.10.10-e';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -574,7 +574,7 @@ const S_ = (ex,sets,lo,hi) => P(ex,sets,lo,hi,true);   // "+" in your list = sup
 const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pullover_db','pullover_ez','pullover_cable','sa_pd_band']];
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
-const PLAN_V = 7;
+const PLAN_V = 8;   // same plan as 7, re-applied to clean up exercises left over from older sheets
 const F = (ex,sets,lo,hi,focus,emph,lvl) => { const o={ex,sets,lo,hi,focus}; if(emph) o.emph=emph; if(lvl) o.lvl=lvl; return o };   // emph = Squeeze/Elongate, lvl = Priority/Regular/Light
 const PLAN_SEED = [
  ["Lats \u00b7 Traps \u00b7 Triceps","Priority: lats, triceps \u00b7 Light: biceps, pecs, delts",[F('row_csm_pro',3,8,12,"traps \u00b7 brachialis \u00b7 lats (elongated)","Elongate","Priority"),F('skull_ez',3,6,10,"triceps (elongated)","Elongate","Priority"),F('pullup',3,null,null,"lats (squeeze) \u00b7 brachialis","Squeeze","Priority"),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts \u00b7 traps",null,"Priority"),F('revpec',2,10,14,"traps (squeeze) \u00b7 rear delts \u00b7 lats (squeeze)","Squeeze","Priority"),F('dips_bar',2,null,null,"pecs \u00b7 triceps (elongated)","Elongate","Priority"),F('pullover_cable',2,10,14,"pecs \u00b7 lats (elongated)","Elongate","Priority"),F('curl_ez',3,6,10,"biceps",null,"Light"),F('lat_rom',2,8,10,"mid/front delts",null,"Light")]],
@@ -595,7 +595,7 @@ const PLAN_SEED = [
  ['Rest · Cardio','',null],
 ];
 // the previous sheet, used to tell your own changes apart from sheet changes
-const PREV_SEED = [["Lats · Traps · Triceps",["pullup","pullover_cable","row_csm_pro","revpec","ohp_m","dips_bar","curl_ez","skull_ez","lat_rom"]],["Legs · Abs",["squat_bb","lunge_rev_db","calf_bb","vup","russian_plate"]],["Lats · Biceps · Traps · Pecs · Delts",["row_db1","facepull","bench_m","incl_db","fly_press","lat_xover","bayes","shrug_bb","shrug_tilt","lat_tilt"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["legpress","rdl_bb","crunch_cable","mtclimb"]],["Biceps · Pecs · Triceps · Delts",["latpd_close","row_cable","preacher_ez","hammer","conc","fly_db","fly_lohi","tri_pd","yraise_cable1","lat_cable","revx_lohi"]],["Glutes",["bulg_db","windmill","calf_m","cablekick"]],["Rest · Cardio",null],["Lats · Traps · Triceps",["latpd_wide","pullover_ez","seal_row_pro","skier","arnold","closegrip_ez","curl_db","katana","yraise_perp"]],["Legs · Abs",["lunge_deep","jefferson","calf_db_sl","bicycle","frog"]],["Lats · Biceps · Traps · Pecs · Delts",["meadows","upright_ez","incl_bb","bench_db","decl_db","flappy","curl_horiz","shrug_db","shrug_bb1","rear_lying"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["legext","legcurl","hipthrust_bb","rollout","hlr"]],["Biceps · Pecs · Triceps · Delts",["pullup_n","tbar","preacher_db","rev_curl","spider_bb","fly_incl_db","fly_cablex","tri_sa","btb_lat","lat_prone_incl","lat_perp"]],["Glutes",["stepup_db","cablekick","sideplank_el"]],["Rest · Cardio",null]];
+const PREV_SEED = [["Lats · Traps · Triceps",["row_csm_pro","skull_ez","pullup","ohp_m","revpec","dips_bar","pullover_cable","curl_ez","lat_rom"]],["Legs · Abs",["squat_bb","calf_bb","vup","lunge_rev_db","russian_plate"]],["Lats · Biceps · Traps · Pecs · Delts",["facepull","bench_m","row_db1","incl_db","shrug_db","lat_xover","bayes","lat_tilt","fly_press","shrug_db1_bench"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["crunch_cable","rdl_bb","mtclimb","legpress"]],["Biceps · Pecs · Triceps · Delts",["latpd_close","yraise_cable1","preacher_ez","fly_lohi","row_cable","lat_perp","hammer","fly_db","lat_prone_incl","conc","tri_pd"]],["Glutes",["bulg_db","windmill","hipabd","calf_m"]],["Rest · Cardio",null],["Lats · Traps · Triceps",["latpd_wide","katana","seal_row_pro","arnold","pullover_ez","closegrip_ez","skier","curl_db","yraise_perp"]],["Legs · Abs",["lunge_deep","calf_db","bicycle","jefferson","frog"]],["Lats · Biceps · Traps · Pecs · Delts",["upright_ez","incl_m","meadows","bench_db","shrug_db","flappy","curl_horiz","rear_lying","decl_db","shrug_bb1"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["rollout","legcurl","hipthrust_bb","hlr","legext"]],["Biceps · Pecs · Triceps · Delts",["pullup_n","lat_cable","preacher_db","fly_cablex","tbar","btb_lat","rev_curl","fly_incl_db","revx_lohi","spider_bb","tri_sa"]],["Glutes",["stepup_db","sideplank_el","cablekick","calf_m"]],["Rest · Cardio",null]];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -659,13 +659,16 @@ function mergeSheet(){
   fresh.forEach((nd,i)=>{
     const od=old[i]; if(!od || !Array.isArray(od.items)) return;
     const prev=(PREV_SEED[i]&&PREV_SEED[i][1])||[]; const prevName=PREV_SEED[i]&&PREV_SEED[i][0];
-    if(od.name && od.name!==prevName){ nd.name=od.name; nd.sub=od.sub }
+    // keep a day name only if you typed it yourself (names made from muscle groups come from the sheet)
+    const autoName = n => String(n||'').split(' · ').every(x=>['Lats','Biceps','Traps','Legs','Glutes','Abs','Pecs','Triceps','Delts','Rest','Cardio'].includes(x));
+    if(od.name && od.name!==prevName && !autoName(od.name)){ nd.name=od.name; nd.sub=od.sub }
     nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[];
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
       ni.uid=oi.uid; ['wu','sub','ss','rest'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
     // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
     nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
-    const added = od.items.filter(x=>!x.ph && !prev.includes(x.ex) && !nd.items.some(n=>n.ex===x.ex));
+    const fromSheet = x => /^d\d+_/.test(String(x.uid||''));
+    const added = od.items.filter(x=>!x.ph && !fromSheet(x) && !nd.items.some(n=>n.ex===x.ex));
     const keptOld = od.items.filter(x=>prev.includes(x.ex)).map(x=>x.ex);
     const matched = nd.items.filter(ni=>od.items.some(x=>x.ex===ni.ex)).length;
     const reordered = false;   // the Daily Schedule sheet sets the order
