@@ -271,6 +271,14 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .editbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:14px}
 .setrow.warm .sn{color:var(--warn);font-size:15px}
 .setrow.warm input,.setrow.warm select{font-size:16px}
+.sn{display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.sn .pct{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0}
+.setrow.drop .sn{color:var(--danger)}
+.setrow.drop{background:var(--surface2)}
+.ormline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:14px;font-weight:600}
+.ormline input{width:76px;text-align:center}
+.pctgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:8px}
+.pctgrid input{width:56px;text-align:center}
 .keeprow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-weight:600;background:var(--surface2)}
 .keeprow input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent)}
 .row.ghost{background:transparent;border-style:dashed}
@@ -304,7 +312,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.10-e';
+const APP_VERSION = '2026.10.13-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -543,6 +551,14 @@ const LIB_RAW = [
  // Forearms
  ['hang','Dead hang','cal','forearm lats','bar','t'],
  ['wristcurl','Dumbbell wrist curl','db','forearm','db',''],
+ ['wristcurl_ez','EZ-bar wrist curl','bb','forearm','ez',''],
+ ['shrug_incl','Incline ({°}) prone dumbbell shrug','db','traps','db bench',''],
+ ['fly_press_incl','Incline ({°}) dumbbell fly-press (lower like a fly, press up)','db','pecs fdelt tri','db bench',''],
+ ['lat_lean_incl','Incline ({°}) leaning single-arm lateral raise','db','mdelt','db bench','u'],
+ ['oh_ext_ez','Overhead EZ-bar extension','bb','tri','ez',''],
+ ['lat_ecc','Overloaded eccentric lateral raise','db','mdelt','db',''],
+ ['lat_ecc_incl','Incline ({°}) overloaded eccentric lateral raise','db','mdelt','db bench',''],
+ ['yraise_incl1','Incline ({°}) prone single-arm Y raise','db','rdelt traps','db bench','u'],
 ];
 const CATS = {cal:'Calisthenics',band:'Bands',db:'Dumbbells',bb:'Barbell',mach:'Machine',other:'Other'};
 const MUS = {lats:'Lats',traps:'Traps',bi:'Biceps',brach:'Brachialis',tri:'Triceps',fdelt:'Front delts',mdelt:'Mid delts',rdelt:'Rear delts',pecs:'Pecs',upec:'Upper pecs',lpec:'Lower pecs',quads:'Quads',glutes:'Glutes',hams:'Hamstrings',adduct:'Adductors',calves:'Calves',abs:'Abs',obl:'Obliques',forearm:'Forearms'};
@@ -556,7 +572,7 @@ const GEAR = [
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
 const LIB = {};
 const BENCH = [0,20,35,50,65,85,90];
-const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35, row_csdb_pro:35, spider_bb:35, yraise_perp:35, lat_prone_incl:35, lat_perp:35};
+const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35, row_csdb_pro:35, spider_bb:35, yraise_perp:35, lat_prone_incl:35, lat_perp:35, shrug_incl:35, fly_press_incl:35, lat_lean_incl:50, lat_ecc_incl:35, yraise_incl1:35};
 function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEFAULT[id] }
 // dumbbells held at once (for the total), and your one-arm / both-arm choice per exercise
 const ONE_DB = new Set(['goblet','pullover_db','tri_oh_db','tri_incl_db','situp_db','hipthrust_db','windmill','side_bend','calf_db_sl','rdl_sl','skull_db']);
@@ -574,28 +590,28 @@ const S_ = (ex,sets,lo,hi) => P(ex,sets,lo,hi,true);   // "+" in your list = sup
 const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pullover_db','pullover_ez','pullover_cable','sa_pd_band']];
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
-const PLAN_V = 8;   // same plan as 7, re-applied to clean up exercises left over from older sheets
+const PLAN_V = 9;   // Oct 13 sheet
 const F = (ex,sets,lo,hi,focus,emph,lvl) => { const o={ex,sets,lo,hi,focus}; if(emph) o.emph=emph; if(lvl) o.lvl=lvl; return o };   // emph = Squeeze/Elongate, lvl = Priority/Regular/Light
 const PLAN_SEED = [
- ["Lats \u00b7 Traps \u00b7 Triceps","Priority: lats, triceps \u00b7 Light: biceps, pecs, delts",[F('row_csm_pro',3,8,12,"traps \u00b7 brachialis \u00b7 lats (elongated)","Elongate","Priority"),F('skull_ez',3,6,10,"triceps (elongated)","Elongate","Priority"),F('pullup',3,null,null,"lats (squeeze) \u00b7 brachialis","Squeeze","Priority"),F('ohp_m',3,8,12,"triceps \u00b7 front/mid delts \u00b7 traps",null,"Priority"),F('revpec',2,10,14,"traps (squeeze) \u00b7 rear delts \u00b7 lats (squeeze)","Squeeze","Priority"),F('dips_bar',2,null,null,"pecs \u00b7 triceps (elongated)","Elongate","Priority"),F('pullover_cable',2,10,14,"pecs \u00b7 lats (elongated)","Elongate","Priority"),F('curl_ez',3,6,10,"biceps",null,"Light"),F('lat_rom',2,8,10,"mid/front delts",null,"Light")]],
- ["Legs \u00b7 Abs","Priority: legs \u00b7 Light: glutes",[F('squat_bb',3,6,10,"quads \u00b7 glutes",null,"Priority"),F('calf_bb',3,10,14,"calves",null,"Priority"),F('vup',3,null,null,"abs",null,"Regular"),F('lunge_rev_db',3,8,12,"quads \u00b7 glutes (elongated)","Elongate","Priority"),F('russian_plate',3,null,null,"abs",null,"Regular")]],
- ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Pecs \u00b7 Delts","Priority: traps, pecs \u00b7 Light: triceps",[F('facepull',3,10,14,"traps (squeeze) \u00b7 brachialis \u00b7 rear delts","Squeeze","Priority"),F('bench_m',3,6,10,"pecs \u00b7 triceps",null,"Priority"),F('row_db1',3,8,12,"lats (elongated) \u00b7 biceps & brachialis","Elongate","Regular"),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps",null,"Priority"),F('shrug_db',2,null,null,"traps (squeeze)","Squeeze","Priority"),F('lat_xover',3,10,14,"lats (elongated)","Elongate","Regular"),F('bayes',3,10,14,"biceps (elongated)","Elongate","Regular"),F('lat_tilt',2,8,10,"mid delts",null,"Regular"),F('fly_press',2,8,12,"pecs \u00b7 triceps",null,"Priority"),F('shrug_db1_bench',2,8,12,"traps (elongated)","Elongate","Priority")]],
+ ["Lats \u00b7 Biceps \u00b7 Delts","Priority\u2014lats, delts \u00b7 Second\u2014biceps \u00b7 Iso\u2014pecs, triceps, traps",[F('lat_cable',3,10,14,"mid delts",null,"Primary"),F('row_csm_pro',3,8,12,"lats (elongated) \u00b7 biceps & brachialis \u00b7 traps","Elongate","Primary"),F('revx_lohi',3,10,14,"rear delts",null,"Primary"),F('pullup',3,null,null,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Primary"),F('fly_db',2,10,14,"pecs",null,"Isolation"),F('yraise_cable1',3,10,14,"mid/front delts",null,"Primary"),F('tri_pd',2,10,14,"triceps (squeeze)","Squeeze","Isolation"),F('curl_ez',3,6,10,"biceps",null,"Secondary"),F('wristcurl_ez',3,null,null,"forearm flexors",null,"Secondary"),F('shrug_db1_bench',2,8,12,"traps (elongated)","Elongate","Isolation")]],
+ ["Legs \u00b7 Glutes","Priority\u2014legs \u00b7 Second\u2014glutes \u00b7 Iso\u2014abs",[F('squat_bb',3,6,10,"quads \u00b7 glutes",null,"Primary"),F('calf_bb',3,10,14,"calves",null,"Primary"),F('vup',3,null,null,"abs",null,"Isolation"),F('lunge_rev_db',3,8,12,"quads \u00b7 glutes (elongated)","Elongate","Primary"),F('russian_plate',3,null,null,"abs",null,"Isolation")]],
+ ["Traps \u00b7 Pecs \u00b7 Triceps \u00b7 Delts","Priority\u2014triceps, traps \u00b7 Second\u2014pecs, delts \u00b7 Iso\u2014lats, biceps",[F('facepull',3,10,14,"brachialis \u00b7 traps (squeeze) \u00b7 rear/mid delts","Squeeze","Primary"),F('fly_press_incl',3,8,12,"triceps \u00b7 front delts \u00b7 pecs",null,"Primary"),F('dips_bar',2,null,null,"pecs \u00b7 triceps (elongated)","Elongate","Primary"),F('pullover_ez',2,6,10,"lats (elongated)","Elongate","Isolation"),F('shrug_incl',3,8,12,"traps",null,"Primary"),F('oh_ext_ez',3,6,10,"triceps (elongated)","Elongate","Primary"),F('skier',2,10,14,"pecs (squeeze) \u00b7 lats (squeeze) \u00b7 rear delts","Squeeze","Secondary"),F('lat_lean_incl',2,8,10,"mid delts",null,"Secondary"),F('bayes',2,10,14,"biceps (elongated)","Elongate","Isolation")]],
  ['Rest · Cardio','',null],
- ["Legs \u00b7 Glutes \u00b7 Abs","Priority: abs",[F('crunch_cable',4,10,14,"abs (squeeze)","Squeeze","Priority"),F('rdl_bb',3,6,10,"glutes \u00b7 hamstrings",null,"Regular"),F('mtclimb',3,null,null,"lower abs",null,"Priority"),F('legpress',3,6,10,"quads",null,"Regular")]],
- ["Biceps \u00b7 Pecs \u00b7 Triceps \u00b7 Delts","Priority: biceps, delts \u00b7 Light: lats, traps",[F('latpd_close',2,10,14,"lats (elongated) \u00b7 biceps","Elongate","Priority"),F('yraise_cable1',3,10,14,"mid/front delts",null,"Priority"),F('preacher_ez',3,6,10,"biceps (elongated)","Elongate","Priority"),F('fly_lohi',3,10,14,"upper pecs",null,"Regular"),F('row_cable',2,10,14,"traps \u00b7 lats (squeeze) \u00b7 biceps","Squeeze","Priority"),F('lat_perp',3,8,12,"rear delts",null,"Priority"),F('hammer',2,8,12,"biceps & brachialis",null,"Priority"),F('fly_db',3,10,14,"pecs",null,"Regular"),F('lat_prone_incl',3,8,10,"mid delts",null,"Priority"),F('conc',2,8,12,"biceps (squeeze)","Squeeze","Priority"),F('tri_pd',3,10,14,"triceps (squeeze)","Squeeze","Regular")]],
- ["Glutes","Priority: glutes \u00b7 Light: legs, abs",[F('bulg_db',4,8,12,"legs (elongated) \u00b7 glutes (elongated)","Elongate","Priority"),F('windmill',3,8,12,"obliques",null,"Light"),F('hipabd',3,10,14,"","Squeeze","Priority"),F('calf_m',3,6,10,"calves",null,"Light")]],
+ ["Abs","Priority\u2014abs \u00b7 Iso\u2014legs, glutes",[F('crunch_cable',3,10,14,"abs (squeeze)","Squeeze","Primary"),F('rdl_bb',2,6,10,"glutes \u00b7 hamstrings",null,"Isolation"),F('mtclimb',3,null,null,"lower abs",null,"Primary"),F('legpress',2,6,10,"quads",null,"Isolation")]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Pecs \u00b7 Triceps","Priority\u2014biceps, pecs \u00b7 Second\u2014lats, triceps, traps \u00b7 Iso\u2014delts",[F('row_cable',2,10,14,"lats (squeeze) \u00b7 biceps & brachialis \u00b7 traps","Squeeze","Primary"),F('bench_m',3,6,10,"pecs \u00b7 triceps",null,"Primary"),F('latpd_close',2,10,14,"lats (elongated) \u00b7 biceps & brachialis","Elongate","Primary"),F('incl_db',2,8,12,"front delts \u00b7 upper pecs \u00b7 triceps",null,"Primary"),F('preacher_ez',3,6,10,"biceps (elongated)","Elongate","Primary"),F('fly_cablex',2,10,14,"upper pecs",null,"Primary"),F('lat_ecc',2,4,8,"mid delts",null,"Isolation"),F('hammer',3,8,12,"biceps & brachialis",null,"Primary"),F('yraise_incl1',2,8,12,"rear delts",null,"Isolation")]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority\u2014glutes \u00b7 Second\u2014legs, abs",[F('bulg_db',3,8,12,"legs (elongated) \u00b7 glutes (elongated)","Elongate","Primary"),F('windmill',3,8,12,"obliques",null,"Secondary"),F('cablekick',3,10,14,"glutes (squeeze)","Squeeze","Primary"),F('calf_m',3,6,10,"calves",null,"Secondary")]],
  ['Rest · Cardio','',null],
- ["Lats \u00b7 Traps \u00b7 Triceps","Priority: lats, triceps \u00b7 Light: biceps, pecs, delts",[F('latpd_wide',3,10,14,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Priority"),F('katana',3,10,14,"triceps (elongated)","Elongate","Priority"),F('seal_row_pro',3,8,12,"traps \u00b7 biceps & brachialis \u00b7 lats (elongated)","Elongate","Priority"),F('arnold',3,8,12,"triceps \u00b7 front/mid delts \u00b7 traps",null,"Priority"),F('pullover_ez',2,6,10,"pecs \u00b7 lats (elongated)","Elongate","Priority"),F('closegrip_ez',2,8,12,"pecs \u00b7 triceps",null,"Priority"),F('skier',2,10,14,"traps (squeeze) \u00b7 rear delts \u00b7 lats (squeeze)","Squeeze","Priority"),F('curl_db',3,8,12,"biceps",null,"Light"),F('yraise_perp',3,8,12,"mid delts",null,"Light")]],
- ["Legs \u00b7 Abs","Priority: legs \u00b7 Light: glutes",[F('lunge_deep',4,8,12,"quads & hamstrings \u00b7 glutes (elongated)","Elongate","Priority"),F('calf_db',3,10,14,"",null,"Priority"),F('bicycle',3,null,null,"abs",null,"Regular"),F('jefferson',3,6,10,"quads \u00b7 glutes",null,"Priority"),F('frog',3,null,null,"upper abs",null,"Regular")]],
- ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Pecs \u00b7 Delts","Priority: traps, pecs \u00b7 Light: triceps",[F('upright_ez',3,6,10,"traps (squeeze) \u00b7 brachialis \u00b7 mid/front delts","Squeeze","Priority"),F('incl_m',3,6,10,"pecs",null,"Priority"),F('meadows',3,8,12,"lats (elongated) \u00b7 biceps & brachialis","Elongate","Regular"),F('bench_db',2,8,12,"pecs \u00b7 triceps",null,"Priority"),F('shrug_db',2,null,null,"traps (squeeze)","Squeeze","Priority"),F('flappy',3,10,14,"lats (elongated)","Elongate","Regular"),F('curl_horiz',3,8,12,"lower biceps",null,"Regular"),F('rear_lying',3,8,12,"mid/rear delts",null,"Regular"),F('decl_db',2,8,12,"pecs \u00b7 triceps",null,"Priority"),F('shrug_bb1',2,8,12,"traps (elongated)","Elongate","Priority")]],
+ ["Lats \u00b7 Biceps \u00b7 Delts","Priority\u2014lats, delts \u00b7 Second\u2014biceps \u00b7 Iso\u2014pecs, triceps, traps",[F('lat_cable',3,10,14,"mid delts",null,"Primary"),F('latpd_wide',3,10,14,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Primary"),F('revx_lohi',3,10,14,"rear delts",null,"Primary"),F('seal_row_pro',3,8,12,"traps \u00b7 lats (elongated) \u00b7 biceps & brachialis","Elongate","Primary"),F('fly_incl_db',2,10,14,"upper pecs",null,"Isolation"),F('btb_lat',3,10,14,"mid/front delts",null,"Primary"),F('tri_sa',2,10,14,"triceps (squeeze)","Squeeze","Isolation"),F('curl_db',3,8,12,"biceps",null,"Secondary"),F('wristcurl',3,null,null,"forearm flexors",null,"Secondary"),F('shrug_bb1',2,8,12,"traps (elongated)","Elongate","Isolation")]],
+ ["Legs \u00b7 Glutes","Priority\u2014legs \u00b7 Second\u2014glutes \u00b7 Iso\u2014abs",[F('lunge_deep',3,8,12,"quads & hamstrings \u00b7 glutes (elongated)","Elongate","Primary"),F('calf_db',3,10,14,"calves",null,"Primary"),F('bicycle',3,null,null,"abs",null,"Isolation"),F('jefferson',3,6,10,"quads \u00b7 glutes",null,"Primary"),F('frog',3,null,null,"upper abs",null,"Isolation")]],
+ ["Traps \u00b7 Pecs \u00b7 Triceps \u00b7 Delts","Priority\u2014triceps, traps \u00b7 Second\u2014pecs, delts \u00b7 Iso\u2014lats, biceps",[F('upright_ez',3,6,10,"brachialis \u00b7 traps (squeeze) \u00b7 rear/mid delts","Squeeze","Primary"),F('fly_press',3,8,12,"triceps \u00b7 front delts \u00b7 pecs",null,"Primary"),F('closegrip_ez',2,8,12,"pecs \u00b7 triceps",null,"Primary"),F('revpec',2,10,14,"lats (squeeze) \u00b7 rear delts","Squeeze","Secondary"),F('shrug_db',3,6,10,"traps (squeeze)","Squeeze","Primary"),F('katana',2,10,14,"triceps (squeeze)","Squeeze","Primary"),F('pullover_cable',2,10,14,"pecs \u00b7 lats (elongated)","Elongate","Secondary"),F('yraise_perp',3,8,12,"mid delts",null,"Secondary"),F('curl_horiz',3,8,12,"lower biceps",null,"Isolation")]],
  ['Rest · Cardio','',null],
- ["Legs \u00b7 Glutes \u00b7 Abs","Priority: abs",[F('rollout',4,null,null,"upper abs",null,"Priority"),F('legcurl',3,6,10,"hamstrings",null,"Regular"),F('hipthrust_bb',3,6,10,"glutes (squeeze)","Squeeze","Regular"),F('hlr',3,null,null,"lower abs",null,"Priority"),F('legext',3,6,10,"quads",null,"Regular")]],
- ["Biceps \u00b7 Pecs \u00b7 Triceps \u00b7 Delts","Priority: biceps, delts \u00b7 Light: lats, traps",[F('pullup_n',2,null,null,"lats (squeeze) \u00b7 biceps","Squeeze","Priority"),F('lat_cable',3,10,14,"mid delts",null,"Priority"),F('preacher_db',3,8,12,"biceps (elongated)","Elongate","Priority"),F('fly_cablex',3,10,14,"pecs",null,"Regular"),F('tbar',2,10,14,"traps \u00b7 lats (squeeze) \u00b7 biceps","Squeeze","Priority"),F('btb_lat',3,10,14,"mid/front delts",null,"Priority"),F('rev_curl',2,6,10,"biceps & brachialis",null,"Priority"),F('fly_incl_db',3,10,14,"upper pecs",null,"Regular"),F('revx_lohi',3,10,14,"rear delts",null,"Priority"),F('spider_bb',2,6,10,"biceps (squeeze)","Squeeze","Priority"),F('tri_sa',3,10,14,"triceps (squeeze)","Squeeze","Regular")]],
- ["Glutes","Priority: glutes \u00b7 Light: legs, abs",[F('stepup_db',4,8,12,"legs \u00b7 glutes (elongated)","Elongate","Priority"),F('sideplank_el',3,null,null,"obliques",null,"Light"),F('cablekick',3,10,14,"glutes (squeeze)","Squeeze","Priority"),F('calf_m',3,6,10,"calves",null,"Light")]],
+ ["Abs","Priority\u2014abs \u00b7 Iso\u2014legs, glutes",[F('rollout',3,null,null,"upper abs",null,"Primary"),F('legcurl',3,6,10,"hamstrings",null,"Isolation"),F('hipthrust_bb',3,6,10,"glutes (squeeze)","Squeeze","Isolation"),F('hlr',3,null,null,"lower abs",null,"Primary"),F('legext',3,6,10,"quads",null,"Isolation")]],
+ ["Lats \u00b7 Biceps \u00b7 Traps \u00b7 Pecs \u00b7 Triceps","Priority\u2014biceps, pecs \u00b7 Second\u2014lats, triceps, traps \u00b7 Iso\u2014delts",[F('pullup_n',3,null,null,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Primary"),F('incl_m',3,6,10,"pecs \u00b7 triceps \u00b7 front delts",null,"Primary"),F('tbar',2,8,12,"traps \u00b7 lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Primary"),F('bench_db',2,8,12,"pecs \u00b7 triceps",null,"Primary"),F('preacher_db',3,8,12,"biceps (elongated)","Elongate","Primary"),F('fly_lohi',2,10,14,"upper pecs",null,"Primary"),F('lat_ecc_incl',2,4,8,"mid delts",null,"Isolation"),F('rev_curl',2,6,10,"biceps & brachialis",null,"Primary"),F('yraise_incl',2,8,12,"rear delts",null,"Isolation")]],
+ ["Legs \u00b7 Glutes \u00b7 Abs","Priority\u2014glutes \u00b7 Second\u2014legs, abs",[F('stepup_db',3,8,12,"legs \u00b7 glutes (elongated)","Elongate","Primary"),F('sideplank_el',3,null,null,"obliques",null,"Secondary"),F('cablekick',3,10,14,"glutes (squeeze)","Squeeze","Primary"),F('calf_m',3,6,10,"calves",null,"Secondary")]],
  ['Rest · Cardio','',null],
 ];
 // the previous sheet, used to tell your own changes apart from sheet changes
-const PREV_SEED = [["Lats · Traps · Triceps",["row_csm_pro","skull_ez","pullup","ohp_m","revpec","dips_bar","pullover_cable","curl_ez","lat_rom"]],["Legs · Abs",["squat_bb","calf_bb","vup","lunge_rev_db","russian_plate"]],["Lats · Biceps · Traps · Pecs · Delts",["facepull","bench_m","row_db1","incl_db","shrug_db","lat_xover","bayes","lat_tilt","fly_press","shrug_db1_bench"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["crunch_cable","rdl_bb","mtclimb","legpress"]],["Biceps · Pecs · Triceps · Delts",["latpd_close","yraise_cable1","preacher_ez","fly_lohi","row_cable","lat_perp","hammer","fly_db","lat_prone_incl","conc","tri_pd"]],["Glutes",["bulg_db","windmill","hipabd","calf_m"]],["Rest · Cardio",null],["Lats · Traps · Triceps",["latpd_wide","katana","seal_row_pro","arnold","pullover_ez","closegrip_ez","skier","curl_db","yraise_perp"]],["Legs · Abs",["lunge_deep","calf_db","bicycle","jefferson","frog"]],["Lats · Biceps · Traps · Pecs · Delts",["upright_ez","incl_m","meadows","bench_db","shrug_db","flappy","curl_horiz","rear_lying","decl_db","shrug_bb1"]],["Rest · Cardio",null],["Legs · Glutes · Abs",["rollout","legcurl","hipthrust_bb","hlr","legext"]],["Biceps · Pecs · Triceps · Delts",["pullup_n","lat_cable","preacher_db","fly_cablex","tbar","btb_lat","rev_curl","fly_incl_db","revx_lohi","spider_bb","tri_sa"]],["Glutes",["stepup_db","sideplank_el","cablekick","calf_m"]],["Rest · Cardio",null]];
+const PREV_SEED = [["Lats · Traps · Triceps", ["row_csm_pro", "skull_ez", "pullup", "ohp_m", "revpec", "dips_bar", "pullover_cable", "curl_ez", "lat_rom"]], ["Legs · Abs", ["squat_bb", "calf_bb", "vup", "lunge_rev_db", "russian_plate"]], ["Lats · Biceps · Traps · Pecs · Delts", ["facepull", "bench_m", "row_db1", "incl_db", "shrug_db", "lat_xover", "bayes", "lat_tilt", "fly_press", "shrug_db1_bench"]], ["Rest · Cardio", []], ["Legs · Glutes · Abs", ["crunch_cable", "rdl_bb", "mtclimb", "legpress"]], ["Biceps · Pecs · Triceps · Delts", ["latpd_close", "yraise_cable1", "preacher_ez", "fly_lohi", "row_cable", "lat_perp", "hammer", "fly_db", "lat_prone_incl", "conc", "tri_pd"]], ["Glutes", ["bulg_db", "windmill", "hipabd", "calf_m"]], ["Rest · Cardio", []], ["Lats · Traps · Triceps", ["latpd_wide", "katana", "seal_row_pro", "arnold", "pullover_ez", "closegrip_ez", "skier", "curl_db", "yraise_perp"]], ["Legs · Abs", ["lunge_deep", "calf_db", "bicycle", "jefferson", "frog"]], ["Lats · Biceps · Traps · Pecs · Delts", ["upright_ez", "incl_m", "meadows", "bench_db", "shrug_db", "flappy", "curl_horiz", "rear_lying", "decl_db", "shrug_bb1"]], ["Rest · Cardio", []], ["Legs · Glutes · Abs", ["rollout", "legcurl", "hipthrust_bb", "hlr", "legext"]], ["Biceps · Pecs · Triceps · Delts", ["pullup_n", "lat_cable", "preacher_db", "fly_cablex", "tbar", "btb_lat", "rev_curl", "fly_incl_db", "revx_lohi", "spider_bb", "tri_sa"]], ["Glutes", ["stepup_db", "sideplank_el", "cablekick", "calf_m"]], ["Rest · Cardio", []]];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -664,7 +680,7 @@ function mergeSheet(){
     if(od.name && od.name!==prevName && !autoName(od.name)){ nd.name=od.name; nd.sub=od.sub }
     nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[];
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
-      ni.uid=oi.uid; ['wu','sub','ss','rest'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
+      ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
     // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
     nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
     const fromSheet = x => /^d\d+_/.test(String(x.uid||''));
@@ -798,34 +814,73 @@ async function wake(){ try{ if(navigator.wakeLock && !wl){ wl=await navigator.wa
 /* ---------- workout engine ---------- */
 function syncWarm(it){ const n=it.rows.filter(r=>r.warm).length; if(n) it.wu=n; else delete it.wu; const pit=planItemOf(it);
   if(pit){ if(n) pit.wu=n; else delete pit.wu; saveState(); toast(n?`${n} warm-up${n>1?'s':''} saved to Day ${A.dayIdx+1}`:`Warm-up removed from Day ${A.dayIdx+1}`) } }
-function workRows(it){ return it.rows.filter(r=>!r.warm) }
+function workRows(it){ return it.rows.filter(r=>!r.warm && !r.drop) }
+function lastWorkIdx(it){ for(let j=it.rows.length-1;j>=0;j--){ const r=it.rows[j]; if(!r.warm && !r.drop) return j } return -1 }
+/* reps in reserve as ranges */
+const RIR=['0','1-2','3-4','5+'];
+function rirStr(v){ if(v==null||v==='') return ''; const t=String(v); if(RIR.includes(t)) return t; const n=num(t); if(n==null) return ''; return n<=0?'0':n<=2?'1-2':n<=4?'3-4':'5+' }
+function rirSel(attr,v){ const c=rirStr(v); return `<select ${attr} aria-label="Reps in reserve">${['',...RIR].map(x=>`<option value="${x}" ${c===x?'selected':''}>${x===''?'–':x}</option>`).join('')}</select>` }
+/* reps belong to the weight they were done with */
+function loadKey(o,ex){ const lm=loadMode(ex); if(lm==='wt') return num(o.w)==null?null:'w'+num(o.w); if(lm==='add') return 'a'+(num(o.add)||0); if(lm==='assist'||lm==='band') return 'b'+(o.band||'none'); return 'bw' }
+function histAt(exId,key,i,pool){ if(key==null) return null; const ex=lib(exId);
+  for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId); if(!e) continue; const L=e[pool||'sets']; if(!L||!L.length) continue;
+    const m=L.filter(x=>loadKey(x,ex)===key); if(!m.length) continue; const si=L[i]; return si && loadKey(si,ex)===key ? si : m[Math.min(i,m.length-1)] } return null }
+function fillReps(row,ex,i,pool){ const h=histAt(ex.id,loadKey(row,ex),i,pool); const hv=v=>(v==null||v==='')?'':String(v);
+  if(ex.u){ row.rl=h?hv(h.rl!=null?h.rl:h.r):''; row.rr=h?hv(h.rr!=null?h.rr:h.r):''; row.r='' } else { row.r=h?hv(repOf(h,ex)||''):''; row.rl=''; row.rr='' }
+  if(h) row.prev=fmtSet(h,ex); return row }
+/* one-rep max: your own number, or estimated (Epley) from your recent working sets */
+function roundW(x){ const st=wStep(); return Math.max(st, Math.round(x/st)*st) }
+function estRM(exId){ const ex=lib(exId); if(loadMode(ex)!=='wt') return null; let best=null, n=0;
+  for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(!e) continue;
+    e.sets.forEach(x=>{ const w=num(x.w), r=repOf(x,ex); if(w>0 && r>0 && r<=20){ const v=w*(1+r/30); if(!best||v>best.v) best={v,w,r,date:s.end} } }); if(++n>=6) break }
+  return best }
+function oneRM(exId){ const o=S.orm&&S.orm[exId]; if(o) return o; const e=estRM(exId); return e?Math.round(e.v*10)/10:null }
+function ormFor(it){ const r=oneRM(it.ex); if(r) return r; const f=it.rows?workRows(it)[0]:null; const w=num(f&&f.w); if(!w) return null; const t=it.lo!=null?Math.round(((it.lo)+(it.hi??it.lo))/2):10; return w*(1+t/30) }
+function pctOf(it,r){ if(loadMode(lib(it.ex))!=='wt') return null; const o=ormFor(it), w=num(r.w); return o&&w ? Math.round(w/o*100) : null }
+const WARM_PCT=[50,60,70];
+function pyrDefault(n){ const T={3:[70,77,85],4:[65,72,80,85],5:[60,68,75,80,85],6:[60,65,70,75,80,85]}; if(T[n]) return T[n].slice(); return Array.from({length:n},(_,i)=>Math.round(60+25*i/(n-1))) }
+function pyrPcts(it){ const n=it.sets; const p=Array.isArray(it.pct)&&it.pct.length===n ? it.pct : pyrDefault(Math.max(3,n)); return p.slice(0,n) }
+function repsForPct(p){ return p ? Math.max(1,Math.round(30*(100/p-1))) : null }
+function dropRows(it,from){ const ex=lib(it.ex), n=Math.max(1,Math.min(3,it.drops||1)), dp=(it.dropPct||20)/100; const out=[]; let w=num(from&&from.w);
+  for(let k=1;k<=n;k++){ w = w ? roundW(w*(1-dp)) : null; const r={drop:k, autoW:true, autoR:true, w:w?String(w):'', band:from?from.band||'':'', add:from&&from.add!=null?String(from.add):'', r:'',rl:'',rr:'',rir:'',done:false,prev:''}; out.push(fillReps(r,ex,k-1,'drops')) } return out }
+function refreshDrops(it){ let prev=it.rows[lastWorkIdx(it)]; const dp=(it.dropPct||20)/100; it.rows.forEach(r=>{ if(!r.drop) return; if(r.autoW && !r.done){ const w=num(prev&&prev.w); r.w = w?String(roundW(w*(1-dp))):'' } prev=r }) }
+// apply set style (straight / pyramid / drop) to a workout in progress
+function applyStyle(it){ const ex=lib(it.ex);
+  it.rows=it.rows.filter(r=>!r.drop || r.done);
+  const wr=workRows(it);
+  if(it.st==='pyr'){ const p=pyrPcts({...it, sets:wr.length}); const o=ormFor(it); wr.forEach((r,i)=>{ r.pct=p[i]; if(!r.done && o && loadMode(ex)==='wt'){ r.w=String(roundW(o*p[i]/100)); if(r.autoR!==false) fillReps(r,ex,i) } }) }
+  else wr.forEach(r=>{ delete r.pct });
+  if(it.st==='drop' && !it.rows.some(r=>r.drop)){ const li=lastWorkIdx(it); it.rows.splice(li+1,0,...dropRows(it,it.rows[li])) } }
+function insWork(it,row){ it.rows.splice(lastWorkIdx(it)+1,0,row) }
 function wStep(){ return S.unit==='kg'?2.5:5 }
 function warmRow(it,k,firstWork,last){
   const ex=lib(it.ex), lm=loadMode(ex); const lw = last && last.warm ? last.warm[k] : null;
-  let w=''; if(lm==='wt'){ if(lw && lw.w!=null) w=lw.w; else if(num(firstWork&&firstWork.w)){ const st=wStep(); w=Math.max(st, Math.round(num(firstWork.w)*0.5/st)*st) } }
-  const r = lw ? (repOf(lw,ex)||'') : '';
-  return {warm:true, autoW: !(lw && lw.w!=null), w:String(w), band: lw&&lw.band ? lw.band : (firstWork?firstWork.band:''), add: lm==='add' ? String(lw&&lw.add!=null?lw.add:0) : '',
-    r:ex.u?'':String(r), rl:ex.u?String(r):'', rr:ex.u?String(r):'', rir:'', done:false, prev: lw?fmtSet(lw,ex):''} }
+  let w=''; if(lm==='wt'){ const o=ormFor({...it, rows:firstWork?[firstWork]:[]}); if(o) w=roundW(o*WARM_PCT[Math.min(k,2)]/100) }
+  const row={warm:true, autoW:true, autoR:true, pct:WARM_PCT[Math.min(k,2)], w:String(w), band: lw&&lw.band ? lw.band : (firstWork?firstWork.band:''), add: lm==='add' ? String(lw&&lw.add!=null?lw.add:0) : '',
+    r:'', rl:'', rr:'', rir:'', done:false, prev:''};
+  if(lm==='wt') return fillReps(row,ex,k,'warm');
+  const r = lw ? (repOf(lw,ex)||'') : ''; row.r=ex.u?'':String(r); row.rl=ex.u?String(r):''; row.rr=ex.u?String(r):''; row.prev=lw?fmtSet(lw,ex):''; return row }
 function prefill(it){
   const ex=lib(it.ex), last=lastFor(it.ex), nl=S.nextLoad[it.ex], m=mode(it);
-  const allTop = last && m!=='fail' && last.sets.length>=it.sets && last.sets.every(s=>repOf(s,ex)>=it.hi);
+  const pcts = it.st==='pyr' ? pyrPcts(it) : null, orm = oneRM(it.ex);
   const rows=[];
   for(let i=0;i<it.sets;i++){
     const ls = last ? (last.sets[i] || last.sets[last.sets.length-1]) : null;
-    const w = typeof nl==='number' ? nl : (ls && num(ls.w)!=null ? num(ls.w) : '');
     const lm = loadMode(ex);
+    let w = typeof nl==='number' ? nl : (ls && num(ls.w)!=null ? num(ls.w) : '');
+    if(pcts && lm==='wt' && orm) w=roundW(orm*pcts[i]/100);
     let band = (nl && typeof nl==='object') ? nl.band : (ls && ls.band ? ls.band : ''); if(lm==='assist' && !band) band='none';
     const add = (lm==='add' && typeof nl==='number') ? nl : (ls && ls.add!=null ? ls.add : '');
-    // reps: exactly what you did last time; blank if there's no history
-    const hv = v => (v==null||v==='') ? '' : String(v);
-    const same = ls ? repOf(ls,ex) : null;
-    const rl = ls ? hv(ls.rl!=null ? ls.rl : ls.r) : '', rr = ls ? hv(ls.rr!=null ? ls.rr : ls.r) : '';
-    rows.push({w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:ex.u?'':(ls?hv(same||''):''), rl:ex.u?rl:'', rr:ex.u?rr:'', rir:'', done:false, prev: ls?fmtSet(ls,ex):''});
+    // reps: what you did at THIS weight before; blank if you've never used it
+    const row={w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:'', rl:'', rr:'', rir:'', done:false, autoR:true, prev: ls?fmtSet(ls,ex):''};
+    if(pcts) row.pct=pcts[i];
+    rows.push(fillReps(row,ex,i));
   }
+  if(it.st==='drop' && rows.length) rows.push(...dropRows(it,rows[rows.length-1]));
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
   return warm.concat(rows);
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss;
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
 function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
   const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
@@ -864,12 +919,14 @@ function logSet(idx){
   const everything = A.items.every(itemDone);
   if(row.warm){ const wr=Math.min(60, it.rest||60); if(!everything) A.rest={end:Date.now()+wr*1000, dur:wr, paused:false, chimed:false}; saveActive(); render(); return }
   // position within working sets (warm-ups count as "before set 1")
+  // drop sets: go straight into the next drop, no rest
+  const nxt=it.rows.find(r=>!r.done); if(nxt && nxt.drop && (row.drop || it.rows.indexOf(row)===lastWorkIdx(it))){ saveActive(); render(); return }
   const prog = x => { const i=x.rows.findIndex(r=>!r.done); if(i<0) return null; return i - x.rows.filter(r=>r.warm).length };
-  const wi = workRows(it).indexOf(row);
+  const wi = row.drop ? workRows(it).length-1 : workRows(it).indexOf(row);
   const p = partnerOf(A.items,it); const pOk = p && !p.skipped;
   if(pOk){
     const pi=prog(p);
-    if(pi!=null && pi<=wi){ A.cur=A.items.indexOf(p); A.rest=null; saveActive(); render(); window.scrollTo(0,0); return }
+    if(pi!=null && pi<=wi){ A.cur=A.items.indexOf(p); A.rest = everything ? null : {end:Date.now()+10000, dur:10, paused:false, chimed:false, sw:true}; saveActive(); render(); window.scrollTo(0,0); return }
     const rest=Math.max(it.rest||0,p.rest||0);
     if(!everything && rest>0) A.rest={end:Date.now()+rest*1000, dur:rest, paused:false, chimed:false};
     const ci=it.rows.findIndex(r=>!r.done); const first=A.items.indexOf(it)<A.items.indexOf(p)?it:p, second=first===it?p:it;
@@ -887,10 +944,10 @@ function finishWorkout(){
   const now=Date.now();
   const s={id:A.id, type:'lift', dayIdx:A.dayIdx, dayName:A.dayName, start:A.created, end:now, updatedAt:now, dur:Math.round(clockSecs()),
     exercises:A.items.filter(it=>!it.skipped).map(it=>{ const ex=lib(it.ex), lm=loadMode(ex), bw=bwNow();
-      const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:num(r.rir)};
+      const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:rirStr(r.rir)||null}; if(r.pct) o.pct=r.pct;
         if(lm==='assist'||lm==='band') o.band=r.band||'none'; if(lm==='add') o.add=num(r.add)||0; if((lm==='assist'||lm==='add') && bw!=null) o.bw=bw; return o };
       const keep = r => r.done && !r.skip && !isZero(r,ex);
-      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; return e }).filter(e=>e.sets.length),
+      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(rec); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
     snap:clone(A)};
   for(const e of s.exercises) delete S.nextLoad[e.ex];
   Object.entries(A.inc||{}).forEach(([k,v])=>{ if(v!=null) S.nextLoad[k]=v });
@@ -997,7 +1054,7 @@ function viewTrain(){
     const lastTxt = last ? ` · <span class="num">${last.sets.map(s=>fmtSet(s,ex)).join(', ')}</span>` : '';
     const isSI = it.standIn || (live && it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu));
     h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''}" data-uid="${it.uid}">${hdl}
-      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${it.st==='pyr'?'<span class="armtag">Pyramid</span> · ':it.st==='drop'?'<span class="armtag">Drop set</span> · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
@@ -1015,7 +1072,7 @@ function viewLog(){
   let h=`<div class="lbar"><button class="btn sm ghost" data-act="toOverview">‹ Day ${A.dayIdx+1}</button>${clk}<button class="btn sm primary" data-act="finish">Finish</button></div>`;
   h+=`<div class="dots">${A.items.map((x,i)=>`<button data-act="jump" data-i="${i}" class="${i===A.cur?'cur':x.skipped?'skip':x.rows.every(r=>r.done)&&x.rows.length?'done':''}" aria-label="Exercise ${i+1}"></button>`).join('')}</div>`;
   const pr=partnerOf(A.items,it);
-  if(pr){ const g=groupIdx(A.cur); h+=`<div class="ssbar"><div class="sslbl">Superset · alternate sets, rest after both</div><div class="in">${g.map(j=>{const x=A.items[j];return `<button data-act="jump" data-i="${j}" class="${j===A.cur?'on':''}">${esc(lib(x.ex).name)}<span>${x.skipped?'Skipped':x.rows.filter(r=>r.done).length+'/'+x.rows.length}</span></button>`}).join('')}</div></div>` }
+  if(pr){ const g=groupIdx(A.cur); h+=`<div class="ssbar"><div class="sslbl">Superset · 10 s to switch, full rest after both</div><div class="in">${g.map(j=>{const x=A.items[j];return `<button data-act="jump" data-i="${j}" class="${j===A.cur?'on':''}">${esc(lib(x.ex).name)}<span>${x.skipped?'Skipped':x.rows.filter(r=>r.done).length+'/'+x.rows.length}</span></button>`}).join('')}</div></div>` }
   h+=`<div class="exhead"><div><div class="small muted">Exercise ${A.cur+1} of ${A.items.length}</div><h2>${esc(ex.name)}</h2>
     <div class="exmeta"><span class="num">${targetText(it)}</span> · rest ${fmtRest(it.rest)}</div>${it.focus?`<div class="small muted" style="margin-top:3px">Focus: ${esc(it.focus)}</div>`:''}</div></div>
     <div class="chips">${it.emph?`<span class="chip ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>`:''}${armLabel(ex)?`<span class="chip pri">${armLabel(ex)}</span>`:''}${ex.m.map((mm,i)=>`<span class="chip ${i===0&&!armLabel(ex)?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
@@ -1028,14 +1085,15 @@ function viewLog(){
   if(it.ghost && it.skipped){} else if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
   h+=`<div class="sets ${ex.u?'uni':''}"><div class="sethead"><span style="text-align:center">Set</span><span>Last</span><span style="text-align:center">${wLbl}</span>${ex.u?`<span style="text-align:center">L</span><span style="text-align:center">R</span>`:`<span style="text-align:center">${repLbl}</span>`}<span style="text-align:center">RiR</span><span></span></div>`;
   it.rows.forEach((r,i)=>{
-    const rir=`<select data-set="${i}" data-f="rir" aria-label="Reps in reserve">${['','0','1','2','3','4','5'].map(v=>`<option value="${v}" ${String(r.rir)===v?'selected':''}>${v===''?'–':v}</option>`).join('')}</select>`;
+    const rir=rirSel(`data-set="${i}" data-f="rir"`, r.rir);
+    const pc=pctOf(it,r), tp=r.pct&&!r.warm ? repsForPct(r.pct) : null;
     const reps = ex.u ? `<input data-set="${i}" data-f="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input data-set="${i}" data-f="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">`
-                     : `<input data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" placeholder="${m==='fail'?'max':''}" aria-label="${repLbl}">`;
-    h+=`<div class="setrow ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':(workRows(it).indexOf(r)+1)}</span><span class="pv">${esc(r.prev||'—')}</span>
+                     : `<input data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" placeholder="${m==='fail'?'max':tp&&m==='reps'?'~'+tp:''}" aria-label="${repLbl}">`;
+    h+=`<div class="setrow ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}</span><span class="pv">${esc(r.prev||'—')}</span>
       ${wCell(r,i,lm)}${reps}${rir}
       <button class="check" data-act="logSet" data-i="${i}" aria-label="Log set ${i+1}">${ICON.check}</button></div>`;
   });
-  h+=`</div>${loadLine(it,ex)}<div class="setops"><button data-act="addSet">+ Set</button><button data-act="addWarm">+ Warm-up</button>${it.rows.some(r=>r.warm&&!r.done)?'<button data-act="rmWarm">− Warm-up</button>':''}${cur>=0?'<button data-act="skipSet">Skip set</button>':''}${workRows(it).length>1&&!it.rows[it.rows.length-1].done?'<button data-act="rmSet">− Set</button>':''}</div>`;
+  h+=`</div>${loadLine(it,ex)}${ormLine(it,ex)}<div class="setops"><button data-act="addSet">+ Set</button><button data-act="addWarm">+ Warm-up</button>${it.rows.some(r=>r.warm&&!r.done)?'<button data-act="rmWarm">− Warm-up</button>':''}${cur>=0?'<button data-act="skipSet">Skip set</button>':''}${workRows(it).length>1&&!it.rows[lastWorkIdx(it)].done?'<button data-act="rmSet">− Set</button>':''}</div>`;
   if(cur<0 && workRows(it).length && m!=='fail' && lm!=='bw' && workRows(it).some(r=>!r.skip)){
     const hitTop = workRows(it).every(r=>repOf(r,ex)>=it.hi);
     const lastRow=workRows(it)[workRows(it).length-1]; const step = unit==='kg'?2.5:5;
@@ -1056,11 +1114,15 @@ function viewLog(){
   const atEnd = (gDone ? Math.max(...gI) : A.cur) >= A.items.length-1;
   const allDone = (cur<0 || it.skipped) && gDone;
   const main = allDone ? (atEnd ? `<button class="btn primary" data-act="finish">Finish workout</button>` : `<button class="btn primary" data-act="next">Next exercise ›</button>`)
-                       : `<button class="btn primary" data-act="logSet">${it.rows[cur].warm?'Log warm-up':'Log set '+(workRows(it).indexOf(it.rows[cur])+1)}</button>`;
+                       : `<button class="btn primary" data-act="logSet">${it.rows[cur].warm?'Log warm-up':it.rows[cur].drop?'Log drop '+it.rows[cur].drop:'Log set '+(workRows(it).indexOf(it.rows[cur])+1)}</button>`;
   h+=`<div class="actbar"><div class="in"><button class="nav" data-act="prev" ${A.cur===0?'disabled':''} aria-label="Previous exercise">‹</button>${main}<button class="nav" data-act="next" ${A.cur>=A.items.length-1?'disabled':''} aria-label="Next exercise">›</button></div></div>`;
   return h;
 }
 
+function ormLine(it,ex){ if(loadMode(ex)!=='wt') return ''; const own=S.orm&&S.orm[ex.id], e=estRM(ex.id), u=S.unit;
+  const src = own ? 'your number · clear it to use the estimate' : e ? `estimated from ${e.w}×${e.r}` : 'no history yet · estimated from today\'s working weight';
+  const ph = e ? Math.round(e.v) : (ormFor(it)?Math.round(ormFor(it)):'');
+  return `<div class="ormline"><span>1RM</span><input id="ormIn" data-orm="${ex.id}" inputmode="decimal" value="${own||''}" placeholder="${ph||'–'}" aria-label="One-rep max"><span>${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${src}${it.st==='pyr'?' · pyramid':it.st==='drop'?' · drop set':''}</span></div>` }
 function wCell(r,i,lm){
   if(lm==='assist'||lm==='band'){
     const opts=(lm==='assist'?`<option value="none" ${r.band==='none'||!r.band?'selected':''}>None</option>`:`<option value="" ${!r.band?'selected':''}>–</option>`)+bandsSorted().map(b=>`<option value="${b.id}" ${r.band===b.id?'selected':''}>${esc(b.name)}</option>`).join('');
@@ -1131,7 +1193,7 @@ function viewManual(){
       else if(lm==='bw') wc=`<span class="bwcell">BW</span>`;
       else wc=`<input ${a} data-mf="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="Weight">`;
       const reps = ex.u ? `<input ${a} data-mf="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input ${a} data-mf="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">` : `<input ${a} data-mf="r" inputmode="numeric" value="${esc(r.r)}" aria-label="${m}">`;
-      const rir=`<select ${a} data-mf="rir" aria-label="Reps in reserve">${['','0','1','2','3','4','5'].map(v=>`<option value="${v}" ${String(r.rir)===v?'selected':''}>${v===''?'–':v}</option>`).join('')}</select>`;
+      const rir=rirSel(`${a} data-mf="rir"`, r.rir);
       h+=`<div class="setrow"><span class="sn">${k+1}</span><span></span>${wc}${reps}${rir}<button class="iconbtn" data-act="manRmSet" data-i="${ii}" data-k="${k}" aria-label="Remove set ${k+1}" style="width:32px;height:32px;font-size:18px">×</button></div>` });
     h+=`<div class="setops" style="padding:6px 12px 10px"><button data-act="manAddSet" data-i="${ii}">+ Add set</button></div></div>` });
   h+=`<button class="addrow" data-act="add">+ Add exercise</button><div style="margin-top:14px"><button class="btn primary" data-act="manSave">Save workout</button></div>`;
@@ -1144,7 +1206,7 @@ function manSaveNow(){
   const [yy,mm,dd]=M.date.split('-').map(Number); const t=new Date(yy,mm-1,dd,18).getTime();
   const bw=bwAt(t);
   const exercises=M.items.map(it=>{ const ex=lib(it.ex), lm=loadMode(ex);
-    const sets=it.rows.filter(r=> ex.u ? (num(r.rl)||0)+(num(r.rr)||0)>0 : (num(r.r)||0)>0 ).map(r=>{ const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:num(r.rir)};
+    const sets=it.rows.filter(r=> ex.u ? (num(r.rl)||0)+(num(r.rr)||0)>0 : (num(r.r)||0)>0 ).map(r=>{ const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:rirStr(r.rir)||null};
       if(lm==='assist'||lm==='band') o.band=r.band||'none'; if(lm==='add') o.add=num(r.add)||0; if((lm==='assist'||lm==='add') && bw!=null) o.bw=bw; return o });
     return {ex:it.ex, name:ex.name, sets} }).filter(e=>e.sets.length);
   if(!exercises.length){ toast('Enter reps for at least one set'); return }
@@ -1258,6 +1320,7 @@ function renderSheet(){
      <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['time','Timed'],['fail','To failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
      ${m!=='fail'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}<input id="edLo" inputmode="numeric" value="${s.lo??''}"></label><label class="f">To${m==='time'?' (sec)':''}<input id="edHi" inputmode="numeric" value="${s.hi??''}"></label></div>`:''}
      ${s.ctx==='P'?`<div class="sec">Warm-up sets</div><div class="stepper"><button data-act="edWu" data-d="-1">−</button><span class="v">${s.wu||0}</span><button data-act="edWu" data-d="1">+</button><span class="small muted" style="margin-left:6px">${s.wu?'Added before your working sets':'None'}</span></div>`:''}
+     ${styleEditor(s,it)}
      <div class="sec">Rest between sets (seconds)</div><input id="edRest" inputmode="numeric" value="${it.rest}">
      <div class="stack" style="margin-top:16px"><button class="btn primary" data-act="edSave">Save</button></div>`;
   }
@@ -1403,8 +1466,8 @@ const H = {
   addWarm:()=>{ const it=curItem(); const n=it.rows.filter(r=>r.warm).length; if(n>=3){ toast('Up to 3 warm-ups'); return }
     it.rows.splice(n,0,warmRow(it,n,workRows(it)[0],lastFor(it.ex))); syncWarm(it); saveActive(); render() },
   rmWarm:()=>{ const it=curItem(); for(let j=it.rows.length-1;j>=0;j--){ if(it.rows[j].warm && !it.rows[j].done){ it.rows.splice(j,1); break } } syncWarm(it); saveActive(); render() },
-  addSet:()=>{ const it=curItem(); const l=workRows(it)[workRows(it).length-1]||{w:'',r:'',rl:'',rr:''}; it.rows.push({w:l.w,band:l.band||'',add:l.add||'',r:l.r,rl:l.rl,rr:l.rr,rir:'',done:false,prev:''}); saveActive(); render() },
-  rmSet:()=>{ const it=curItem(); const l=it.rows[it.rows.length-1]; if(workRows(it).length>1 && l && !l.warm && !l.done){ it.rows.pop(); saveActive(); render() } },
+  addSet:()=>{ const it=curItem(); const l=workRows(it)[workRows(it).length-1]||{w:'',r:'',rl:'',rr:''}; insWork(it,{w:l.w,band:l.band||'',add:l.add||'',r:l.r,rl:l.rl,rr:l.rr,rir:'',done:false,prev:'',autoR:l.autoR}); saveActive(); render() },
+  rmSet:()=>{ const it=curItem(); const li=lastWorkIdx(it), l=it.rows[li]; if(workRows(it).length>1 && l && !l.done){ it.rows.splice(li,1); saveActive(); render() } },
   incSave:()=>{ A.inc=A.inc||{}; const bs=$('#incB'); if(bs){ A.inc[curItem().ex]={band:bs.value} } else { const v=num($('#incW').value); if(v==null) return; A.inc[curItem().ex]=v } saveActive(); render(); toast('Saved for next session') },
   bwOpen:()=>openSheet({type:'bw'}),
   manNew:()=>{ const y=new Date(Date.now()-864e5); manOpen({id:null, date:isoDate(y), dur:'', dayIdx:S.next, adv:true, items:manFromDay(S.next)}) },
@@ -1444,16 +1507,27 @@ const H = {
   set1Toggle:()=>{ ui.sheet.set1=!ui.sheet.set1; renderSheet() },
   missing:el=>openSheet({type:'missing', day:+el.dataset.i}),
   missingAll:()=>openSheet({type:'missing', all:true}),
-  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets: c.ctx==='A'?workRows(it).length:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it)}) },
+  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets;
+    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||1, dropPct:it.dropPct||20}) },
+  edSt:el=>{ keepEd(); const s=ui.sheet; s.st=el.dataset.k; if(s.st==='pyr'){ if(s.sets<3) s.sets=3; if(s.pct.length!==s.sets) s.pct=pyrDefault(s.sets) } renderSheet() },
+  edPctReset:()=>{ ui.sheet.pct=pyrDefault(ui.sheet.sets); renderSheet() },
+  edDrops:el=>{ keepEd(); ui.sheet.drops=Math.max(1,Math.min(3,ui.sheet.drops+ +el.dataset.d)); renderSheet() },
+  edDropPct:el=>{ keepEd(); ui.sheet.dropPct=Math.max(10,Math.min(40,ui.sheet.dropPct+ +el.dataset.d)); renderSheet() },
   edWu:el=>{ keepEd(); ui.sheet.wu=Math.max(0,Math.min(3,(ui.sheet.wu||0)+ +el.dataset.d)); renderSheet() },
-  edSets:el=>{ ui.sheet.sets=Math.max(1,Math.min(10,ui.sheet.sets+ +el.dataset.d)); keepEd(); renderSheet() },
+  edSets:el=>{ keepEd(); const s=ui.sheet; s.sets=Math.max(s.st==='pyr'?3:1,Math.min(10,s.sets+ +el.dataset.d)); if(s.st==='pyr' && s.pct.length!==s.sets) s.pct=pyrDefault(s.sets); renderSheet() },
   edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(s.m==='fail'){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=s.m==='time'?20:8; s.hi=s.m==='time'?40:12 } renderSheet() },
   edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return }
     it.lo = s.m==='fail'?null:(num(s.lo)??8); it.hi = s.m==='fail'?null:Math.max(it.lo, num(s.hi)??it.lo); it.rest=num($('#edRest').value)??it.rest;
-    if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; it.rows.push({w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||'',rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:''}) }
-      while(workRows(it).length>s.sets){ const l=it.rows[it.rows.length-1]; if(!l || l.warm || l.done) break; it.rows.pop() } it.sets=workRows(it).length;
-      const pit = s.keep ? planItemOf(it) : null; if(pit){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest; saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
-    else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu }
+    const styleTo = o => { if(s.st) o.st=s.st; else delete o.st; if(s.st==='pyr'){ if(o.sets<3) o.sets=3; o.pct = s.pct.length===o.sets ? s.pct.slice() : pyrDefault(o.sets) } else delete o.pct;
+      if(s.st==='drop'){ o.drops=s.drops; o.dropPct=s.dropPct } else { delete o.drops; delete o.dropPct } };
+    const styleChanged = (it.st||'')!==(s.st||'') || JSON.stringify(it.pct||null)!==JSON.stringify(s.st==='pyr'?s.pct:null) || (s.st==='drop' && (it.drops!==s.drops || it.dropPct!==s.dropPct));
+    if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; insWork(it,{w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||'',rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:'',autoR:true}) }
+      while(workRows(it).length>s.sets){ const li=lastWorkIdx(it), l=it.rows[li]; if(!l || l.done) break; it.rows.splice(li,1) } it.sets=workRows(it).length;
+      styleTo(it); applyStyle(it);
+      const pit = planItemOf(it);
+      if(pit && s.keep){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest }
+      if(pit && (s.keep || styleChanged)){ styleTo(pit); saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
+    else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
     saveCtx(s.ctx); closeSheet(); render() },
   rmItem:el=>{ const s=ui.sheet; const list=ctxList(s.ctx,s.day); const it0=sheetItem(s); const i=it0?list.indexOf(it0):-1; if(i<0){ closeSheet(); return }
     list.splice(i,1); normalizeSS(list); if(s.ctx==='A'){ if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1) } saveCtx(s.ctx); closeSheet(); render() },
@@ -1502,7 +1576,18 @@ function restoreFrom(text){ try{ const o=JSON.parse(text); if(!o.state||!o.state
   catch(e){ toast("That doesn't look like a POT backup") } }
 document.addEventListener('change',e=>{ if(e.target.id==='restoreFile' && e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>restoreFrom(fr.result); fr.readAsText(e.target.files[0]) } });
 function showBackupText(txt){ openSheet({type:'restore'}); setTimeout(()=>{ const t=$('#restoreTxt'); t.value=txt; t.select(); $('#sheet h3').textContent='Copy this backup'; },0) }
-function keepEd(){ const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.value; if(hi) ui.sheet.hi=hi.value }
+function keepEd(){ const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.value; if(hi) ui.sheet.hi=hi.value;
+  if(ui.sheet && ui.sheet.st==='pyr' && $('#edPct0')){ ui.sheet.pct=(ui.sheet.pct||[]).map((v,i)=>{ const e=$('#edPct'+i); return e ? (num(e.value)??v) : v }) } }
+function styleEditor(s,it){ const st=s.st||''; const ex=lib(it.ex), o=oneRM(it.ex), u=S.unit;
+  let h=`<div class="sec">Set style</div><div class="seg">${[['','Straight'],['pyr','Pyramid'],['drop','Drop set']].map(([k,l])=>`<button data-act="edSt" data-k="${k}" class="${st===k?'on':''}">${l}</button>`).join('')}</div>`;
+  if(st==='pyr'){ h+=`<div class="small muted" style="margin-top:8px">Weight climbs each set as a % of your 1RM${o?` (${Math.round(o)} ${u})`:''}; reps come down. The suggested start is filled in; change any number.</div>
+    <div class="pctgrid">${s.pct.map((p,i)=>`<label class="f">Set ${i+1}<span class="rowline"><input id="edPct${i}" inputmode="numeric" value="${p}">%</span><span class="small muted">≈${repsForPct(p)} reps${o&&loadMode(ex)==='wt'?' · '+roundW(o*p/100)+' '+u:''}</span></label>`).join('')}</div>
+    <button class="link small" data-act="edPctReset">Reset to suggested</button>` }
+  if(st==='drop'){ h+=`<div class="small muted" style="margin-top:8px">After your last set, strip the weight and keep going with no rest. Drops are saved apart from your working sets, so they don't affect progression.</div>
+    <div class="grid2" style="margin-top:8px"><div><div class="small muted">Drops</div><div class="stepper"><button data-act="edDrops" data-d="-1">−</button><span class="v">${s.drops}</span><button data-act="edDrops" data-d="1">+</button></div></div>
+    <div><div class="small muted">Each drop</div><div class="stepper"><button data-act="edDropPct" data-d="-5">−</button><span class="v">−${s.dropPct}%</span><button data-act="edDropPct" data-d="5">+</button></div></div></div>` }
+  if(st && (s.ctx==='A' || s.ctx==='P')) h+=`<div class="small muted" style="margin-top:6px">Set style is saved to Day ${s.day+1} for future workouts.</div>`;
+  return h }
 function doReplace(exId){
   const s=ui.sheet; const list=ctxList(s.ctx,s.day); sheetItem(s); const i=list.findIndex(x=>x.uid===s.uid); if(i<0){ closeSheet(); toast("Couldn't find that exercise. Try again."); return }
   const it=list[i];
@@ -1548,16 +1633,26 @@ document.addEventListener('input',e=>{
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveDraft,400); return }
   if(el.id==='keepPlan' && ui.sheet){ ui.sheet.keep=el.checked; return }
+  if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
+    const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
+    clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.dataset.mb && ui.man){ const M=ui.man, b=el.dataset.mb;
     if(b==='date') M.date=el.value; else if(b==='dur') M.dur=el.value; else if(b==='adv') M.adv=el.checked;
     else if(b==='day'){ const di=+el.value; if(!M.id && !manHasData()) M.items=manFromDay(di); M.dayIdx=di; saveDraft(); render(); return }
     saveDraft(); return }
   if(el.dataset.set!=null && A){
-    const it=curItem(), i=+el.dataset.set, f=el.dataset.f; it.rows[i][f]=el.value;
-    if(f==='w' && it.rows[i].warm) it.rows[i].autoW=false;
-    if(f==='w' && !it.rows[i].warm && workRows(it)[0]===it.rows[i]){ const st=wStep(), v=num(el.value);
-      it.rows.forEach((wr,j)=>{ if(wr.warm && wr.autoW && !wr.done){ wr.w = v ? String(Math.max(st, Math.round(v*0.5/st)*st)) : ''; const o=document.querySelector(`[data-set="${j}"][data-f="w"]`); if(o) o.value=wr.w } }) }
-    if((f==='w'||f==='band'||f==='add') && !it.rows[i].warm){ for(let j=i+1;j<it.rows.length;j++){ if(!it.rows[j].done && !it.rows[j].warm){ it.rows[j][f]=el.value; const o=document.querySelector(`[data-set="${j}"][data-f="${f}"]`); if(o) o.value=el.value } } }
+    const it=curItem(), i=+el.dataset.set, f=el.dataset.f, row=it.rows[i]; row[f]=el.value; const ex=lib(it.ex);
+    if(f==='r'||f==='rl'||f==='rr') row.autoR=false;
+    if(f==='w'||f==='band'||f==='add'){ const touched=new Set([i]);
+      if(row.warm||row.drop) row.autoW=false;
+      if(!row.warm && !row.drop && it.st!=='pyr'){ for(let j=i+1;j<it.rows.length;j++){ const rj=it.rows[j]; if(!rj.done && !rj.warm && !rj.drop){ rj[f]=el.value; touched.add(j) } } }
+      if(f==='w' && !row.warm && workRows(it)[0]===row){ const o=ormFor(it); it.rows.forEach((wr,j)=>{ if(wr.warm && wr.autoW && !wr.done){ wr.w = o ? String(roundW(o*(wr.pct||50)/100)) : ''; touched.add(j) } }) }
+      if(!row.warm){ const before=it.rows.map(r=>r.w); refreshDrops(it); it.rows.forEach((r,j)=>{ if(r.drop && r.w!==before[j]) touched.add(j) }) }
+      // reps belong to a weight: look them up again (or clear them) wherever you haven't typed reps yourself
+      touched.forEach(j=>{ const rj=it.rows[j]; if(rj.autoR!==false && !rj.done) fillReps(rj,ex, rj.warm?it.rows.filter(x=>x.warm).indexOf(rj):rj.drop?rj.drop-1:workRows(it).indexOf(rj), rj.warm?'warm':rj.drop?'drops':'sets') });
+      touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv'); if(pv) pv.textContent=rj.prev||'—' });
+    }
+    if(f==='w') it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent = p!=null?p+'%':r.pct?r.pct+'%':'' } });
     const ll=$('#loadline'); if(ll){ const tmp=document.createElement('div'); tmp.innerHTML=loadLine(it,lib(it.ex)); if(tmp.firstElementChild) ll.innerHTML=tmp.firstElementChild.innerHTML }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveActive,500); return;
   }
@@ -1629,12 +1724,21 @@ function endDrag(){
   if(from===to) return;
   const ctx=list.dataset.ctx, day=+list.dataset.day; const arr=ctxList(ctx,day);
   const curUid = ctx==='A' ? A.items[A.cur]?.uid : null;
-  const p0=partnerOf(arr,arr[from]); const wasBefore = p0 ? arr.indexOf(p0)<from : false;
+  // a goal exercise and its stand-in always move together (goal on top, stand-in under it)
+  const standOf = x => ctx==='A' && x && x.ghost ? arr.find(y=>!y.ghost && y.pu && y.pu===x.goalOf) : null;
+  const goalOf_ = x => ctx==='A' && x && !x.ghost && x.pu ? arr.find(y=>y.ghost && y.goalOf===x.pu) : null;
+  const unit_ = x => { const g=x.ghost?x:goalOf_(x), r=x.ghost?standOf(x):x; return [g,r].filter(Boolean) };
+  const m0=arr[from]; const real=m0.ghost ? (standOf(m0)||m0) : m0;
+  const p0=partnerOf(arr,real); const wasBefore = p0 ? arr.indexOf(p0)<arr.indexOf(real) : false;
   const [m]=arr.splice(from,1); arr.splice(to,0,m);
-  const p=partnerOf(arr,m);
-  if(p){ const pi=arr.indexOf(p); arr.splice(pi,1); const mi2=arr.indexOf(m); arr.splice(wasBefore?mi2:mi2+1,0,p) }
+  { const mate = m.ghost ? standOf(m) : goalOf_(m); if(mate){ arr.splice(arr.indexOf(mate),1); const k=arr.indexOf(m); arr.splice(m.ghost?k+1:k,0,mate) } }
+  // don't split another goal from its stand-in
+  { const u=unit_(real), ix=u.map(x=>arr.indexOf(x)), bi=Math.min(...ix), be=Math.max(...ix), g=arr[bi-1], si=arr[be+1];
+    if(g && g.ghost && si && standOf(g)===si){ const blk=arr.splice(bi,be-bi+1); const at = to>from ? arr.indexOf(si)+1 : arr.indexOf(g); arr.splice(at,0,...blk) } }
+  const p=partnerOf(arr,real);
+  if(p){ const blk=unit_(p); blk.forEach(x=>arr.splice(arr.indexOf(x),1)); const mb=unit_(real); const at = wasBefore ? arr.indexOf(mb[0]) : arr.indexOf(mb[mb.length-1])+1; arr.splice(at,0,...blk) }
   // don't land in the middle of another superset
-  { const bi=Math.min(arr.indexOf(m), p?arr.indexOf(p):1e9), be=Math.max(arr.indexOf(m), p?arr.indexOf(p):-1); const a=arr[bi-1], b=arr[be+1];
+  { const all=unit_(real).concat(p?unit_(p):[]).map(x=>arr.indexOf(x)); const bi=Math.min(...all), be=Math.max(...all); let a=arr[bi-1], b=arr[be+1]; if(a&&a.ghost) a=standOf(a)||a; if(b&&b.ghost) b=standOf(b)||b;
     if(a && b && a.ss && a.ss===b.ss){ const blk=arr.splice(bi, be-bi+1); const at=arr.indexOf(b)+1; arr.splice(at,0,...blk) } }
   normalizeSS(arr);
   if(ctx==='A'){ A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid)); A.orderDirty=true }
