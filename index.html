@@ -3,48 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#15804b">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="POT">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <script>window.POT_STANDALONE=true</script>
 <style>
-:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-body{margin:0;font-size:14px;-webkit-text-size-adjust:100%}
+:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:#000000;font-size:14px;-webkit-text-size-adjust:100%}
 img{max-width:100%}
 [hidden]{display:none!important}
 </style>
 <title>Progressive Overload Training</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap"></noscript>
 <style>
 :root{
-  --bg:#edf2ee; --surface:#ffffff; --surface2:#f4f7f5; --ink:#13201a; --muted:#5b6c63; --line:#d9e2dc;
-  --accent:#15804b; --accent-ink:#ffffff; --accent-soft:#d9efe1; --warn:#a8650a; --warn-soft:#faedd6; --danger:#b83227;
-  --c-pri:#c0392b; --c-reg:#0b8f87; --c-light:#2563d6; --c-elong:#15804b; --c-sq:#d9730d; --c-stand:#a07800;
-  --shadow:0 1px 2px rgba(19,32,26,.06),0 4px 16px rgba(19,32,26,.06);
-  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-num:"Barlow Condensed","Barlow",system-ui,sans-serif;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
-  --bg:#0b120e; --surface:#131c17; --surface2:#19241e; --ink:#e3ede7; --muted:#8ea297; --line:#25322b;
-  --accent:#34c17a; --accent-ink:#03200f; --accent-soft:#163424; --warn:#e2a23e; --warn-soft:#382a11; --danger:#ef6b5e;
-  --c-pri:#ef6b5e; --c-reg:#3fd0c4; --c-light:#6aa5ff; --c-elong:#34c17a; --c-sq:#f0a043; --c-stand:#f3cf4a;
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e; --ink:#ffffff; --muted:#8e8e93; --line:#38383a; --chip:#3a3a3c; --bar:rgba(28,28,30,.88);
+  --accent:#059669; --accent-ink:#ffffff; --accent-soft:rgba(5,150,105,.2); --warn:#e2a23e; --warn-soft:#382a11; --danger:#ef6b5e;
+  --stand:#34d399; --accent-text:#34d399; --gold:#f3cf4a;
+  --c-pri:#ef6b5e; --c-reg:#3fd0c4; --c-light:#6aa5ff; --c-elong:#e2a23e; --c-sq:#ef6b5e; --c-stand:#34d399;
   --shadow:none;
-}}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#0b120e; --surface:#131c17; --surface2:#19241e; --ink:#e3ede7; --muted:#8ea297; --line:#25322b;
-  --accent:#34c17a; --accent-ink:#03200f; --accent-soft:#163424; --warn:#e2a23e; --warn-soft:#382a11; --danger:#ef6b5e;
-  --c-pri:#ef6b5e; --c-reg:#3fd0c4; --c-light:#6aa5ff; --c-elong:#34c17a; --c-sq:#f0a043; --c-stand:#f3cf4a;
-  --shadow:none;
+  --f-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  --f-num:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
@@ -285,8 +269,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .row.ghost .name{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
 .row.ghost .prog{color:var(--muted);font-size:13px;font-family:var(--f-body);font-weight:600}
 .row.standin{margin-left:26px;position:relative;overflow:visible}
-.row.standin::before{content:"";position:absolute;left:-18px;top:-8px;width:12px;height:calc(50% + 8px);border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);border-bottom-left-radius:8px;opacity:.6}
-.sitag{color:var(--accent);font-weight:600}
+.row.standin::before{content:"";position:absolute;left:-18px;top:-8px;width:12px;height:calc(50% + 8px);border-left:2px solid var(--stand);border-bottom:2px solid var(--stand);border-bottom-left-radius:8px;opacity:.6}
+.sitag{color:var(--stand);font-weight:600}
 .bwcell{font-family:var(--f-num);font-weight:700;font-size:15px;color:var(--muted);text-align:center}
 .armtag{font-weight:600;color:var(--ink)}
 .emtag{font-weight:700;font-size:12px;letter-spacing:.02em}
@@ -299,6 +283,93 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .lvl-Light{color:var(--c-light)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:600;margin-top:6px}
 @media (prefers-reduced-motion:reduce){.row{transition:none}}
+
+/* ---- dark iOS-style look ---- */
+body{font-size:16px;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+.brand{font-family:var(--f-body);font-weight:800;letter-spacing:-.01em;text-transform:none;font-size:22px}
+.brand i{background:var(--accent);border-radius:4px}
+.dayhead h1,.h2{font-family:var(--f-body);font-weight:800;font-size:32px;letter-spacing:-.025em;line-height:1.08}
+.dayhead .eyebrow,.sec,.hcard .hd,.stat .k{letter-spacing:.02em}
+#sheet h3{font-family:var(--f-body);font-weight:800;font-size:24px;letter-spacing:-.02em}
+.row,.stat,.hcard,.card,.sets,.chipday,.incbox,.bwchip,.filt button,.ssbar button{border-color:transparent!important}
+.row,.hcard,.card,.sets{border-radius:16px}
+.stat{border-radius:14px;background:var(--surface)}
+.chipday{background:var(--surface);border-radius:12px}
+.chipday.next{box-shadow:inset 0 0 0 2px var(--accent)}
+.btn{border-radius:14px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);font-weight:700}
+input,select,textarea{background:var(--surface2);border-color:transparent;border-radius:10px}
+.setrow input,.setrow select{background:var(--surface2)}
+.sethead{border-bottom-color:var(--line)}
+#tabs{background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--line)}
+.actbar{background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--line)}
+#sheet{background:var(--surface);border-radius:20px 20px 0 0}
+#sheetWrap .backdrop{background:rgba(0,0,0,.6)}
+#restbar .in{background:var(--surface2);color:var(--ink)}
+.seg{border:0;background:var(--surface2);border-radius:10px;padding:2px;gap:2px}
+.seg button{border-radius:8px;font-size:13px}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.ch-line{stroke:var(--accent);stroke-width:2.5}
+.ch-area{fill:url(#chFill);opacity:1}
+.ch-pt{fill:var(--accent)}
+.ch-grid{stroke:var(--line)}
+.ch-lbl{font-family:var(--f-body);font-size:10px}
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tile{background:var(--surface2);border-radius:14px;padding:10px 10px 9px}
+.card .tile,#sheet .tile{background:var(--surface2)}
+.tile .ic{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.tile .ic svg{width:14px;height:14px}
+.tile .v{font-weight:800;font-size:20px;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile .v small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+.tile .k{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600}
+.ic.b{background:rgba(63,208,196,.18);color:#3fd0c4}.ic.g{background:rgba(243,207,74,.18);color:#f3cf4a}.ic.o{background:rgba(226,162,62,.2);color:#e2a23e}.ic.gr{background:rgba(5,150,105,.2);color:#34d399}.ic.r{background:rgba(239,107,94,.2);color:#ef6b5e}
+.chartbox{background:var(--surface2);border-radius:14px;padding:10px 10px 6px;margin-top:10px}
+.chartbox .ctl{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.pills{display:flex;gap:4px;flex-wrap:wrap}
+.pills button{padding:5px 10px;border-radius:999px;background:var(--chip);font-size:12px;font-weight:700;color:var(--ink)}
+.pills button.on{background:var(--accent);color:var(--accent-ink)}
+/* weekly sets per muscle */
+.card.wk{padding:14px}
+.wkhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.wkhead b{font-size:17px;font-weight:700}
+.wkrow{display:grid;grid-template-columns:72px 1fr 34px;gap:8px;align-items:center;margin-top:9px;font-size:14px}
+.wkrow .bar{position:relative;height:10px;border-radius:5px;background:var(--surface2);overflow:hidden}
+.wkrow .band{position:absolute;top:0;bottom:0;background:rgba(5,150,105,.18)}
+.wkrow .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--accent)}
+.wkrow .fill.lo{background:var(--warn)}.wkrow .fill.ok{background:var(--stand)}.wkrow .fill.hi{background:var(--danger)}
+.wkrow .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.wklegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.wklegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+/* records */
+.prlist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.pr{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:12px;padding:10px 12px}
+.pr .st{color:var(--gold);flex:0 0 auto}
+.pr .st svg{width:20px;height:20px;display:block}
+.pr .t{flex:1;min-width:0}
+.pr .t b{display:block;font-size:15px}
+.pr .t span{font-size:13px;color:var(--muted)}
+.pr .val{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.prbadge{color:var(--gold);font-weight:700;font-size:12px;margin-left:6px}
+.recgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.recgrid .tile .d{font-size:11px;color:var(--muted);margin-top:1px}
+/* finish screen */
+.done{text-align:center;padding-top:6px}
+.done .burst{width:96px;height:96px;margin:6px auto 4px;position:relative}
+.done .burst .core{position:absolute;inset:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7fe3ad,#1f9a5c);display:flex;align-items:center;justify-content:center;color:#03200f;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+.done .burst .core svg{width:36px;height:36px}
+.done .burst i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--gold);opacity:0;animation:spark .9s ease-out .15s both}
+@keyframes pop{0%{transform:scale(.2);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes spark{0%{transform:translate(0,0);opacity:1}100%{transform:translate(var(--x),var(--y));opacity:0}}
+.done h3{margin-top:4px}
+.done .tiles{text-align:left}
+.done .exsum{text-align:left;margin-top:14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.done .exsum div{display:flex;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--line);padding-bottom:6px}
+@media (prefers-reduced-motion:reduce){.done .burst .core,.done .burst i{animation:none;opacity:1}.done .burst i{display:none}}
+
+.link,.sitag,#tabs button.on,.setops button,.sslbl,.addrow,.row.ph .name,.pick .tag.ok,.row .prog.full,.bwchip.empty{color:var(--accent-text)}
+.ssgroup{border-left-color:var(--accent-text)}
 </style>
 </head>
 <body>
@@ -312,7 +383,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.13-a';
+const APP_VERSION = '2026.10.13-d';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -899,7 +970,7 @@ function startWorkout(dayIdx){
   const real=expandDay(d).map(x=>x.ghost?{...x, pu:null}:{...x, pu:x.uid}).filter(x=>!x.ph).concat((d.tmpAdd||[]).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
   A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(real.map(newActiveItem)), rest:null, inc:{}}; A.cur=Math.max(0,A.items.findIndex(x=>!x.skipped));
   ui.mode='log'; saveActive(); wake(); render();
-  const nph=d.items.length-real.length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
+  const nph=d.items.filter(x=>x.ph && !(d.tmp&&d.tmp[x.uid])).length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
 }
 function curItem(){ return A.items[A.cur] }
 function pauseWorkout(){ const c=A.clock; if(c.since){ c.acc+=Date.now()-c.since; c.since=null } c.paused=true;
@@ -915,6 +986,10 @@ function logSet(idx){
   const repsOk = ex.u ? (row.rl!==''&&row.rr!=='') : row.r!=='';
   if(!repsOk){ toast(ex.t?'Enter seconds first':'Enter reps first'); return }
   row.done=true; row.at=Date.now();
+  if(!row.warm && !row.drop && !it.ghost){ try{ const lm=loadMode(ex); const b=exBests(it.ex,null,null); A.prT=A.prT||{};
+    if(b.n && !A.prT[it.ex]){ let msg=''; if(lm==='wt'){ const w=num(row.w)||0, r=num(ex.u?Math.min(num(row.rl)||0,num(row.rr)||0):row.r)||0; const v=w>0&&r>0&&r<=20?w*(1+r/30):0; if(v>b.e1+0.05) msg=`New record · est. 1RM ${Math.round(v)} ${S.unit}`; else if(w>b.w) msg=`New record · heaviest ${w} ${S.unit}` }
+      else { const r=num(ex.u?Math.min(num(row.rl)||0,num(row.rr)||0):row.r)||0; if(r>b.reps) msg=`New record · ${r} ${ex.t?'s':'reps'}` }
+      if(msg){ A.prT[it.ex]=1; setTimeout(()=>toast('★ '+msg),50) } } }catch(e){} }
   const c=A.clock; if(!c.started){ c.started=true; c.since=Date.now(); c.paused=false } else if(c.paused){ resumeWorkout() }
   const everything = A.items.every(itemDone);
   if(row.warm){ const wr=Math.min(60, it.rest||60); if(!everything) A.rest={end:Date.now()+wr*1000, dur:wr, paused:false, chimed:false}; saveActive(); render(); return }
@@ -952,9 +1027,10 @@ function finishWorkout(){
   for(const e of s.exercises) delete S.nextLoad[e.ex];
   Object.entries(A.inc||{}).forEach(([k,v])=>{ if(v!=null) S.nextLoad[k]=v });
   S.next=(A.dayIdx+1)%S.days.length; if(S.days[A.dayIdx]){ S.days[A.dayIdx].tmp={}; S.days[A.dayIdx].tmpAdd=[] }
+  const prs=sessionPRs(s); if(prs.length) s.prs=prs;
   saveSession(s); A=null; ui.mode='overview'; ui.viewDay=null; saveActive(); saveState();
   try{ wl && wl.release() }catch(e){}
-  closeSheet(); render(); toast(`Saved · ${s.exercises.reduce((n,e)=>n+e.sets.length,0)} sets`);
+  closeSheet(); render(); openSheet({type:'done', id:s.id});
 }
 function resumeSession(id){
   const s=SESS.find(x=>x.id===id); if(!s||!s.snap) return;
@@ -1146,7 +1222,36 @@ function loadLine(it,ex){
   else t = `Load: ${bw} body weight + ${num(r.add)||0} = <b>${eff(r,ex,bw)} ${u}</b>`;
   return `<div class="loadline" id="loadline">${t}</div>`;
 }
-function bwChart(list,H=120){
+const ICO={
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/></svg>',
+  bolt:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  stack:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+};
+const tile=(ic,cls,v,k,unit='')=>`<div class="tile"><div class="ic ${cls}">${ICO[ic]}</div><div class="v">${v}${unit?`<small>${unit}</small>`:''}</div><div class="k">${k}</div></div>`;
+const RANGES=[['m1','1M',30],['m3','3M',90],['y1','1Y',365],['all','All',1e9]];
+function inRange(t,r){ const d=(RANGES.find(x=>x[0]===r)||RANGES[1])[2]; return Date.now()-t <= d*864e5 }
+function rangePills(act,cur){ return `<div class="pills">${RANGES.map(([k,l])=>`<button data-act="${act}" data-k="${k}" class="${cur===k?'on':''}">${l}</button>`).join('')}</div>` }
+// line chart: pts = [{t, v}] oldest first
+function lineChart(pts,{H=140,empty='Log at least two sessions to see a trend.',fmt=v=>Math.round(v*10)/10,label='Trend'}={}){
+  if(pts.length<2) return `<div class="small muted" style="padding:18px 4px;text-align:center">${empty}</div>`;
+  const W=330,pl=38,pr=12,pt=14,pb=20; const vs=pts.map(e=>e.v); let lo=Math.min(...vs), hi=Math.max(...vs); if(hi-lo<1e-9){ lo-=1; hi+=1 } const pad=(hi-lo)*.12; lo-=pad; hi+=pad;
+  const t0=pts[0].t, t1=pts[pts.length-1].t; const x=t=>pl+(W-pl-pr)*((t-t0)/Math.max(1,t1-t0)); const y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
+  const P=pts.map(e=>`${x(e.t).toFixed(1)},${y(e.v).toFixed(1)}`);
+  const area=`M${x(t0).toFixed(1)},${(H-pb).toFixed(1)} L${P.join(' L')} L${x(t1).toFixed(1)},${(H-pb).toFixed(1)} Z`;
+  const d=t=>new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'}); const mid=(hi+lo)/2;
+  const L=pts[pts.length-1]; const dots = pts.length<=40 ? pts.map(e=>`<circle class="ch-pt" cx="${x(e.t).toFixed(1)}" cy="${y(e.v).toFixed(1)}" r="2.6"/>`).join('') : '';
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}"><defs><linearGradient id="chFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#059669" stop-opacity=".35"/><stop offset="1" stop-color="#059669" stop-opacity="0"/></linearGradient></defs>
+    ${[hi-pad,mid,lo+pad].map(v=>`<line class="ch-grid" x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="ch-lbl" x="${pl-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${fmt(v)}</text>`).join('')}
+    <path class="ch-area" d="${area}"/><polyline class="ch-line" points="${P.join(' ')}"/>${dots}<circle cx="${x(L.t).toFixed(1)}" cy="${y(L.v).toFixed(1)}" r="5" fill="#059669" stroke="#1c1c1e" stroke-width="2"/>
+    <text class="ch-lbl" x="${pl}" y="${H-5}">${d(t0)}</text><text class="ch-lbl" x="${W-pr}" y="${H-5}" text-anchor="end">${d(t1)}</text></svg>`;
+}
+function bwChart(list,H=120){ return lineChart(list.map(e=>({t:e.t,v:e.w})),{H,label:'Body weight trend',empty:'Log at least two weigh-ins to see a trend.'}) }
+function bwChartOld(list,H=120){
   if(list.length<2) return '<div class="small muted" style="margin-top:6px">Log at least two weigh-ins to see a trend.</div>';
   const W=320,pl=36,pr=10,pt=10,pb=20; const ws=list.map(e=>e.w); let lo=Math.min(...ws), hi=Math.max(...ws); if(hi-lo<2){ const m=(hi+lo)/2; lo=m-1; hi=m+1 }
   const t0=list[0].t, t1=list[list.length-1].t; const x=t=>pl+(W-pl-pr)*((t-t0)/Math.max(1,t1-t0)); const y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
@@ -1159,6 +1264,58 @@ function bwChart(list,H=120){
     <path class="ch-area" d="${area}"/><polyline class="ch-line" points="${P.join(' ')}"/><circle class="ch-dot" cx="${x(L.t)}" cy="${y(L.w)}" r="4"/>
     <text class="ch-lbl" x="${pl}" y="${H-5}">${d(t0)}</text><text class="ch-lbl" x="${W-pr}" y="${H-5}" text-anchor="end">${d(t1)}</text></svg>`;
 }
+/* per-session numbers for one exercise (oldest first) */
+function exSeries(exId){ const ex=lib(exId), k=dbCount(ex)===2?2:1, out=[];
+  liveSessions().forEach(s=>{ if(s.type!=='lift') return; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(!e) return;
+    let e1=0,top=0,vol=0,reps=0,tot=0,best=null;
+    e.sets.forEach(x=>{ const w=num(x.w)||0, r=repOf(x,ex)||0; const v=w>0&&r>0&&r<=20 ? w*(1+r/30) : 0; if(v>e1){ e1=v; best=x } if(w>top) top=w; vol+=w*k*r; reps=Math.max(reps,r); tot+=r });
+    out.push({t:s.end, id:s.id, e1, top, vol, reps, tot, best}) });
+  return out.reverse() }
+/* your bests from sessions before a moment (exclude one session id) */
+function exBests(exId, before, skipId){ const ex=lib(exId); const b={n:0,e1:0,e1set:null,w:0,reps:0,repsAt:{},vol:0}; const k=dbCount(ex)===2?2:1;
+  liveSessions().forEach(s=>{ if(s.type!=='lift' || s.id===skipId || (before!=null && s.end>=before)) return; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(!e) return; b.n++; let vol=0;
+    e.sets.forEach(x=>{ const w=num(x.w)||0, r=repOf(x,ex)||0; const v=w>0&&r>0&&r<=20 ? w*(1+r/30) : 0; if(v>b.e1){ b.e1=v; b.e1set={w,r,t:s.end} } if(w>b.w) b.w=w; if(r>b.reps) b.reps=r; vol+=w*k*r;
+      const key=loadKey(x,ex); if(key!=null) b.repsAt[key]=Math.max(b.repsAt[key]||0,r) }); b.vol=Math.max(b.vol,vol) });
+  return b }
+/* personal records set in one session (none on the first time you do an exercise) */
+function sessionPRs(s){ const out=[]; const u=S.unit;
+  (s.exercises||[]).forEach(e=>{ const ex=lib(e.ex), lm=loadMode(ex); const b=exBests(e.ex, s.start||s.end, s.id); if(!b.n) return;
+    if(lm==='wt'){ let e1=0,bs=null,top=0; e.sets.forEach(x=>{ const w=num(x.w)||0, r=repOf(x,ex)||0; const v=w>0&&r>0&&r<=20?w*(1+r/30):0; if(v>e1){e1=v;bs=x} if(w>top) top=w });
+      if(e1>b.e1+0.05 && bs) out.push({ex:e.ex, kind:'Est. 1RM', val:`${Math.round(e1)} ${u}`, det:`${num(bs.w)}×${repOf(bs,ex)}`});
+      if(top>b.w) out.push({ex:e.ex, kind:'Heaviest weight', val:`${top} ${u}`, det:''});
+      else if(!(e1>b.e1+0.05)){ const rp=e.sets.find(x=>{ const key=loadKey(x,ex); return key!=null && b.repsAt[key]!=null && (repOf(x,ex)||0)>b.repsAt[key] }); if(rp) out.push({ex:e.ex, kind:'Rep record', val:`${num(rp.w)}×${repOf(rp,ex)}`, det:`was ${b.repsAt[loadKey(rp,ex)]} reps`}) } }
+    else { const r=Math.max(...e.sets.map(x=>repOf(x,ex)||0)); if(r>b.reps) out.push({ex:e.ex, kind:ex.t?'Longest hold':'Most reps', val:ex.t?`${r} s`:`${r} reps`, det:`was ${b.reps}`}) } });
+  return out }
+/* hard sets per muscle group over the last 7 days: main muscle counts 1, each other group ½ */
+const WK_GROUPS=[['lats','Lats',['lats']],['traps','Traps',['traps']],['bi','Biceps',['bi','brach']],['tri','Triceps',['tri']],['pecs','Pecs',['pecs','upec','lpec']],['delts','Delts',['fdelt','mdelt','rdelt']],['legs','Legs',['quads','hams','adduct','calves']],['glutes','Glutes',['glutes']],['abs','Abs',['abs','obl']],['fore','Forearms',['forearm']]];
+function wkGroupOf(m){ const g=WK_GROUPS.find(x=>x[2].includes(m)); return g?g[0]:null }
+function weeklySets(days=7){ const tot={}; WK_GROUPS.forEach(g=>tot[g[0]]=0); const since=Date.now()-days*864e5;
+  liveSessions().forEach(s=>{ if(s.type!=='lift' || s.end<since) return; s.exercises.forEach(e=>{ const ex=lib(e.ex); const n=e.sets.length; if(!n) return; const seen=new Set();
+    ex.m.forEach((m,i)=>{ const g=wkGroupOf(m); if(!g || seen.has(g)) return; seen.add(g); tot[g]+= i===0 ? n : n/2 }) }) });
+  return tot }
+function weeklyCard(){ const days=ui.wkDays||7; const t=weeklySets(days); const lo=10*days/7, hi=20*days/7, max=Math.max(hi*1.25, ...Object.values(t));
+  const rows=WK_GROUPS.map(([k,l])=>{ const v=Math.round(t[k]*2)/2; const cls = v===0?'':v<lo?'lo':v>hi?'hi':'ok';
+    return `<div class="wkrow"><span>${l}</span><div class="bar"><div class="band" style="left:${lo/max*100}%;width:${(hi-lo)/max*100}%"></div><div class="fill ${cls}" style="width:${Math.min(100,v/max*100)}%"></div></div><span class="n">${v}</span></div>` }).join('');
+  return `<div class="card wk"><div class="wkhead"><b>Sets per muscle</b>${`<div class="pills"><button data-act="wkDays" data-k="7" class="${days===7?'on':''}">7 days</button><button data-act="wkDays" data-k="14" class="${days===14?'on':''}">14 days</button></div>`}</div>
+    ${rows}<div class="wklegend"><span><i style="background:rgba(5,150,105,.35)"></i>${Math.round(lo)}–${Math.round(hi)} sets is a common growth range</span><span><i style="background:var(--warn)"></i>under</span><span><i style="background:var(--stand)"></i>in range</span><span><i style="background:var(--danger)"></i>over</span></div>
+    <div class="small muted" style="margin-top:6px">Main muscle counts as 1 set, other muscles worked count ½.</div></div>` }
+function exProgress(ex,s){ const ser=exSeries(ex.id); if(!ser.length) return ''; const lm=loadMode(ex), u=S.unit; const wt=lm==='wt';
+  const mets = wt ? [['e1','Est. 1RM',u],['top','Top weight',u],['vol','Volume',u]] : [['reps','Best set',ex.t?'s':'reps'],['tot','Total',ex.t?'s':'reps']];
+  const m = mets.find(x=>x[0]===s.metric) ? s.metric : mets[0][0]; const rg=s.range||'m3';
+  const pts=ser.filter(o=>inRange(o.t,rg) && o[m]>0).map(o=>({t:o.t,v:o[m]}));
+  const b=exBests(ex.id,null,null); const lastS=ser[ser.length-1];
+  let rec;
+  if(wt){ const vb=ser.reduce((a,o)=>o.vol>a.vol?o:a,ser[0]);
+    rec=`<div class="recgrid">
+      <div class="tile"><div class="ic g">${ICO.star}</div><div class="v">${b.e1?Math.round(b.e1):'–'}<small>${u}</small></div><div class="k">Best est. 1RM</div>${b.e1set?`<div class="d">${b.e1set.w}×${b.e1set.r} · ${fmtDate(b.e1set.t)}</div>`:''}</div>
+      <div class="tile"><div class="ic o">${ICO.up}</div><div class="v">${b.w||'–'}<small>${u}${dbCount(ex)===2?' ea':''}</small></div><div class="k">Heaviest set</div></div>
+      <div class="tile"><div class="ic b">${ICO.stack}</div><div class="v">${Math.round(vb.vol).toLocaleString()}<small>${u}</small></div><div class="k">Best session volume</div><div class="d">${fmtDate(vb.t)}</div></div>
+      <div class="tile"><div class="ic gr">${ICO.list}</div><div class="v">${ser.length}</div><div class="k">Sessions logged</div><div class="d">last ${fmtDate(lastS.t)}</div></div></div>` }
+  else rec=`<div class="recgrid"><div class="tile"><div class="ic g">${ICO.star}</div><div class="v">${b.reps||'–'}<small>${ex.t?'s':'reps'}</small></div><div class="k">${ex.t?'Longest hold':'Most reps in a set'}</div></div><div class="tile"><div class="ic gr">${ICO.list}</div><div class="v">${ser.length}</div><div class="k">Sessions logged</div><div class="d">last ${fmtDate(lastS.t)}</div></div></div>`;
+  return `<div class="sec">Progress</div><div class="chartbox"><div class="ctl"><div class="pills">${mets.map(([k,l])=>`<button data-act="exMetric" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div></div>
+    <div class="ctl" style="margin-top:6px"><span class="small muted">${pts.length?`${mets.find(x=>x[0]===m)[1]}: <b style="color:var(--ink)">${Math.round(pts[pts.length-1].v).toLocaleString()} ${mets.find(x=>x[0]===m)[2]}</b>`:''}</span>${rangePills('exRange',rg)}</div>
+    ${lineChart(pts,{H:150,fmt:v=>Math.round(v).toLocaleString(),label:ex.name+' progress',empty:'Needs two sessions in this range.'})}</div>
+    <div class="sec">Records</div>${rec}` }
 function bwStats(){ const l=bwSorted(); if(!l.length) return null; const L=l[l.length-1]; const now=Date.now();
   const wk=l.filter(e=>now-e.t<7*864e5); const avg7 = wk.length? Math.round(wk.reduce((a,e)=>a+e.w,0)/wk.length*10)/10 : null;
   const old=[...l].reverse().find(e=>now-e.t>=30*864e5) || l[0]; const ch = Math.round((L.w-old.w)*10)/10;
@@ -1226,14 +1383,14 @@ function viewHistory(){
   const cardio=ss.filter(s=>Date.now()-s.end<30*864e5).reduce((n,s)=>n+(s.cardio||0),0);
   const bst=bwStats();
   const bwCard = `<button class="card bwcard" data-act="bwOpen"><div class="top1"><div><div class="small muted" style="letter-spacing:.06em;text-transform:uppercase;font-weight:600">Body weight</div><div class="v">${bst?bst.L.w+' '+S.unit:'Not logged'}</div></div><div class="small muted" style="text-align:right">${bst?`${bst.ch>0?'+':''}${bst.ch} ${S.unit} since ${fmtDate(bst.since)}`:'Tap to log'}</div></div>${bst?bwChart(bwSorted().slice(-60),90):''}</button>`;
-  let h=topbar()+`<div class="rowline" style="justify-content:space-between"><div class="h2">History</div><button class="btn sm primary" data-act="manNew">+ Past workout</button></div>`+bwCard+`<div class="stats"><div class="stat"><div class="v">${lifts.length}</div><div class="k">Workouts</div></div><div class="stat"><div class="v">${d30}</div><div class="k">Last 30 days</div></div><div class="stat"><div class="v">${cardio}</div><div class="k">Cardio min · 30d</div></div></div>`;
+  let h=topbar()+`<div class="rowline" style="justify-content:space-between"><div class="h2">History</div><button class="btn sm primary" data-act="manNew">+ Past workout</button></div>`+bwCard+weeklyCard()+`<div class="stats"><div class="stat"><div class="v">${lifts.length}</div><div class="k">Workouts</div></div><div class="stat"><div class="v">${d30}</div><div class="k">Last 30 days</div></div><div class="stat"><div class="v">${cardio}</div><div class="k">Cardio min · 30d</div></div></div>`;
   if(!ss.length) return h+`<div class="empty">Finished workouts and rest days show up here.</div>`;
   h+=`<div class="hist">`;
   ss.forEach((s,i)=>{
     const open=ui.histOpen===s.id;
     const sets=(s.exercises||[]).reduce((n,e)=>n+e.sets.length,0);
     const vol=(s.exercises||[]).reduce((n,e)=>{ const k=dbCount(lib(e.ex))===2?2:1; return n+e.sets.reduce((m,x)=>m+(x.w||0)*k*((x.r??Math.min(x.rl||0,x.rr||0))||0),0) },0);
-    h+=`<div class="hcard"><button class="hh" data-act="histOpen" data-id="${s.id}"><div><div class="hd">${fmtDate(s.end)} · Day ${s.dayIdx+1}</div><div class="ht">${esc(s.dayName)}</div></div>
+    h+=`<div class="hcard"><button class="hh" data-act="histOpen" data-id="${s.id}"><div><div class="hd">${fmtDate(s.end)} · Day ${s.dayIdx+1}</div><div class="ht">${esc(s.dayName)}${s.prs&&s.prs.length?`<span class="prbadge">★ ${s.prs.length} PR${s.prs.length>1?'s':''}</span>`:''}</div></div>
       <div class="num" style="font-size:16px;text-align:right">${s.manual&&s.type==='lift'?'<span class="small muted" style="font-family:var(--f-body)">entered · </span>':''}${s.type==='skip'?'Skipped':s.type==='rest'?(s.cardio?s.cardio+' min cardio':'Rest'):`${fmtDur(s.dur||0)} · ${sets} sets`}</div></button>`;
     if(open){
       if(s.type==='lift'){ h+=`<div class="hx">${s.exercises.map(e=>{const ex=lib(e.ex);return `<div><div style="font-weight:600">${esc(ex.name)}${dbCount(ex)===2?' <span class="small muted" style="font-weight:500">(per dumbbell)</span>':''}</div>${e.warm&&e.warm.length?`<div class="small muted">Warm-up ${e.warm.map(x=>fmtSet(x,ex)).join(' · ')}</div>`:''}<div class="num muted">${e.sets.map(x=>fmtSetFull(x,ex)+(x.rir!=null?` @${x.rir}`:'')).join('  ·  ')}</div></div>`}).join('')}${vol?`<div class="small muted">Volume ${Math.round(vol).toLocaleString()} ${S.unit}</div>`:''}</div>` }
@@ -1371,7 +1528,8 @@ function renderSheet(){
     h=`${nameBlock}${angle}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
      <div class="chips">${ex.m.map((m,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[m]||m}</span>`).join('')}</div>
      ${missing(ex).length?`<div class="needs" style="padding-top:10px"><span>You don't have: ${missing(ex).map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
-     <div class="sec">History${best?` · best ${best} ${S.unit}`:''}</div>${hist.length?`<div class="hx stack">${hist.map(o=>`<div><div class="small muted">${fmtDate(o.x.end)}</div><div class="num">${o.e.sets.map(z=>fmtSetFull(z,ex)).join('  ·  ')}</div></div>`).join('')}</div>`:'<div class="small muted">Not logged yet.</div>'}
+     ${exProgress(ex,s)}
+     <div class="sec">Recent sessions</div>${hist.length?`<div class="hx stack">${hist.map(o=>`<div><div class="small muted">${fmtDate(o.x.end)}</div><div class="num">${o.e.sets.map(z=>fmtSetFull(z,ex)).join('  ·  ')}</div></div>`).join('')}</div>`:'<div class="small muted">Not logged yet.</div>'}
      ${ui.mode!=='log'?`<div class="sec">Add to a day</div><div class="rowline"><select id="toDay" style="flex:1">${S.days.map((d,i)=>`<option value="${i}">Day ${i+1} · ${esc(d.name)}</option>`).join('')}</select><button class="btn sm primary" data-act="addToDay" data-ex="${ex.id}">Add</button></div>`:''}
      ${S.custom[ex.id]?`<div style="margin-top:14px"><button class="btn danger" data-act="customDel" data-ex="${ex.id}">Delete this custom exercise</button></div>`:''}`;
   }
@@ -1389,9 +1547,20 @@ function renderSheet(){
     h=`<h3>Body weight</h3><div class="shsub">Counted in pull-ups, dips and other body-weight exercises.</div>
      <div class="rowline" style="margin-top:12px;flex-wrap:nowrap"><input id="bwIn" inputmode="decimal" placeholder="${st?st.L.w:'Weight'}" style="flex:1;font-family:var(--f-num);font-size:20px;text-align:center" aria-label="Body weight"><span class="muted">${S.unit}</span><input id="bwDate" type="date" value="${ds}" style="width:auto;flex:1" aria-label="Date"></div>
      <div style="margin-top:10px"><button class="btn primary" data-act="bwLog">Log weight</button></div>
-     ${st?`<div class="stats"><div class="stat"><div class="v">${st.L.w}</div><div class="k">Latest</div></div><div class="stat"><div class="v">${st.avg7??'–'}</div><div class="k">7-day avg</div></div><div class="stat"><div class="v">${st.ch>0?'+':''}${st.ch}</div><div class="k">Change</div></div></div>`:''}
-     ${bwChart(l.slice(-90))}
+     ${(()=>{ const rg=s.range||'m3'; const L=l.filter(e=>inRange(e.t,rg)); if(!l.length) return ''; const ws=L.map(e=>e.w);
+        return `<div class="tiles">${tile('list','b',L.length,'entries')}${tile('down','gr',ws.length?Math.min(...ws):'–','min',S.unit)}${tile('up','o',ws.length?Math.max(...ws):'–','max',S.unit)}</div>
+        <div class="chartbox"><div class="ctl"><span class="small muted">${st?`7-day avg ${st.avg7??'–'} · ${st.ch>0?'+':''}${st.ch} ${S.unit} in 30 days`:''}</span>${rangePills('bwRange',rg)}</div>${bwChart(L,150)}</div>` })()}
      ${l.length?`<div class="sec">Recent</div><div class="bwlist">${[...l].reverse().slice(0,12).map(e=>`<div><span>${fmtDate(e.t)}</span><span class="num" style="font-size:17px;font-weight:700">${e.w} ${S.unit}</span><button data-act="bwDel" data-t="${e.t}">Remove</button></div>`).join('')}</div>`:''}`;
+  }
+  else if(s.type==='done'){ const x=liveSessions().find(z=>z.id===s.id); if(!x){ closeSheet(); return }
+    const sets=x.exercises.reduce((n,e)=>n+e.sets.length,0); const vol=x.exercises.reduce((n,e)=>{ const ex=lib(e.ex), k=dbCount(ex)===2?2:1; return n+e.sets.reduce((m,z)=>m+(loadMode(ex)==='wt'?(num(z.w)||0)*k*(repOf(z,ex)||0):0),0) },0);
+    const prs=x.prs||[]; const sp=Array.from({length:10},(_,i)=>{ const a=i/10*Math.PI*2; return `<i style="--x:${Math.round(Math.cos(a)*54)}px;--y:${Math.round(Math.sin(a)*54)}px"></i>` }).join('');
+    h=`<div class="done"><div class="burst">${prs.length?sp:''}<div class="core">${prs.length?ICO.star:ICO.check}</div></div>
+      <h3>${prs.length?`${prs.length} new record${prs.length>1?'s':''}!`:'Workout complete'}</h3><div class="shsub">${esc(x.dayName)} · Day ${x.dayIdx+1}</div>
+      <div class="tiles">${tile('clock','b',fmtDur(x.dur||0),'time')}${tile('list','gr',sets,'sets')}${tile('stack','o',vol>=10000?Math.round(vol/100)/10+'k':Math.round(vol).toLocaleString(),'volume',S.unit)}</div>
+      ${prs.length?`<div class="sec" style="text-align:left">Personal records</div><div class="prlist">${prs.map(p=>`<div class="pr"><span class="st">${ICO.star}</span><div class="t"><b>${esc(lib(p.ex).name)}</b><span>${p.kind}${p.det?' · '+esc(p.det):''}</span></div><span class="val">${esc(p.val)}</span></div>`).join('')}</div>`:''}
+      <div class="exsum">${x.exercises.map(e=>{ const ex=lib(e.ex); return `<div><span>${esc(ex.name)}</span><span class="num muted">${e.sets.map(z=>fmtSet(z,ex)).join(', ')}</span></div>` }).join('')}</div>
+      <div class="stack" style="margin-top:16px"><button class="btn primary" data-act="closeSheet">Done</button></div></div>`;
   }
   else if(s.type==='restore'){
     h=`<h3>Restore from backup</h3><div class="shsub">Paste a backup copied from this app. Workouts are merged; the plan and equipment are replaced.</div><textarea id="restoreTxt" style="margin-top:10px" placeholder="Paste backup here"></textarea><div class="stack" style="margin-top:10px"><button class="btn primary" data-act="restoreDo">Restore</button></div>`;
@@ -1507,6 +1676,10 @@ const H = {
   set1Toggle:()=>{ ui.sheet.set1=!ui.sheet.set1; renderSheet() },
   missing:el=>openSheet({type:'missing', day:+el.dataset.i}),
   missingAll:()=>openSheet({type:'missing', all:true}),
+  exMetric:el=>{ ui.sheet.metric=el.dataset.k; renderSheet() },
+  exRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
+  bwRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
+  wkDays:el=>{ ui.wkDays=+el.dataset.k; const y=window.scrollY; render(); window.scrollTo(0,y) },
   editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets;
     openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||1, dropPct:it.dropPct||20}) },
   edSt:el=>{ keepEd(); const s=ui.sheet; s.st=el.dataset.k; if(s.st==='pyr'){ if(s.sets<3) s.sets=3; if(s.pct.length!==s.sets) s.pct=pyrDefault(s.sets) } renderSheet() },
