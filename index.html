@@ -370,6 +370,39 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 
 .link,.sitag,#tabs button.on,.setops button,.sslbl,.addrow,.row.ph .name,.pick .tag.ok,.row .prog.full,.bwchip.empty{color:var(--accent-text)}
 .ssgroup{border-left-color:var(--accent-text)}
+
+:root{--drop:#c97a76;--drop-soft:rgba(201,122,118,.14);--ss:#7d9cc8;--ss-soft:rgba(125,156,200,.15);--pyr:#d4a72c;--pyr-soft:rgba(212,167,44,.14)}
+.ssgroup{border-left-color:var(--ss)!important}
+.sslbl{color:var(--ss)!important}
+.ssbar .sslbl{color:var(--ss)!important}
+.ssbar button.on{border-color:var(--ss)!important;background:var(--ss-soft)!important}
+.sstag{color:var(--ss);font-weight:700}
+.droptag{color:var(--drop);font-weight:700}
+.chip.ss{background:transparent;border:1px solid var(--ss)!important;color:var(--ss)}
+.chip.dr{background:transparent;border:1px solid var(--drop)!important;color:var(--drop)}
+.setrow.drop{background:var(--drop-soft)}
+.setrow.drop .sn{color:var(--drop)!important}
+.setrow.drop.dmid{border-bottom-color:transparent}
+.setrow.drop .sn{padding-left:6px}
+.setrow input.sug,.setrow select.sug{color:var(--accent-text);box-shadow:inset 0 0 0 1.5px var(--accent);font-weight:700}
+.wcell{display:flex;flex-direction:column;align-items:stretch;gap:1px;min-width:0}
+.wcell small{font-size:10px;color:var(--muted);text-align:center;font-weight:600;line-height:1.1}
+
+/* drop-set / superset cards: color on the left fading to gray */
+.row.isdrop{background:linear-gradient(90deg,rgba(201,122,118,.42) 0%,rgba(201,122,118,.16) 40%,var(--surface) 85%)}
+.row.isss{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(125,156,200,.16) 40%,var(--surface) 85%)}
+.row.isss.isdrop{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(201,122,118,.28) 35%,var(--surface) 85%)}
+.exhead.isdrop,.exhead.isss{border-radius:16px;padding:12px 12px 12px 14px;margin-top:8px}
+.exhead.isdrop{background:linear-gradient(90deg,rgba(201,122,118,.42) 0%,rgba(201,122,118,.16) 45%,var(--surface) 90%)}
+.exhead.isss{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(125,156,200,.16) 45%,var(--surface) 90%)}
+.exhead.isss.isdrop{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(201,122,118,.28) 40%,var(--surface) 90%)}
+
+.pyrtag{color:var(--pyr);font-weight:700}
+.chip.py{background:transparent;border:1px solid var(--pyr)!important;color:var(--pyr)}
+.row.ispyr{background:linear-gradient(90deg,rgba(212,167,44,.42) 0%,rgba(212,167,44,.16) 40%,var(--surface) 85%)}
+.row.isss.ispyr{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(212,167,44,.28) 35%,var(--surface) 85%)}
+.exhead.ispyr{border-radius:16px;padding:12px 12px 12px 14px;margin-top:8px;background:linear-gradient(90deg,rgba(212,167,44,.42) 0%,rgba(212,167,44,.16) 45%,var(--surface) 90%)}
+.exhead.isss.ispyr{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(212,167,44,.28) 40%,var(--surface) 90%)}
 </style>
 </head>
 <body>
@@ -383,7 +416,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.13-d';
+const APP_VERSION = '2026.10.15-c';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -897,11 +930,19 @@ function histAt(exId,key,i,pool){ if(key==null) return null; const ex=lib(exId);
   for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId); if(!e) continue; const L=e[pool||'sets']; if(!L||!L.length) continue;
     const m=L.filter(x=>loadKey(x,ex)===key); if(!m.length) continue; const si=L[i]; return si && loadKey(si,ex)===key ? si : m[Math.min(i,m.length-1)] } return null }
 function fillReps(row,ex,i,pool){ const h=histAt(ex.id,loadKey(row,ex),i,pool); const hv=v=>(v==null||v==='')?'':String(v);
-  if(ex.u){ row.rl=h?hv(h.rl!=null?h.rl:h.r):''; row.rr=h?hv(h.rr!=null?h.rr:h.r):''; row.r='' } else { row.r=h?hv(repOf(h,ex)||''):''; row.rl=''; row.rr='' }
+  // working sets: aim for one more rep than last time at this weight (shown in green)
+  const plus = (!pool||pool==='sets') && h && !ex.t ? 1 : 0; const up=v=>{ const n=num(v); return n!=null&&n>0 ? String(n+plus) : hv(v) };
+  if(ex.u){ row.rl=h?up(h.rl!=null?h.rl:h.r):''; row.rr=h?up(h.rr!=null?h.rr:h.r):''; row.r='' } else { row.r=h?up(repOf(h,ex)||''):''; row.rl=''; row.rr='' }
+  if(!pool||pool==='sets') row.sugR = !!(plus && h);
   if(h) row.prev=fmtSet(h,ex); return row }
 /* one-rep max: your own number, or estimated (Epley) from your recent working sets */
-function roundW(x){ const st=wStep(); return Math.max(st, Math.round(x/st)*st) }
+const STEP_DEF={lb:{db:2.5,bb:5,mach:10},kg:{db:1,bb:2.5,mach:5}};
+function stepKind(ex){ return !ex ? 'bb' : ex.cat==='db' ? 'db' : ex.cat==='mach' ? 'mach' : 'bb' }
+function stepFor(ex){ const k=stepKind(ex); const u=S.unit==='kg'?'kg':'lb'; const v=S.steps&&S.steps[u]&&num(S.steps[u][k]); return v>0 ? v : STEP_DEF[u][k] }
+function roundW(x,ex){ const st=ex?stepFor(ex):wStep(); return Math.max(st, Math.round(Math.round(x/st)*st*100)/100) }
+const fmtW = v => (Math.round(v*100)/100).toString();
 function estRM(exId){ const ex=lib(exId); if(loadMode(ex)!=='wt') return null; let best=null, n=0;
+  if(A) A.items.forEach(it=>{ if(it.ex!==exId || it.skipped) return; workRows(it).forEach(x=>{ if(!x.done) return; const w=num(x.w), r=ex.u?Math.min(num(x.rl)||0,num(x.rr)||0):num(x.r); if(w>0 && r>0 && r<=20){ const v=w*(1+r/30); if(!best||v>best.v) best={v,w,r,date:Date.now(),live:true} } }) });
   for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(!e) continue;
     e.sets.forEach(x=>{ const w=num(x.w), r=repOf(x,ex); if(w>0 && r>0 && r<=20){ const v=w*(1+r/30); if(!best||v>best.v) best={v,w,r,date:s.end} } }); if(++n>=6) break }
   return best }
@@ -912,21 +953,33 @@ const WARM_PCT=[50,60,70];
 function pyrDefault(n){ const T={3:[70,77,85],4:[65,72,80,85],5:[60,68,75,80,85],6:[60,65,70,75,80,85]}; if(T[n]) return T[n].slice(); return Array.from({length:n},(_,i)=>Math.round(60+25*i/(n-1))) }
 function pyrPcts(it){ const n=it.sets; const p=Array.isArray(it.pct)&&it.pct.length===n ? it.pct : pyrDefault(Math.max(3,n)); return p.slice(0,n) }
 function repsForPct(p){ return p ? Math.max(1,Math.round(30*(100/p-1))) : null }
-function dropRows(it,from){ const ex=lib(it.ex), n=Math.max(1,Math.min(3,it.drops||1)), dp=(it.dropPct||20)/100; const out=[]; let w=num(from&&from.w);
-  for(let k=1;k<=n;k++){ w = w ? roundW(w*(1-dp)) : null; const r={drop:k, autoW:true, autoR:true, w:w?String(w):'', band:from?from.band||'':'', add:from&&from.add!=null?String(from.add):'', r:'',rl:'',rr:'',rir:'',done:false,prev:''}; out.push(fillReps(r,ex,k-1,'drops')) } return out }
-function refreshDrops(it){ let prev=it.rows[lastWorkIdx(it)]; const dp=(it.dropPct||20)/100; it.rows.forEach(r=>{ if(!r.drop) return; if(r.autoW && !r.done){ const w=num(prev&&prev.w); r.w = w?String(roundW(w*(1-dp))):'' } prev=r }) }
+const MAX_DROPS=5;
+function newDrop(it,from,k){ return {drop:k, of:from.rid, autoW:true, autoR:true, w:'', band:from.band||'', add:from.add!=null?String(from.add):'', r:'',rl:'',rr:'',rir:'',done:false,prev:''} }
+// every working set gets its own drops, listed right under it (D1, D2 ...)
+function rebuildDrops(it){ const ex=lib(it.ex); const warm=it.rows.filter(r=>r.warm), work=it.rows.filter(r=>!r.warm&&!r.drop), drops=it.rows.filter(r=>r.drop);
+  work.forEach(r=>{ if(!r.rid) r.rid=uid() }); const n = it.st==='drop' ? Math.max(1,Math.min(MAX_DROPS,it.drops||2)) : 0; const out=[...warm];
+  work.forEach((w,wi)=>{ out.push(w); let mine=drops.filter(d=>d.of===w.rid); if(!mine.length && wi===work.length-1) mine=drops.filter(d=>!d.of||!work.some(x=>x.rid===d.of));
+    mine.sort((a,b)=>a.drop-b.drop); const res=[];
+    for(let k=1;k<=Math.max(n, ...mine.filter(d=>d.done).map(d=>d.drop), 0);k++){ let d=mine.find(x=>x.drop===k); if(d && !d.done && k>n) continue; if(!d){ if(k>n) continue; d=newDrop(it,w,k) } d.of=w.rid; res.push(d) }
+    out.push(...res) });
+  it.rows=out; refreshDrops(it) }
+function refreshDrops(it){ const ex=lib(it.ex); const dp=(it.dropPct||20)/100; let prev=null, wi=-1;
+  it.rows.forEach(r=>{ if(r.warm) return; if(!r.drop){ prev=r; wi++; return }
+    if(r.autoW && !r.done){ const w=num(prev&&prev.w); r.w = w?String(roundW(w*(1-dp),ex)):'' }
+    if(r.autoR!==false && !r.done) fillReps(r,ex,wi*MAX_DROPS+r.drop-1,'drops'); prev=r }) }
+function parentOf(it,row){ return row.drop ? it.rows.find(r=>r.rid && r.rid===row.of) : row }
 // apply set style (straight / pyramid / drop) to a workout in progress
 function applyStyle(it){ const ex=lib(it.ex);
   it.rows=it.rows.filter(r=>!r.drop || r.done);
   const wr=workRows(it);
-  if(it.st==='pyr'){ const p=pyrPcts({...it, sets:wr.length}); const o=ormFor(it); wr.forEach((r,i)=>{ r.pct=p[i]; if(!r.done && o && loadMode(ex)==='wt'){ r.w=String(roundW(o*p[i]/100)); if(r.autoR!==false) fillReps(r,ex,i) } }) }
+  if(it.st==='pyr'){ const p=pyrPcts({...it, sets:wr.length}); const o=ormFor(it); wr.forEach((r,i)=>{ r.pct=p[i]; if(!r.done && o && loadMode(ex)==='wt'){ r.w=String(roundW(o*p[i]/100,ex)); if(r.autoR!==false) fillReps(r,ex,i) } }) }
   else wr.forEach(r=>{ delete r.pct });
-  if(it.st==='drop' && !it.rows.some(r=>r.drop)){ const li=lastWorkIdx(it); it.rows.splice(li+1,0,...dropRows(it,it.rows[li])) } }
-function insWork(it,row){ it.rows.splice(lastWorkIdx(it)+1,0,row) }
+  rebuildDrops(it) }
+function insWork(it,row){ row.rid=uid(); it.rows.push(row); rebuildDrops(it) }
 function wStep(){ return S.unit==='kg'?2.5:5 }
 function warmRow(it,k,firstWork,last){
   const ex=lib(it.ex), lm=loadMode(ex); const lw = last && last.warm ? last.warm[k] : null;
-  let w=''; if(lm==='wt'){ const o=ormFor({...it, rows:firstWork?[firstWork]:[]}); if(o) w=roundW(o*WARM_PCT[Math.min(k,2)]/100) }
+  let w=''; if(lm==='wt'){ const o=ormFor({...it, rows:firstWork?[firstWork]:[]}); if(o) w=roundW(o*WARM_PCT[Math.min(k,2)]/100,ex) }
   const row={warm:true, autoW:true, autoR:true, pct:WARM_PCT[Math.min(k,2)], w:String(w), band: lw&&lw.band ? lw.band : (firstWork?firstWork.band:''), add: lm==='add' ? String(lw&&lw.add!=null?lw.add:0) : '',
     r:'', rl:'', rr:'', rir:'', done:false, prev:''};
   if(lm==='wt') return fillReps(row,ex,k,'warm');
@@ -939,17 +992,18 @@ function prefill(it){
     const ls = last ? (last.sets[i] || last.sets[last.sets.length-1]) : null;
     const lm = loadMode(ex);
     let w = typeof nl==='number' ? nl : (ls && num(ls.w)!=null ? num(ls.w) : '');
-    if(pcts && lm==='wt' && orm) w=roundW(orm*pcts[i]/100);
+    if(pcts && lm==='wt' && orm) w=roundW(orm*pcts[i]/100,ex);
     let band = (nl && typeof nl==='object') ? nl.band : (ls && ls.band ? ls.band : ''); if(lm==='assist' && !band) band='none';
     const add = (lm==='add' && typeof nl==='number') ? nl : (ls && ls.add!=null ? ls.add : '');
     // reps: what you did at THIS weight before; blank if you've never used it
     const row={w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:'', rl:'', rr:'', rir:'', done:false, autoR:true, prev: ls?fmtSet(ls,ex):''};
     if(pcts) row.pct=pcts[i];
-    rows.push(fillReps(row,ex,i));
+    if(nl!=null && typeof nl==='number' && (lm==='wt'||lm==='add')) row.sugW=true; else if(nl && typeof nl==='object' && (lm==='assist'||lm==='band')) row.sugW=true;
+    row.rid=uid(); rows.push(fillReps(row,ex,i));
   }
-  if(it.st==='drop' && rows.length) rows.push(...dropRows(it,rows[rows.length-1]));
+
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
-  return warm.concat(rows);
+  const tmp={...it, rows:warm.concat(rows)}; rebuildDrops(tmp); return tmp.rows;
 }
 function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
@@ -968,7 +1022,8 @@ function startWorkout(dayIdx){
   const d=S.days[dayIdx];
   if(!d.items.length){ toast('Add an exercise first'); return }
   const real=expandDay(d).map(x=>x.ghost?{...x, pu:null}:{...x, pu:x.uid}).filter(x=>!x.ph).concat((d.tmpAdd||[]).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
-  A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(real.map(newActiveItem)), rest:null, inc:{}}; A.cur=Math.max(0,A.items.findIndex(x=>!x.skipped));
+  const its=real.map(newActiveItem); its.forEach((x,i)=>{ const n=its[i+1]; if(x.ghost && n && !n.ghost && n.pu===x.goalOf) n.par=x.uid });
+  A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(its), rest:null, inc:{}}; A.cur=Math.max(0,A.items.findIndex(x=>!x.skipped));
   ui.mode='log'; saveActive(); wake(); render();
   const nph=d.items.filter(x=>x.ph && !(d.tmp&&d.tmp[x.uid])).length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
 }
@@ -987,7 +1042,7 @@ function logSet(idx){
   if(!repsOk){ toast(ex.t?'Enter seconds first':'Enter reps first'); return }
   row.done=true; row.at=Date.now();
   if(!row.warm && !row.drop && !it.ghost){ try{ const lm=loadMode(ex); const b=exBests(it.ex,null,null); A.prT=A.prT||{};
-    if(b.n && !A.prT[it.ex]){ let msg=''; if(lm==='wt'){ const w=num(row.w)||0, r=num(ex.u?Math.min(num(row.rl)||0,num(row.rr)||0):row.r)||0; const v=w>0&&r>0&&r<=20?w*(1+r/30):0; if(v>b.e1+0.05) msg=`New record · est. 1RM ${Math.round(v)} ${S.unit}`; else if(w>b.w) msg=`New record · heaviest ${w} ${S.unit}` }
+    if(b.n && !A.prT[it.ex]){ let msg=''; if(lm==='wt'){ const w=num(row.w)||0, r=num(ex.u?Math.min(num(row.rl)||0,num(row.rr)||0):row.r)||0; const v=w>0&&r>0&&r<=20?w*(1+r/30):0; if(v>b.e1+0.05) msg=`New record · est. 1RM ${fmtW(roundW(v,ex))} ${S.unit}`; else if(w>b.w) msg=`New record · heaviest ${w} ${S.unit}` }
       else { const r=num(ex.u?Math.min(num(row.rl)||0,num(row.rr)||0):row.r)||0; if(r>b.reps) msg=`New record · ${r} ${ex.t?'s':'reps'}` }
       if(msg){ A.prT[it.ex]=1; setTimeout(()=>toast('★ '+msg),50) } } }catch(e){} }
   const c=A.clock; if(!c.started){ c.started=true; c.since=Date.now(); c.paused=false } else if(c.paused){ resumeWorkout() }
@@ -995,9 +1050,9 @@ function logSet(idx){
   if(row.warm){ const wr=Math.min(60, it.rest||60); if(!everything) A.rest={end:Date.now()+wr*1000, dur:wr, paused:false, chimed:false}; saveActive(); render(); return }
   // position within working sets (warm-ups count as "before set 1")
   // drop sets: go straight into the next drop, no rest
-  const nxt=it.rows.find(r=>!r.done); if(nxt && nxt.drop && (row.drop || it.rows.indexOf(row)===lastWorkIdx(it))){ saveActive(); render(); return }
-  const prog = x => { const i=x.rows.findIndex(r=>!r.done); if(i<0) return null; return i - x.rows.filter(r=>r.warm).length };
-  const wi = row.drop ? workRows(it).length-1 : workRows(it).indexOf(row);
+  const nx=it.rows[idx+1]; const par=parentOf(it,row); if(nx && nx.drop && !nx.done && par && nx.of===par.rid){ saveActive(); render(); return }
+  const prog = x => { const i=x.rows.findIndex(r=>!r.done); if(i<0) return null; const r=x.rows[i]; if(r.warm) return -1; const p=parentOf(x,r); return workRows(x).indexOf(p) };
+  const wi = workRows(it).indexOf(par);
   const p = partnerOf(A.items,it); const pOk = p && !p.skipped;
   if(pOk){
     const pi=prog(p);
@@ -1022,7 +1077,7 @@ function finishWorkout(){
       const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:rirStr(r.rir)||null}; if(r.pct) o.pct=r.pct;
         if(lm==='assist'||lm==='band') o.band=r.band||'none'; if(lm==='add') o.add=num(r.add)||0; if((lm==='assist'||lm==='add') && bw!=null) o.bw=bw; return o };
       const keep = r => r.done && !r.skip && !isZero(r,ex);
-      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(rec); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
+      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(r=>{ const o=rec(r); o.set=workRows(it).indexOf(parentOf(it,r)); o.k=r.drop; return o }); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
     snap:clone(A)};
   for(const e of s.exercises) delete S.nextLoad[e.ex];
   Object.entries(A.inc||{}).forEach(([k,v])=>{ if(v!=null) S.nextLoad[k]=v });
@@ -1110,16 +1165,18 @@ function viewTrain(){
   else if(A) h+=`<button class="btn primary" disabled>Finish the current workout first</button>`;
   else h+=`<button class="btn primary" data-act="start" data-i="${vd}">Start workout</button>`;
   if(!A && !editing && vd!==S.next) h+=`<div class="note"><button class="link" data-act="makeNext" data-i="${vd}">Make Day ${vd+1} next in the rotation</button></div>`;
+  { const ls=liveSessions().find(x=>x.type==='lift' && x.dayIdx===vd); if(ls && !editing) h+=`<div class="note">Last done ${fmtDate(ls.end)} · <button class="link" data-act="manEdit" data-id="${ls.id}">Fix that workout</button></div>` }
   if(!A && !editing && vd===S.next) h+=`<div class="note"><button class="link" data-act="skipDayAsk">${ui.skipArm?'Tap again to skip Day '+(vd+1):'Skip Day '+(vd+1)+' today'}</button></div>`;
   const miss = items.filter(it=>!it.ph && !it.ghost && !avail(lib(it.ex)));
   if(miss.length) h+=`<div class="needs" style="margin-top:10px"><span>${miss.length} need equipment you don't have</span><button class="link" data-act="missing" data-i="${vd}">Swap</button></div>`;
+  if(live || editing) h+=`<div class="rowline" style="justify-content:flex-end;margin-top:10px"><button class="btn sm ${ui.reorder?'primary':'ghost'}" data-act="reorderToggle">${ui.reorder?'Done reordering':'Reorder'}</button></div>`;
   h+=`<div class="list" id="dlist" data-ctx="${live?'A':'P'}" data-day="${vd}">`;
   items.forEach((it,ix)=>{
     const nb=d=>{ let j=ix+d; while(items[j] && items[j].ghost) j+=d; return items[j] };
     const opens = it.ss && nb(1) && nb(1).ss===it.ss && !(nb(-1) && nb(-1).ss===it.ss);
     const closes = it.ss && nb(-1) && nb(-1).ss===it.ss;
     if(opens) h+=`<div class="ssgroup"><div class="sslbl">Superset</div>`;
-    const canDrag = live || editing; const hdl = canDrag ? `<span class="handle" data-drag="1" aria-label="Drag to reorder">${ICON.drag}</span>` : '';
+    const canDrag = (live || editing) && ui.reorder; const hdl = canDrag ? `<span class="handle" data-drag="1" aria-label="Drag to reorder">${ICON.drag}</span>` : '';
     if(it.ph){ h+=`<div class="row ph ${canDrag?'':'fixed'}" data-uid="${it.uid}">${hdl}<button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">Pick: ${esc(it.ph)}</div><div class="meta">${targetText(it)} · tap to choose</div></button></div>`; if(closes) h+=`</div>`; return }
     if(it.ghost){ const ge=lib(it.ex); const si=live ? A.items.find(x=>x.pu===it.goalOf) : effItem(day,day.items.find(x=>x.uid===it.goalOf)||it);
       h+=`<div class="row ghost ${canDrag?'':'fixed'}" data-uid="${it.uid}">${hdl}<button class="body" data-act="${live?'rowMenu':'ghostMenu'}" data-uid="${it.uid}" data-goal="${it.goalOf}"><div class="name">${esc(ge.name)}</div><div class="meta">Goal · using ${esc(si?lib(si.ex).name:'a stand-in')} for now</div></button><span class="prog">${live&&!it.skipped?'Doing it':'Skipped'}</span></div>`;
@@ -1128,9 +1185,10 @@ function viewTrain(){
     let right='';
     if(live){ const wr=workRows(it); const d=wr.filter(r=>r.done).length; right= it.skipped ? `<span class="prog skip">Skipped</span>` : `<span class="prog ${d===wr.length?'full':''}">${d}/${wr.length}</span>` }
     const lastTxt = last ? ` · <span class="num">${last.sets.map(s=>fmtSet(s,ex)).join(', ')}</span>` : '';
-    const isSI = it.standIn || (live && it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu));
-    h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''}" data-uid="${it.uid}">${hdl}
-      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="sitag">Stand-in: '+esc(lib(it.sub).name)+'</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${it.st==='pyr'?'<span class="armtag">Pyramid</span> · ':it.st==='drop'?'<span class="armtag">Drop set</span> · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+    const isSI = it.standIn || (live && (it.par || (it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu))));
+    h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''} ${it.st==='drop'?'isdrop':''} ${it.st==='pyr'?'ispyr':''} ${it.ss?'isss':''}" data-uid="${it.uid}">${hdl}
+      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="tmptag">Goal</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${it.st==='pyr'?'<span class="pyrtag">Pyramid</span> · ':it.st==='drop'?'<span class="droptag">Drop set</span> · ':''}${it.ss?'<span class="sstag">Superset</span> · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+    if(editing && it.sub && !it.ph){ const se=lib(it.sub); h+=`<div class="row standin fixed" data-uid="${it.uid}"><button class="body" data-act="standMenu" data-uid="${it.uid}"><div class="name">${esc(se.name)}</div><div class="meta"><span class="sitag">Stand-in</span> · tap to change or stop using it</div></button></div>` }
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
@@ -1149,10 +1207,10 @@ function viewLog(){
   h+=`<div class="dots">${A.items.map((x,i)=>`<button data-act="jump" data-i="${i}" class="${i===A.cur?'cur':x.skipped?'skip':x.rows.every(r=>r.done)&&x.rows.length?'done':''}" aria-label="Exercise ${i+1}"></button>`).join('')}</div>`;
   const pr=partnerOf(A.items,it);
   if(pr){ const g=groupIdx(A.cur); h+=`<div class="ssbar"><div class="sslbl">Superset · 10 s to switch, full rest after both</div><div class="in">${g.map(j=>{const x=A.items[j];return `<button data-act="jump" data-i="${j}" class="${j===A.cur?'on':''}">${esc(lib(x.ex).name)}<span>${x.skipped?'Skipped':x.rows.filter(r=>r.done).length+'/'+x.rows.length}</span></button>`}).join('')}</div></div>` }
-  h+=`<div class="exhead"><div><div class="small muted">Exercise ${A.cur+1} of ${A.items.length}</div><h2>${esc(ex.name)}</h2>
+  h+=`<div class="exhead ${it.st==='drop'?'isdrop':''} ${it.st==='pyr'?'ispyr':''} ${pr?'isss':''}"><div><div class="small muted">Exercise ${A.cur+1} of ${A.items.length}</div><h2>${esc(ex.name)}</h2>
     <div class="exmeta"><span class="num">${targetText(it)}</span> · rest ${fmtRest(it.rest)}</div>${it.focus?`<div class="small muted" style="margin-top:3px">Focus: ${esc(it.focus)}</div>`:''}</div></div>
-    <div class="chips">${it.emph?`<span class="chip ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>`:''}${armLabel(ex)?`<span class="chip pri">${armLabel(ex)}</span>`:''}${ex.m.map((mm,i)=>`<span class="chip ${i===0&&!armLabel(ex)?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
-    <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Sets & rest</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
+    <div class="chips">${pr?'<span class="chip ss">Superset</span>':''}${it.st==='drop'?`<span class="chip dr">Drop set · ${it.drops||2} per set</span>`:it.st==='pyr'?'<span class="chip py">Pyramid</span>':''}${it.emph?`<span class="chip ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>`:''}${armLabel(ex)?`<span class="chip pri">${armLabel(ex)}</span>`:''}${ex.m.map((mm,i)=>`<span class="chip ${i===0&&!armLabel(ex)?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
+    <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Edit</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
   const cur = it.rows.findIndex(r=>!r.done);
   const repLbl = m==='time'?'Sec':'Reps';
   const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : lm==='bw' ? 'Load' : (dbCount(ex)===2 ? unit+' ea' : unit);
@@ -1163,10 +1221,10 @@ function viewLog(){
   it.rows.forEach((r,i)=>{
     const rir=rirSel(`data-set="${i}" data-f="rir"`, r.rir);
     const pc=pctOf(it,r), tp=r.pct&&!r.warm ? repsForPct(r.pct) : null;
-    const reps = ex.u ? `<input data-set="${i}" data-f="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input data-set="${i}" data-f="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">`
-                     : `<input data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" placeholder="${m==='fail'?'max':tp&&m==='reps'?'~'+tp:''}" aria-label="${repLbl}">`;
-    h+=`<div class="setrow ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}</span><span class="pv">${esc(r.prev||'—')}</span>
-      ${wCell(r,i,lm)}${reps}${rir}
+    const reps = ex.u ? `<input class="${r.sugR?'sug':''}" data-set="${i}" data-f="rl" inputmode="numeric" value="${esc(r.rl)}" aria-label="Left"><input class="${r.sugR?'sug':''}" data-set="${i}" data-f="rr" inputmode="numeric" value="${esc(r.rr)}" aria-label="Right">`
+                     : `<input class="${r.sugR?'sug':''}" data-set="${i}" data-f="r" inputmode="numeric" value="${esc(r.r)}" placeholder="${m==='fail'?'max':tp&&m==='reps'?'~'+tp:''}" aria-label="${repLbl}">`;
+    h+=`<div class="setrow ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${r.drop&&it.rows[i+1]&&it.rows[i+1].drop?'dmid':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}</span><span class="pv">${esc(r.prev||'—')}</span>
+      ${wCell(r,i,lm,ex)}${reps}${rir}
       <button class="check" data-act="logSet" data-i="${i}" aria-label="Log set ${i+1}">${ICON.check}</button></div>`;
   });
   h+=`</div>${loadLine(it,ex)}${ormLine(it,ex)}<div class="setops"><button data-act="addSet">+ Set</button><button data-act="addWarm">+ Warm-up</button>${it.rows.some(r=>r.warm&&!r.done)?'<button data-act="rmWarm">− Warm-up</button>':''}${cur>=0?'<button data-act="skipSet">Skip set</button>':''}${workRows(it).length>1&&!it.rows[lastWorkIdx(it)].done?'<button data-act="rmSet">− Set</button>':''}</div>`;
@@ -1182,7 +1240,7 @@ function viewLog(){
       let sug = lm==='assist' ? (curB ? ([...list].reverse().find(b=>bandMed(b)<cm)?.id || 'none') : 'none') : (list.find(b=>bandMed(b)>cm)?.id || (curB?curB.id:''));
       ctl=`<select id="incB" style="width:auto;flex:1">${lm==='assist'?`<option value="none" ${sug==='none'?'selected':''}>No band</option>`:''}${list.map(b=>`<option value="${b.id}" ${b.id===sug?'selected':''}>${esc(b.name)} (~${bandMed(b)})</option>`).join('')}</select>`;
     } else { const lw = lm==='add' ? (num(lastRow.add)||0) : (num(lastRow.w)||0); ctl=`<input id="incW" inputmode="decimal" value="${(lw||lm==='add')?lw+step:''}" aria-label="Next session weight"><span class="muted">${lm==='add'?'+':''}${unit}</span>` }
-    h+=`<div class="incbox ${hitTop&&!set?'hot':''}"><div style="font-weight:600">${set?setTxt:hitTop?'Top of the range on every set':q}</div>
+    h+=`<div class="incbox ${hitTop&&!set?'hot':''}"><div style="font-weight:600">${set?setTxt:hitTop?'Top of the range on every set':q}</div><div class="small muted" style="margin-top:3px">${set?'The new weight will be highlighted green next time.':'Keep the weight and next time each set aims for 1 more rep (shown in green).'}</div>
       ${set?`<button class="link small" data-act="incUndo">Undo</button>`:`<div class="rowline" style="margin-top:8px">${ctl}<button class="btn sm primary" data-act="incSave">Save for next time</button></div>`}</div>`;
   }
   }
@@ -1196,17 +1254,19 @@ function viewLog(){
 }
 
 function ormLine(it,ex){ if(loadMode(ex)!=='wt') return ''; const own=S.orm&&S.orm[ex.id], e=estRM(ex.id), u=S.unit;
-  const src = own ? 'your number · clear it to use the estimate' : e ? `estimated from ${e.w}×${e.r}` : 'no history yet · estimated from today\'s working weight';
-  const ph = e ? Math.round(e.v) : (ormFor(it)?Math.round(ormFor(it)):'');
+  const src = own ? 'your number · clear it to use the estimate' : e ? `estimated from ${e.w}×${e.r}${e.live?' today':''}` : 'no history yet · estimated from today\'s working weight';
+  const ph = e ? fmtW(roundW(e.v,ex)) : (ormFor(it)?fmtW(roundW(ormFor(it),ex)):'');
   return `<div class="ormline"><span>1RM</span><input id="ormIn" data-orm="${ex.id}" inputmode="decimal" value="${own||''}" placeholder="${ph||'–'}" aria-label="One-rep max"><span>${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${src}${it.st==='pyr'?' · pyramid':it.st==='drop'?' · drop set':''}</span></div>` }
-function wCell(r,i,lm){
+function wCell(r,i,lm,ex){
   if(lm==='assist'||lm==='band'){
     const opts=(lm==='assist'?`<option value="none" ${r.band==='none'||!r.band?'selected':''}>None</option>`:`<option value="" ${!r.band?'selected':''}>–</option>`)+bandsSorted().map(b=>`<option value="${b.id}" ${r.band===b.id?'selected':''}>${esc(b.name)}</option>`).join('');
-    return `<select class="bandsel" data-set="${i}" data-f="band" aria-label="Band">${opts}</select>`;
+    return `<select class="bandsel ${r.sugW?'sug':''}" data-set="${i}" data-f="band" aria-label="Band">${opts}</select>`;
   }
-  if(lm==='add') return `<input data-set="${i}" data-f="add" inputmode="decimal" value="${esc(r.add)}" placeholder="+0" aria-label="Added weight">`;
+  if(lm==='add') return `<input class="${r.sugW?'sug':''}" data-set="${i}" data-f="add" inputmode="decimal" value="${esc(r.add)}" placeholder="+0" aria-label="Added weight">`;
   if(lm==='bw') return `<span class="bwcell">BW</span>`;
-  return `<input data-set="${i}" data-f="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="Weight">`;
+  const two = ex && dbCount(ex)===2; const w=num(r.w);
+  const inp=`<input class="${r.sugW?'sug':''}" data-set="${i}" data-f="w" inputmode="decimal" value="${esc(r.w)}" placeholder="–" aria-label="${two?'Weight of one dumbbell':'Weight'}">`;
+  return two ? `<div class="wcell">${inp}<small id="tot_${i}">${w?fmtW(w*2)+' total':''}</small></div>` : inp;
 }
 function loadLine(it,ex){
   const lm=loadMode(ex);
@@ -1281,7 +1341,7 @@ function exBests(exId, before, skipId){ const ex=lib(exId); const b={n:0,e1:0,e1
 function sessionPRs(s){ const out=[]; const u=S.unit;
   (s.exercises||[]).forEach(e=>{ const ex=lib(e.ex), lm=loadMode(ex); const b=exBests(e.ex, s.start||s.end, s.id); if(!b.n) return;
     if(lm==='wt'){ let e1=0,bs=null,top=0; e.sets.forEach(x=>{ const w=num(x.w)||0, r=repOf(x,ex)||0; const v=w>0&&r>0&&r<=20?w*(1+r/30):0; if(v>e1){e1=v;bs=x} if(w>top) top=w });
-      if(e1>b.e1+0.05 && bs) out.push({ex:e.ex, kind:'Est. 1RM', val:`${Math.round(e1)} ${u}`, det:`${num(bs.w)}×${repOf(bs,ex)}`});
+      if(e1>b.e1+0.05 && bs) out.push({ex:e.ex, kind:'Est. 1RM', val:`${fmtW(roundW(e1,ex))} ${u}`, det:`${num(bs.w)}×${repOf(bs,ex)}`});
       if(top>b.w) out.push({ex:e.ex, kind:'Heaviest weight', val:`${top} ${u}`, det:''});
       else if(!(e1>b.e1+0.05)){ const rp=e.sets.find(x=>{ const key=loadKey(x,ex); return key!=null && b.repsAt[key]!=null && (repOf(x,ex)||0)>b.repsAt[key] }); if(rp) out.push({ex:e.ex, kind:'Rep record', val:`${num(rp.w)}×${repOf(rp,ex)}`, det:`was ${b.repsAt[loadKey(rp,ex)]} reps`}) } }
     else { const r=Math.max(...e.sets.map(x=>repOf(x,ex)||0)); if(r>b.reps) out.push({ex:e.ex, kind:ex.t?'Longest hold':'Most reps', val:ex.t?`${r} s`:`${r} reps`, det:`was ${b.reps}`}) } });
@@ -1307,7 +1367,7 @@ function exProgress(ex,s){ const ser=exSeries(ex.id); if(!ser.length) return '';
   let rec;
   if(wt){ const vb=ser.reduce((a,o)=>o.vol>a.vol?o:a,ser[0]);
     rec=`<div class="recgrid">
-      <div class="tile"><div class="ic g">${ICO.star}</div><div class="v">${b.e1?Math.round(b.e1):'–'}<small>${u}</small></div><div class="k">Best est. 1RM</div>${b.e1set?`<div class="d">${b.e1set.w}×${b.e1set.r} · ${fmtDate(b.e1set.t)}</div>`:''}</div>
+      <div class="tile"><div class="ic g">${ICO.star}</div><div class="v">${b.e1?fmtW(roundW(b.e1,ex)):'–'}<small>${u}</small></div><div class="k">Best est. 1RM</div>${b.e1set?`<div class="d">${b.e1set.w}×${b.e1set.r} · ${fmtDate(b.e1set.t)}</div>`:''}</div>
       <div class="tile"><div class="ic o">${ICO.up}</div><div class="v">${b.w||'–'}<small>${u}${dbCount(ex)===2?' ea':''}</small></div><div class="k">Heaviest set</div></div>
       <div class="tile"><div class="ic b">${ICO.stack}</div><div class="v">${Math.round(vb.vol).toLocaleString()}<small>${u}</small></div><div class="k">Best session volume</div><div class="d">${fmtDate(vb.t)}</div></div>
       <div class="tile"><div class="ic gr">${ICO.list}</div><div class="v">${ser.length}</div><div class="k">Sessions logged</div><div class="d">last ${fmtDate(lastS.t)}</div></div></div>` }
@@ -1431,6 +1491,9 @@ function viewGear(){
    <div class="bandhead"><span></span><span>Name</span><span style="text-align:center">From</span><span style="text-align:center">To</span><span style="text-align:center">≈</span><span></span></div>
    <div class="bands" style="margin-top:6px">${(S.bands||[]).map(b=>`<div class="bandrow"><span class="sw" style="background:${swatch(b.name)}"></span><input class="bn" data-band="${b.id}" data-bf="name" value="${esc(b.name)}" aria-label="Band name"><input data-band="${b.id}" data-bf="lo" inputmode="decimal" value="${esc(b.lo)}" aria-label="From"><input data-band="${b.id}" data-bf="hi" inputmode="decimal" value="${esc(b.hi)}" aria-label="To"><span class="md" id="md_${b.id}">${bandMed(b)}</span><button data-act="bandDel" data-id="${b.id}" aria-label="Delete band">×</button></div>`).join('')}</div>
    <button class="addrow" data-act="bandAdd">+ Add band</button>`;
+  { const u=S.unit==='kg'?'kg':'lb'; h+=`<div class="sec">Weight steps</div><div class="small muted" style="margin-bottom:6px">The smallest jump on your equipment. Used to round 1RM, warm-ups, pyramids and drops.</div>
+    <div class="grid3">${[['db','Dumbbells'],['bb','Barbell & plates'],['mach','Machines & cables']].map(([k,l])=>`<label class="f">${l}<input data-step="${k}" inputmode="decimal" value="${fmtW(stepFor({cat:k==='bb'?'bb':k}))}"> </label>`).join('')}</div>
+    <div class="small muted" style="margin-top:6px">Most gym weight stacks go up 10 lb; some go up 5 or 2.5. Check the sticker on yours.</div>` }
   h+=`<div class="sec">Units</div><div class="seg"><button data-act="unit" data-k="lb" class="${S.unit==='lb'?'on':''}">Pounds (lb)</button><button data-act="unit" data-k="kg" class="${S.unit==='kg'?'on':''}">Kilograms (kg)</button></div>`;
   h+=`<div class="sec">Data</div><div class="small muted" style="margin-bottom:6px">App version ${APP_VERSION}${window.POT_STANDALONE?' · <button class="link" data-act="checkUpdate">Check for update</button>':''}${ui.newVersion?` · <button class="btn sm primary" data-act="forceUpdate">Update now to ${esc(ui.newVersion)}</button>`:''}</div>`;
   h+=`<div class="card stack small"><div>${syncState==='on'?'Your plan and logs sync through your claude.ai account, so your phone and computer show the same data.':syncState==='err'?'Sync is paused. Everything is still saved on this device and will sync when the connection returns.':window.POT_STANDALONE?'Saved on this phone only. Save a backup file now and then, and use it to move your logs to another device.':'Saved on this device.'}</div>
@@ -1466,13 +1529,19 @@ function renderSheet(){
     h=`<h3>${esc(ge.name)}</h3><div class="shsub">Your goal exercise. You're using ${esc(lib(e.ex).name)} until you switch back.</div>
      <div class="menu"><button data-act="goalBack">Switch back to ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${ge.id}">History for ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${e.ex}">History for ${esc(lib(e.ex).name)}</button></div>`;
   }
+  else if(s.type==='standMenu'){ const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(!it||!it.sub){closeSheet();return}
+    h=`<h3>${esc(lib(it.sub).name)}</h3><div class="shsub">Stand-in for ${esc(lib(it.ex).name)} on Day ${s.day+1}.</div>
+     <div class="menu"><button data-act="standChange">Choose a different stand-in</button><button data-act="goalBack">Stop using it · do ${esc(lib(it.ex).name)}</button><button data-act="standPromote">Make it the main exercise (drop ${esc(lib(it.ex).name)})</button><button data-act="exInfo" data-ex="${it.sub}">History</button></div>`;
+  }
   else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const ms=missing(ex);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${it.focus?esc(it.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${ms.length?`<div class="needs" style="padding-top:8px"><span>Needs ${ms.map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
-     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="swap" data-uid="${it.uid}">Swap exercise</button><button data-act="editItem" data-uid="${it.uid}">Edit sets, reps & rest</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
+     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}${s.ctx==='P'&&it.sub?`<button data-act="standChange2" data-uid="${it.uid}">Change stand-in (${esc(lib(it.sub).name)})</button>`:''}<button data-act="swap" data-uid="${it.uid}">${s.ctx==='P'&&it.sub?'Replace goal exercise':'Swap exercise'}</button><button data-act="editItem" data-uid="${it.uid}">Edit exercise (sets, reps, angle, style)</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
   }
   else if(s.type==='edit'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const m=s.m||mode(it);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'':s.ctx==='T'?'For your next workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>${s.ctx==='A'&&it.pu?keepBox(s):''}
+     ${(()=>{ const ex2=lib(it.ex); const arms = (ex2.cat==='db' && !LEG_2DB.has(ex2.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex2.id}" data-k="one" class="${ex2.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex2.id}" data-k="both" class="${!ex2.u?'on':''}">Both arms</button></div>` : '';
+        return arms + (ex2.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex2.id}" data-d="${d}" class="${degOf(ex2.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '') })()}
      <div class="sec">Sets</div><div class="stepper"><button data-act="edSets" data-d="-1">−</button><span class="v" id="edSetsV">${s.sets}</span><button data-act="edSets" data-d="1">+</button></div>
      <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['time','Timed'],['fail','To failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
      ${m!=='fail'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}<input id="edLo" inputmode="numeric" value="${s.lo??''}"></label><label class="f">To${m==='time'?' (sec)':''}<input id="edHi" inputmode="numeric" value="${s.hi??''}"></label></div>`:''}
@@ -1525,11 +1594,11 @@ function renderSheet(){
     const nameBlock = s.renaming
       ? `<div class="stack" style="margin-top:6px"><input id="exNameIn" value="${esc(ex.name)}" aria-label="Exercise name"><div class="rowline"><button class="btn sm primary" data-act="exNameSave" data-ex="${ex.id}">Save name</button>${renamed?`<button class="btn sm ghost" data-act="exNameReset" data-ex="${ex.id}">Restore original</button>`:''}<button class="btn sm ghost" data-act="exNameCancel">Cancel</button></div>${ex.tpl?'<div class="small muted">Keep the angle (like 35°) in the name and it will still follow the Bench angle buttons.</div>':''}</div>`
       : `<div class="rowline" style="justify-content:space-between;flex-wrap:nowrap"><h3>${esc(ex.name)}</h3><button class="link small" data-act="exRename">Rename</button></div>${renamed&&ex.base?`<div class="small muted">Originally: ${esc(ex.base.replace('{°}',degOf(ex.id)+'°'))}</div>`:''}`;
-    h=`${nameBlock}${angle}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
+    h=`${nameBlock}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
      <div class="chips">${ex.m.map((m,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[m]||m}</span>`).join('')}</div>
      ${missing(ex).length?`<div class="needs" style="padding-top:10px"><span>You don't have: ${missing(ex).map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
      ${exProgress(ex,s)}
-     <div class="sec">Recent sessions</div>${hist.length?`<div class="hx stack">${hist.map(o=>`<div><div class="small muted">${fmtDate(o.x.end)}</div><div class="num">${o.e.sets.map(z=>fmtSetFull(z,ex)).join('  ·  ')}</div></div>`).join('')}</div>`:'<div class="small muted">Not logged yet.</div>'}
+     <div class="sec">Recent sessions</div>${hist.length?`<div class="hx stack">${hist.map(o=>`<div><div class="small muted">${fmtDate(o.x.end)} · <button class="link small" data-act="manEdit" data-id="${o.x.id}">Edit</button></div><div class="num">${o.e.sets.map(z=>fmtSetFull(z,ex)).join('  ·  ')}</div></div>`).join('')}</div>`:'<div class="small muted">Not logged yet.</div>'}
      ${ui.mode!=='log'?`<div class="sec">Add to a day</div><div class="rowline"><select id="toDay" style="flex:1">${S.days.map((d,i)=>`<option value="${i}">Day ${i+1} · ${esc(d.name)}</option>`).join('')}</select><button class="btn sm primary" data-act="addToDay" data-ex="${ex.id}">Add</button></div>`:''}
      ${S.custom[ex.id]?`<div style="margin-top:14px"><button class="btn danger" data-act="customDel" data-ex="${ex.id}">Delete this custom exercise</button></div>`:''}`;
   }
@@ -1619,7 +1688,12 @@ const H = {
     if(it && it.ph && !swapped){ openSheet({type:'add', ...c, replace:it.uid, uid:it.uid, ph:it.ph, sugs:it.phSug||[], q:'', cat:'all', mus:it.phMus||'all'}); return }
     openSheet({type:'rowMenu', uid:el.dataset.uid, ...c}) },
   editDay:el=>{ ui.editDay=+el.dataset.i; ui.viewDay=+el.dataset.i; closeSheet(); render(); window.scrollTo(0,0) },
-  editDone:()=>{ ui.editDay=null; render(); toast('Day saved') },
+  editDone:()=>{ ui.editDay=null; ui.reorder=false; render(); toast('Day saved') },
+  reorderToggle:()=>{ ui.reorder=!ui.reorder; const y=window.scrollY; render(); window.scrollTo(0,y); if(ui.reorder) toast('Drag the handles to reorder') },
+  standMenu:el=>{ const c=sheetCtx(); openSheet({type:'standMenu', uid:el.dataset.uid, day:c.day}) },
+  standChange:()=>{ const s=ui.sheet; openSheet({type:'swap', uid:s.uid, ctx:'P', day:s.day, tmp:true, keep:true}) },
+  standChange2:el=>{ const s=ui.sheet; openSheet({type:'swap', uid:el.dataset.uid, ctx:'P', day:s.day, tmp:true, keep:true}) },
+  standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ it.ex=it.sub; delete it.sub; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
   ghostMenu:el=>{ const c=sheetCtx(); openSheet({type:'ghostMenu', uid:el.dataset.goal, day:c.day}) },
   goalBack:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it){ delete it.sub; if(d.tmp) delete d.tmp[it.uid] } saveState(); closeSheet(); render(); toast(it?`Back to ${lib(it.ex).name||'the plan'}`:'Back to the plan') },
   useGoal:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=A.items.find(x=>x.pu===g.goalOf); g.skipped=false; if(si) si.skipped=true; saveActive(); render(); toast('Doing the goal exercise today') },
@@ -1636,7 +1710,7 @@ const H = {
     it.rows.splice(n,0,warmRow(it,n,workRows(it)[0],lastFor(it.ex))); syncWarm(it); saveActive(); render() },
   rmWarm:()=>{ const it=curItem(); for(let j=it.rows.length-1;j>=0;j--){ if(it.rows[j].warm && !it.rows[j].done){ it.rows.splice(j,1); break } } syncWarm(it); saveActive(); render() },
   addSet:()=>{ const it=curItem(); const l=workRows(it)[workRows(it).length-1]||{w:'',r:'',rl:'',rr:''}; insWork(it,{w:l.w,band:l.band||'',add:l.add||'',r:l.r,rl:l.rl,rr:l.rr,rir:'',done:false,prev:'',autoR:l.autoR}); saveActive(); render() },
-  rmSet:()=>{ const it=curItem(); const li=lastWorkIdx(it), l=it.rows[li]; if(workRows(it).length>1 && l && !l.done){ it.rows.splice(li,1); saveActive(); render() } },
+  rmSet:()=>{ const it=curItem(); const li=lastWorkIdx(it), l=it.rows[li]; if(workRows(it).length>1 && l && !l.done){ it.rows=it.rows.filter(r=>r!==l && !(r.drop && r.of===l.rid && !r.done)); saveActive(); render() } },
   incSave:()=>{ A.inc=A.inc||{}; const bs=$('#incB'); if(bs){ A.inc[curItem().ex]={band:bs.value} } else { const v=num($('#incW').value); if(v==null) return; A.inc[curItem().ex]=v } saveActive(); render(); toast('Saved for next session') },
   bwOpen:()=>openSheet({type:'bw'}),
   manNew:()=>{ const y=new Date(Date.now()-864e5); manOpen({id:null, date:isoDate(y), dur:'', dayIdx:S.next, adv:true, items:manFromDay(S.next)}) },
@@ -1681,10 +1755,10 @@ const H = {
   bwRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
   wkDays:el=>{ ui.wkDays=+el.dataset.k; const y=window.scrollY; render(); window.scrollTo(0,y) },
   editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets;
-    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||1, dropPct:it.dropPct||20}) },
+    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20}) },
   edSt:el=>{ keepEd(); const s=ui.sheet; s.st=el.dataset.k; if(s.st==='pyr'){ if(s.sets<3) s.sets=3; if(s.pct.length!==s.sets) s.pct=pyrDefault(s.sets) } renderSheet() },
   edPctReset:()=>{ ui.sheet.pct=pyrDefault(ui.sheet.sets); renderSheet() },
-  edDrops:el=>{ keepEd(); ui.sheet.drops=Math.max(1,Math.min(3,ui.sheet.drops+ +el.dataset.d)); renderSheet() },
+  edDrops:el=>{ keepEd(); ui.sheet.drops=Math.max(1,Math.min(MAX_DROPS,ui.sheet.drops+ +el.dataset.d)); renderSheet() },
   edDropPct:el=>{ keepEd(); ui.sheet.dropPct=Math.max(10,Math.min(40,ui.sheet.dropPct+ +el.dataset.d)); renderSheet() },
   edWu:el=>{ keepEd(); ui.sheet.wu=Math.max(0,Math.min(3,(ui.sheet.wu||0)+ +el.dataset.d)); renderSheet() },
   edSets:el=>{ keepEd(); const s=ui.sheet; s.sets=Math.max(s.st==='pyr'?3:1,Math.min(10,s.sets+ +el.dataset.d)); if(s.st==='pyr' && s.pct.length!==s.sets) s.pct=pyrDefault(s.sets); renderSheet() },
@@ -1695,7 +1769,7 @@ const H = {
       if(s.st==='drop'){ o.drops=s.drops; o.dropPct=s.dropPct } else { delete o.drops; delete o.dropPct } };
     const styleChanged = (it.st||'')!==(s.st||'') || JSON.stringify(it.pct||null)!==JSON.stringify(s.st==='pyr'?s.pct:null) || (s.st==='drop' && (it.drops!==s.drops || it.dropPct!==s.dropPct));
     if(s.ctx==='A'){ while(workRows(it).length<s.sets){ const l=workRows(it)[workRows(it).length-1]||{}; insWork(it,{w:l.w||'',band:l.band||'',add:l.add||'',r:l.r||'',rl:l.rl||'',rr:l.rr||'',rir:'',done:false,prev:'',autoR:true}) }
-      while(workRows(it).length>s.sets){ const li=lastWorkIdx(it), l=it.rows[li]; if(!l || l.done) break; it.rows.splice(li,1) } it.sets=workRows(it).length;
+      while(workRows(it).length>s.sets){ const li=lastWorkIdx(it), l=it.rows[li]; if(!l || l.done) break; it.rows=it.rows.filter(r=>r!==l && !(r.drop && r.of===l.rid)) } it.sets=workRows(it).length;
       styleTo(it); applyStyle(it);
       const pit = planItemOf(it);
       if(pit && s.keep){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest }
@@ -1754,9 +1828,9 @@ function keepEd(){ const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.val
 function styleEditor(s,it){ const st=s.st||''; const ex=lib(it.ex), o=oneRM(it.ex), u=S.unit;
   let h=`<div class="sec">Set style</div><div class="seg">${[['','Straight'],['pyr','Pyramid'],['drop','Drop set']].map(([k,l])=>`<button data-act="edSt" data-k="${k}" class="${st===k?'on':''}">${l}</button>`).join('')}</div>`;
   if(st==='pyr'){ h+=`<div class="small muted" style="margin-top:8px">Weight climbs each set as a % of your 1RM${o?` (${Math.round(o)} ${u})`:''}; reps come down. The suggested start is filled in; change any number.</div>
-    <div class="pctgrid">${s.pct.map((p,i)=>`<label class="f">Set ${i+1}<span class="rowline"><input id="edPct${i}" inputmode="numeric" value="${p}">%</span><span class="small muted">≈${repsForPct(p)} reps${o&&loadMode(ex)==='wt'?' · '+roundW(o*p/100)+' '+u:''}</span></label>`).join('')}</div>
+    <div class="pctgrid">${s.pct.map((p,i)=>`<label class="f">Set ${i+1}<span class="rowline"><input id="edPct${i}" inputmode="numeric" value="${p}">%</span><span class="small muted">≈${repsForPct(p)} reps${o&&loadMode(ex)==='wt'?' · '+roundW(o*p/100,ex)+' '+u:''}</span></label>`).join('')}</div>
     <button class="link small" data-act="edPctReset">Reset to suggested</button>` }
-  if(st==='drop'){ h+=`<div class="small muted" style="margin-top:8px">After your last set, strip the weight and keep going with no rest. Drops are saved apart from your working sets, so they don't affect progression.</div>
+  if(st==='drop'){ h+=`<div class="small muted" style="margin-top:8px">After every set, strip the weight and keep going with no rest (D1, D2 … under each set). Drops are saved apart from your working sets, so they don't affect progression.</div>
     <div class="grid2" style="margin-top:8px"><div><div class="small muted">Drops</div><div class="stepper"><button data-act="edDrops" data-d="-1">−</button><span class="v">${s.drops}</span><button data-act="edDrops" data-d="1">+</button></div></div>
     <div><div class="small muted">Each drop</div><div class="stepper"><button data-act="edDropPct" data-d="-5">−</button><span class="v">−${s.dropPct}%</span><button data-act="edDropPct" data-d="5">+</button></div></div></div>` }
   if(st && (s.ctx==='A' || s.ctx==='P')) h+=`<div class="small muted" style="margin-top:6px">Set style is saved to Day ${s.day+1} for future workouts.</div>`;
@@ -1772,12 +1846,12 @@ function doReplace(exId){
     const pu = tgt.pu || (tgt.ghost?tgt.goalOf:null);
     const base={ex:exId, sets:workRows(tgt).length, lo:tgt.lo, hi:tgt.hi, rest:tgt.rest, ss:tgt.ss, wu:tgt.wu, pu:pu, focus:tgt.focus};
     if(lib(exId).f){ base.lo=null; base.hi=null } else if(tgt.lo==null){ base.lo=10; base.hi=14 }
-    const ni=newActiveItem(base);
+    const ni=newActiveItem(base); if(tgt.par) ni.par=tgt.par;
     const hasGoal = list.some(x=>x.ghost && x.goalOf===pu);
     const pit0 = pu ? S.days[A.dayIdx].items.find(x=>x.uid===pu) : null;
-    if(tgt.rows.some(r=>r.done)){ delete tgt.ss; delete tgt.pu; list.splice(ti+1,0,ni); A.cur=ti+1 }
+    if(tgt.rows.some(r=>r.done)){ delete tgt.ss; delete tgt.pu; ni.par=tgt.uid; list.splice(ti+1,0,ni); A.cur=ti+1 }
     else if(hasGoal || !pu || (pit0 && pit0.ex===exId)){ list[ti]=ni; A.cur=ti }
-    else { tgt.ghost=true; tgt.goalOf=pu; tgt.skipped=true; delete tgt.pu; delete tgt.ss; list.splice(ti+1,0,ni); A.cur=ti+1 }
+    else { tgt.ghost=true; tgt.goalOf=pu; tgt.skipped=true; delete tgt.pu; delete tgt.ss; ni.par=tgt.uid; list.splice(ti+1,0,ni); A.cur=ti+1 }
     if(pit0 && pit0.ex===exId){ const g=list.find(x=>x.ghost && x.goalOf===pu); if(g) list.splice(list.indexOf(g),1); A.cur=Math.max(0,list.indexOf(ni)) }
     normalizeSS(list);
     if(s.keep && pit0){ if(pit0.ex===exId) delete pit0.sub; else pit0.sub=exId; if(S.days[A.dayIdx].tmp) delete S.days[A.dayIdx].tmp[pit0.uid]; saveState(); saveActive(); closeSheet(); render(); toast(pit0.ex===exId?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return }
@@ -1806,6 +1880,7 @@ document.addEventListener('input',e=>{
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveDraft,400); return }
   if(el.id==='keepPlan' && ui.sheet){ ui.sheet.keep=el.checked; return }
+  if(el.dataset.step){ const u=S.unit==='kg'?'kg':'lb'; S.steps=S.steps||{}; S.steps[u]=S.steps[u]||{}; const v=num(el.value); if(v>0) S.steps[u][el.dataset.step]=v; else delete S.steps[u][el.dataset.step]; clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
     const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
     clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
@@ -1815,17 +1890,20 @@ document.addEventListener('input',e=>{
     saveDraft(); return }
   if(el.dataset.set!=null && A){
     const it=curItem(), i=+el.dataset.set, f=el.dataset.f, row=it.rows[i]; row[f]=el.value; const ex=lib(it.ex);
-    if(f==='r'||f==='rl'||f==='rr') row.autoR=false;
+    if(f==='r'||f==='rl'||f==='rr'){ row.autoR=false; row.sugR=false; el.classList.remove('sug') }
+    if(f==='w'||f==='add'||f==='band'){ row.sugW=false; el.classList.remove('sug') }
+    if(f==='rr') row.rrSet=true;
+    if(f==='rl' && !row.rrSet){ row.rr=el.value; const o=document.querySelector(`[data-set="${i}"][data-f="rr"]`); if(o){ o.value=el.value; o.classList.remove('sug') } }
     if(f==='w'||f==='band'||f==='add'){ const touched=new Set([i]);
       if(row.warm||row.drop) row.autoW=false;
       if(!row.warm && !row.drop && it.st!=='pyr'){ for(let j=i+1;j<it.rows.length;j++){ const rj=it.rows[j]; if(!rj.done && !rj.warm && !rj.drop){ rj[f]=el.value; touched.add(j) } } }
-      if(f==='w' && !row.warm && workRows(it)[0]===row){ const o=ormFor(it); it.rows.forEach((wr,j)=>{ if(wr.warm && wr.autoW && !wr.done){ wr.w = o ? String(roundW(o*(wr.pct||50)/100)) : ''; touched.add(j) } }) }
+      if(f==='w' && !row.warm && workRows(it)[0]===row){ const o=ormFor(it); it.rows.forEach((wr,j)=>{ if(wr.warm && wr.autoW && !wr.done){ wr.w = o ? String(roundW(o*(wr.pct||50)/100,ex)) : ''; touched.add(j) } }) }
       if(!row.warm){ const before=it.rows.map(r=>r.w); refreshDrops(it); it.rows.forEach((r,j)=>{ if(r.drop && r.w!==before[j]) touched.add(j) }) }
       // reps belong to a weight: look them up again (or clear them) wherever you haven't typed reps yourself
       touched.forEach(j=>{ const rj=it.rows[j]; if(rj.autoR!==false && !rj.done) fillReps(rj,ex, rj.warm?it.rows.filter(x=>x.warm).indexOf(rj):rj.drop?rj.drop-1:workRows(it).indexOf(rj), rj.warm?'warm':rj.drop?'drops':'sets') });
       touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv'); if(pv) pv.textContent=rj.prev||'—' });
     }
-    if(f==='w') it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent = p!=null?p+'%':r.pct?r.pct+'%':'' } });
+    if(f==='w') it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent = p!=null?p+'%':r.pct?r.pct+'%':'' } const t=document.getElementById('tot_'+j); if(t){ const w=num(r.w); t.textContent = w?fmtW(w*2)+' total':'' } });
     const ll=$('#loadline'); if(ll){ const tmp=document.createElement('div'); tmp.innerHTML=loadLine(it,lib(it.ex)); if(tmp.firstElementChild) ll.innerHTML=tmp.firstElementChild.innerHTML }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveActive,500); return;
   }
@@ -1898,20 +1976,21 @@ function endDrag(){
   const ctx=list.dataset.ctx, day=+list.dataset.day; const arr=ctxList(ctx,day);
   const curUid = ctx==='A' ? A.items[A.cur]?.uid : null;
   // a goal exercise and its stand-in always move together (goal on top, stand-in under it)
-  const standOf = x => ctx==='A' && x && x.ghost ? arr.find(y=>!y.ghost && y.pu && y.pu===x.goalOf) : null;
-  const goalOf_ = x => ctx==='A' && x && !x.ghost && x.pu ? arr.find(y=>y.ghost && y.goalOf===x.pu) : null;
-  const unit_ = x => { const g=x.ghost?x:goalOf_(x), r=x.ghost?standOf(x):x; return [g,r].filter(Boolean) };
-  const m0=arr[from]; const real=m0.ghost ? (standOf(m0)||m0) : m0;
+  const standOf = x => ctx!=='A' || !x ? null : (arr.find(y=>y.par && y.par===x.uid) || (x.ghost ? arr.find(y=>!y.ghost && y.pu && y.pu===x.goalOf) : null));
+  const goalOf_ = x => ctx!=='A' || !x ? null : (x.par ? arr.find(y=>y.uid===x.par) : (!x.ghost && x.pu ? arr.find(y=>y.ghost && y.goalOf===x.pu) : null)) || null;
+  const isPar = x => !!standOf(x);
+  const unit_ = x => { const g=isPar(x)?x:goalOf_(x), r=isPar(x)?standOf(x):x; return [g,r].filter(Boolean) };
+  const m0=arr[from]; const real=isPar(m0) ? (standOf(m0)||m0) : m0;
   const p0=partnerOf(arr,real); const wasBefore = p0 ? arr.indexOf(p0)<arr.indexOf(real) : false;
   const [m]=arr.splice(from,1); arr.splice(to,0,m);
-  { const mate = m.ghost ? standOf(m) : goalOf_(m); if(mate){ arr.splice(arr.indexOf(mate),1); const k=arr.indexOf(m); arr.splice(m.ghost?k+1:k,0,mate) } }
+  { const mp=isPar(m); const mate = mp ? standOf(m) : goalOf_(m); if(mate){ arr.splice(arr.indexOf(mate),1); const k=arr.indexOf(m); arr.splice(mp?k+1:k,0,mate) } }
   // don't split another goal from its stand-in
   { const u=unit_(real), ix=u.map(x=>arr.indexOf(x)), bi=Math.min(...ix), be=Math.max(...ix), g=arr[bi-1], si=arr[be+1];
-    if(g && g.ghost && si && standOf(g)===si){ const blk=arr.splice(bi,be-bi+1); const at = to>from ? arr.indexOf(si)+1 : arr.indexOf(g); arr.splice(at,0,...blk) } }
+    if(g && si && standOf(g)===si){ const blk=arr.splice(bi,be-bi+1); const at = to>from ? arr.indexOf(si)+1 : arr.indexOf(g); arr.splice(at,0,...blk) } }
   const p=partnerOf(arr,real);
   if(p){ const blk=unit_(p); blk.forEach(x=>arr.splice(arr.indexOf(x),1)); const mb=unit_(real); const at = wasBefore ? arr.indexOf(mb[0]) : arr.indexOf(mb[mb.length-1])+1; arr.splice(at,0,...blk) }
   // don't land in the middle of another superset
-  { const all=unit_(real).concat(p?unit_(p):[]).map(x=>arr.indexOf(x)); const bi=Math.min(...all), be=Math.max(...all); let a=arr[bi-1], b=arr[be+1]; if(a&&a.ghost) a=standOf(a)||a; if(b&&b.ghost) b=standOf(b)||b;
+  { const all=unit_(real).concat(p?unit_(p):[]).map(x=>arr.indexOf(x)); const bi=Math.min(...all), be=Math.max(...all); let a=arr[bi-1], b=arr[be+1]; if(a&&isPar(a)) a=standOf(a)||a; if(b&&isPar(b)) b=standOf(b)||b;
     if(a && b && a.ss && a.ss===b.ss){ const blk=arr.splice(bi, be-bi+1); const at=arr.indexOf(b)+1; arr.splice(at,0,...blk) } }
   normalizeSS(arr);
   if(ctx==='A'){ A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid)); A.orderDirty=true }
