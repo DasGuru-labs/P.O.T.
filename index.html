@@ -431,7 +431,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.16-a';
+const APP_VERSION = '2026.10.16-c';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -1040,6 +1040,7 @@ function expandDay(day){ return day.items.flatMap(it=>{ const e=effItem(day,it);
   const g={...it, ghost:true, goalOf:it.uid}; delete g.ss; return [g, e] }) }
 function normalizeSS(arr){ const real=arr.filter(x=>!x.ghost); const pos={}; real.forEach((x,i)=>{ if(x.ss) (pos[x.ss]=pos[x.ss]||[]).push(i) });
   Object.values(pos).forEach(ix=>{ if(ix.length!==2 || ix[1]-ix[0]!==1) ix.forEach(i=>{ delete real[i].ss }) }); return arr }
+function fixLinks(list){ const ids=new Set(list.map(x=>x.uid)); list.forEach(x=>{ if(x.par && !ids.has(x.par)) delete x.par }) }
 function partnerOf(arr,it){ return it.ss ? arr.find(x=>x!==it && x.ss===it.ss) : null }
 function groupIdx(i){ const it=A.items[i]; if(!it||!it.ss) return [i]; return A.items.map((x,j)=>x.ss===it.ss?j:-1).filter(j=>j>=0) }
 function itemDone(x){ return x.skipped || x.rows.every(r=>r.done) }
@@ -1213,8 +1214,8 @@ function viewTrain(){
     const lastTxt = last ? ` · <span class="num">${last.sets.map(s=>fmtSet(s,ex)).join(', ')}</span>` : '';
     const isSI = it.standIn || (live && (it.par || (it.pu && A.items.some(x=>x.ghost && x.goalOf===it.pu))));
     h+=`<div class="row ${avail(ex)?'':'off'} ${live&&it.skipped?'skipped':''} ${canDrag?'':'fixed'} ${isSI?'standin':''} ${it.st==='drop'?'isdrop':''} ${it.st==='pyr'?'ispyr':''} ${it.st==='ecc'?'isecc':''} ${it.ss?'isss':''}" data-uid="${it.uid}">${hdl}
-      <button class="body" data-act="rowMenu" data-uid="${it.uid}"><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="tmptag">Goal</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${it.st==='ecc'?`<span class="ecctag">Eccentric ${it.eccPct||100}%</span> · `:it.st==='pyr'?'<span class="pyrtag">Pyramid</span> · ':it.st==='drop'?'<span class="droptag">Drop set</span> · ':''}${it.ss?'<span class="sstag">Superset</span> · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
-    if(editing && it.sub && !it.ph){ const se=lib(it.sub); h+=`<div class="row standin fixed" data-uid="${it.uid}"><button class="body" data-act="standMenu" data-uid="${it.uid}"><div class="name">${esc(se.name)}</div><div class="meta"><span class="sitag">Stand-in</span> · tap to change or stop using it</div></button></div>` }
+      <button class="body" data-act="rowMenu" data-uid="${it.uid}" ${!live&&it.standIn?'data-sub="1"':''}><div class="name">${esc(ex.name)}${avail(ex)?'':'<span class="dot-warn"></span>'}</div><div class="meta">${it.tmpSwap?'<span class="tmptag">Next workout only</span> · ':isSI?'<span class="sitag">Stand-in</span> · ':''}${editing&&it.sub?'<span class="tmptag">Goal</span> · ':''}${emphTag(it)?emphTag(it)+' · ':''}${it.st==='ecc'?`<span class="ecctag">Eccentric ${it.eccPct||100}%</span> · `:it.st==='pyr'?'<span class="pyrtag">Pyramid</span> · ':it.st==='drop'?'<span class="droptag">Drop set</span> · ':''}${it.ss?'<span class="sstag">Superset</span> · ':''}${armLabel(ex)?'<span class="armtag">'+armLabel(ex)+'</span> · ':''}${!live&&it.wu?it.wu+' warm-up + ':''}${targetText(it)}${lastTxt}</div></button>${right}</div>`;
+    if(editing && it.sub && !it.ph){ const se=lib(it.sub); h+=`<div class="row standin fixed ${it.st==='drop'?'isdrop':''} ${it.st==='pyr'?'ispyr':''} ${it.st==='ecc'?'isecc':''} ${it.ss?'isss':''}" data-uid="${it.uid}"><button class="body" data-act="standMenu" data-uid="${it.uid}"><div class="name">${esc(se.name)}</div><div class="meta"><span class="sitag">Stand-in</span> · tap to change or stop using it</div></button></div>` }
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
@@ -1548,11 +1549,12 @@ function renderSheet(){
   if(!ui.sheet){ w.hidden=true; sh.innerHTML=''; return }
   w.hidden=false; const s=ui.sheet; let h='';
   const findIt = () => sheetItem(s);
-  if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=e!==it;
+  const exOfS = it => (s.useSub && it && (s.ctx==='P'||s.ctx==='T')) ? (effItem(S.days[s.day],it).ex || it.ex) : it.ex;
+  if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=e!==it; s.useSub = sw && !it.ph;
     const goalName = it.ph ? 'Pick: '+it.ph : lib(it.ex).name;
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(e)} · rest ${fmtRest(e.rest)} · ${e.focus?esc(e.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${sw?`<div class="needs" style="padding-top:8px"><span>${e.tmpSwap?'Next workout only':'Stand-in'} for ${esc(goalName)}</span></div>`:''}
-     <div class="menu"><button data-act="swap" data-uid="${it.uid}">${sw?'Swap the stand-in':'Swap exercise'}</button>${sw?`<button data-act="goalBack">Switch back to ${esc(goalName)}</button>`:''}<button data-act="exInfo" data-ex="${ex.id}">History & settings (rename, angle, arms)</button><button data-act="editDay" data-i="${s.day}">Edit Day ${s.day+1}</button></div>`;
+     <div class="menu"><button data-act="editItem" data-uid="${it.uid}">Edit exercise (name, equipment, sets, reps, style)</button><button data-act="swap" data-uid="${it.uid}">${sw?'Swap the stand-in':'Swap exercise'}</button>${sw?`<button data-act="goalBack">Switch back to ${esc(goalName)}</button>`:''}<button data-act="exInfo" data-ex="${ex.id}">History</button><button data-act="editDay" data-i="${s.day}">Edit Day ${s.day+1}</button></div>`;
   }
   else if(s.type==='ghostMenu'){ const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(!it){closeSheet();return} const e=effItem(d,it); const ge=lib(it.ex);
     h=`<h3>${esc(ge.name)}</h3><div class="shsub">Your goal exercise. You're using ${esc(lib(e.ex).name)} until you switch back.</div>
@@ -1564,16 +1566,16 @@ function renderSheet(){
   }
   else if(s.type==='standMenu'){ const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(!it||!it.sub){closeSheet();return}
     h=`<h3>${esc(lib(it.sub).name)}</h3><div class="shsub">Stand-in for ${esc(lib(it.ex).name)} on Day ${s.day+1}.</div>
-     <div class="menu"><button data-act="standChange">Choose a different stand-in</button><button data-act="goalBack">Stop using it · do ${esc(lib(it.ex).name)}</button><button data-act="standPromote">Make it the main exercise (drop ${esc(lib(it.ex).name)})</button><button data-act="exInfo" data-ex="${it.sub}">History</button></div>`;
+     <div class="menu"><button data-act="standEdit">Edit exercise (name, equipment, sets, reps, style)</button><button data-act="standChange">Choose a different stand-in</button><button data-act="goalBack">Stop using it · do ${esc(lib(it.ex).name)}</button><button data-act="standPromote">Make it the main exercise (drop ${esc(lib(it.ex).name)})</button><button data-act="exInfo" data-ex="${it.sub}">History</button></div>`;
   }
-  else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const ms=missing(ex);
+  else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(exOfS(it)); const ms=missing(ex);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${it.focus?esc(it.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${ms.length?`<div class="needs" style="padding-top:8px"><span>Needs ${ms.map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
      <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}${s.ctx==='P'&&it.sub?`<button data-act="standChange2" data-uid="${it.uid}">Change stand-in (${esc(lib(it.sub).name)})</button>`:''}<button data-act="swap" data-uid="${it.uid}">${s.ctx==='P'&&it.sub?'Replace goal exercise':'Swap exercise'}</button><button data-act="editItem" data-uid="${it.uid}">Edit exercise (sets, reps, angle, style)</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
   }
-  else if(s.type==='edit'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(it.ex); const m=s.m||mode(it);
+  else if(s.type==='edit'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(exOfS(it)); const m=s.m||mode(it);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'':s.ctx==='T'?'For your next workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>${s.ctx==='A'&&it.pu?keepBox(s):''}
-     ${exFields(lib(it.ex),s)}
+     ${s.useSub?`<div class="small muted" style="margin-top:6px">Stand-in for ${esc(lib(it.ex).name)}. Sets, reps and set style are shared with it.</div>`:''}${exFields(ex,s)}
      ${(()=>{ return ''; const ex2=lib(it.ex); const arms = (ex2.cat==='db' && !LEG_2DB.has(ex2.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex2.id}" data-k="one" class="${ex2.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex2.id}" data-k="both" class="${!ex2.u?'on':''}">Both arms</button></div>` : '';
         return arms + (ex2.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex2.id}" data-d="${d}" class="${degOf(ex2.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '') })()}
      <div class="sec">Sets</div><div class="stepper"><button data-act="edSets" data-d="-1">−</button><span class="v" id="edSetsV">${s.sets}</span><button data-act="edSets" data-d="1">+</button></div>
@@ -1723,11 +1725,12 @@ const H = {
     const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid);
     const swapped = c.tmp && it && S.days[c.day].tmp && S.days[c.day].tmp[it.uid];
     if(it && it.ph && !swapped){ openSheet({type:'add', ...c, replace:it.uid, uid:it.uid, ph:it.ph, sugs:it.phSug||[], q:'', cat:'all', mus:it.phMus||'all'}); return }
-    openSheet({type:'rowMenu', uid:el.dataset.uid, ...c}) },
+    openSheet({type:'rowMenu', uid:el.dataset.uid, ...c, useSub: el.dataset.sub==='1'}) },
   editDay:el=>{ ui.editDay=+el.dataset.i; ui.viewDay=+el.dataset.i; closeSheet(); render(); window.scrollTo(0,0) },
   editDone:()=>{ ui.editDay=null; ui.reorder=false; render(); toast('Day saved') },
   reorderToggle:()=>{ ui.reorder=!ui.reorder; const y=window.scrollY; render(); window.scrollTo(0,y); if(ui.reorder) toast('Drag the handles to reorder') },
   standMenu:el=>{ const c=sheetCtx(); openSheet({type:'standMenu', uid:el.dataset.uid, day:c.day}) },
+  standEdit:()=>{ const s=ui.sheet; const it=S.days[s.day].items.find(x=>x.uid===s.uid); if(!it) return; openSheet({type:'edit', uid:s.uid, ctx:'P', day:s.day, useSub:true, sets:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts(it) : pyrDefault(Math.max(3,it.sets)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   standChange:()=>{ const s=ui.sheet; openSheet({type:'swap', uid:s.uid, ctx:'P', day:s.day, tmp:true, keep:true}) },
   standChange2:el=>{ const s=ui.sheet; openSheet({type:'swap', uid:el.dataset.uid, ctx:'P', day:s.day, tmp:true, keep:true}) },
   standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ it.ex=it.sub; delete it.sub; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
@@ -1791,7 +1794,7 @@ const H = {
   exRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
   bwRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
   wkDays:el=>{ ui.wkDays=+el.dataset.k; const y=window.scrollY; render(); window.scrollTo(0,y) },
-  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets;
+  editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets; c.useSub = !!(ui.sheet && ui.sheet.useSub);
     openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   edEccPct:el=>{ keepEd(); ui.sheet.eccPct=Math.max(80,Math.min(150,ui.sheet.eccPct+ +el.dataset.d)); renderSheet() },
   edEccSec:el=>{ keepEd(); ui.sheet.eccSec=Math.max(2,Math.min(10,ui.sheet.eccSec+ +el.dataset.d)); renderSheet() },
@@ -1802,7 +1805,7 @@ const H = {
   edWu:el=>{ keepEd(); ui.sheet.wu=Math.max(0,Math.min(3,(ui.sheet.wu||0)+ +el.dataset.d)); renderSheet() },
   edSets:el=>{ keepEd(); const s=ui.sheet; s.sets=Math.max(s.st==='pyr'?3:1,Math.min(10,s.sets+ +el.dataset.d)); if(s.st==='pyr' && s.pct.length!==s.sets) s.pct=pyrDefault(s.sets); renderSheet() },
   edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(s.m==='fail'){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=s.m==='time'?20:8; s.hi=s.m==='time'?40:12 } renderSheet() },
-  edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return } saveExFields(it.ex,s);
+  edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return } saveExFields((s.useSub && (s.ctx==='P'||s.ctx==='T')) ? (effItem(S.days[s.day],it).ex||it.ex) : it.ex, s);
     it.lo = s.m==='fail'?null:(num(s.lo)??8); it.hi = s.m==='fail'?null:Math.max(it.lo, num(s.hi)??it.lo); it.rest=num($('#edRest').value)??it.rest;
     const styleTo = o => { if(s.st) o.st=s.st; else delete o.st; if(s.st==='pyr'){ if(o.sets<3) o.sets=3; o.pct = s.pct.length===o.sets ? s.pct.slice() : pyrDefault(o.sets) } else delete o.pct;
       if(s.st==='drop'){ o.drops=s.drops; o.dropPct=s.dropPct } else { delete o.drops; delete o.dropPct }
@@ -1817,7 +1820,7 @@ const H = {
     else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
     saveCtx(s.ctx); closeSheet(); render() },
   rmItem:el=>{ const s=ui.sheet; const list=ctxList(s.ctx,s.day); const it0=sheetItem(s); const i=it0?list.indexOf(it0):-1; if(i<0){ closeSheet(); return }
-    list.splice(i,1); normalizeSS(list); if(s.ctx==='A'){ if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1) } saveCtx(s.ctx); closeSheet(); render() },
+    list.splice(i,1); normalizeSS(list); if(s.ctx==='A'){ fixLinks(list); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1) } saveCtx(s.ctx); closeSheet(); render() },
   rmItemKeep:()=>{ const s=ui.sheet; const it=sheetItem(s); if(!it) return; const pit=planItemOf(it); const d=S.days[A.dayIdx];
     if(pit){ d.items.splice(d.items.indexOf(pit),1); normalizeSS(d.items); saveState() }
     const i=A.items.indexOf(it); A.items.splice(i,1); normalizeSS(A.items); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1);
@@ -1909,7 +1912,7 @@ function doReplace(exId){
     else if(hasGoal || !pu || (pit0 && pit0.ex===exId)){ list[ti]=ni; A.cur=ti }
     else { tgt.ghost=true; tgt.goalOf=pu; tgt.skipped=true; delete tgt.pu; delete tgt.ss; ni.par=tgt.uid; list.splice(ti+1,0,ni); A.cur=ti+1 }
     if(pit0 && pit0.ex===exId){ const g=list.find(x=>x.ghost && x.goalOf===pu); if(g) list.splice(list.indexOf(g),1); A.cur=Math.max(0,list.indexOf(ni)) }
-    normalizeSS(list);
+    normalizeSS(list); fixLinks(list);
     if(s.keep && pit0){ if(pit0.ex===exId) delete pit0.sub; else pit0.sub=exId; if(S.days[A.dayIdx].tmp) delete S.days[A.dayIdx].tmp[pit0.uid]; saveState(); saveActive(); closeSheet(); render(); toast(pit0.ex===exId?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return }
   } else if(s.tmp && s.keep && !it.ph){
     const d=S.days[s.day]; if(d.tmp) delete d.tmp[it.uid]; if(exId===it.ex) delete it.sub; else it.sub=exId;
@@ -2033,23 +2036,18 @@ function endDrag(){
   if(from===to) return;
   const ctx=list.dataset.ctx, day=+list.dataset.day; const arr=ctxList(ctx,day);
   const curUid = ctx==='A' ? A.items[A.cur]?.uid : null;
-  // a goal exercise and its stand-in always move together (goal on top, stand-in under it)
-  const standOf = x => ctx!=='A' || !x ? null : (arr.find(y=>y.par && y.par===x.uid) || (x.ghost ? arr.find(y=>!y.ghost && y.pu && y.pu===x.goalOf) : null));
+  // Exercises move in blocks: a goal with its stand-in(s) (a whole chain if you swapped more than once),
+  // and both halves of a superset. Dropping a block next to another never splits that one either.
+  const standOf = x => ctx!=='A' || !x ? null : (arr.find(y=>y.par && y.par===x.uid) || (x.ghost ? arr.find(y=>!y.ghost && !y.par && y.pu && y.pu===x.goalOf) : null));
   const goalOf_ = x => ctx!=='A' || !x ? null : (x.par ? arr.find(y=>y.uid===x.par) : (!x.ghost && x.pu ? arr.find(y=>y.ghost && y.goalOf===x.pu) : null)) || null;
-  const isPar = x => !!standOf(x);
-  const unit_ = x => { const g=isPar(x)?x:goalOf_(x), r=isPar(x)?standOf(x):x; return [g,r].filter(Boolean) };
-  const m0=arr[from]; const real=isPar(m0) ? (standOf(m0)||m0) : m0;
-  const p0=partnerOf(arr,real); const wasBefore = p0 ? arr.indexOf(p0)<arr.indexOf(real) : false;
-  const [m]=arr.splice(from,1); arr.splice(to,0,m);
-  { const mp=isPar(m); const mate = mp ? standOf(m) : goalOf_(m); if(mate){ arr.splice(arr.indexOf(mate),1); const k=arr.indexOf(m); arr.splice(mp?k+1:k,0,mate) } }
-  // don't split another goal from its stand-in
-  { const u=unit_(real), ix=u.map(x=>arr.indexOf(x)), bi=Math.min(...ix), be=Math.max(...ix), g=arr[bi-1], si=arr[be+1];
-    if(g && si && standOf(g)===si){ const blk=arr.splice(bi,be-bi+1); const at = to>from ? arr.indexOf(si)+1 : arr.indexOf(g); arr.splice(at,0,...blk) } }
-  const p=partnerOf(arr,real);
-  if(p){ const blk=unit_(p); blk.forEach(x=>arr.splice(arr.indexOf(x),1)); const mb=unit_(real); const at = wasBefore ? arr.indexOf(mb[0]) : arr.indexOf(mb[mb.length-1])+1; arr.splice(at,0,...blk) }
-  // don't land in the middle of another superset
-  { const all=unit_(real).concat(p?unit_(p):[]).map(x=>arr.indexOf(x)); const bi=Math.min(...all), be=Math.max(...all); let a=arr[bi-1], b=arr[be+1]; if(a&&isPar(a)) a=standOf(a)||a; if(b&&isPar(b)) b=standOf(b)||b;
-    if(a && b && a.ss && a.ss===b.ss){ const blk=arr.splice(bi, be-bi+1); const at=arr.indexOf(b)+1; arr.splice(at,0,...blk) } }
+  const rootOf = x => { let r=x; const seen=new Set([x]); for(;;){ const g=goalOf_(r); if(!g || seen.has(g)) return r; seen.add(g); r=g } };
+  const key=new Map(); arr.forEach(x=>key.set(x, rootOf(x)));
+  arr.forEach(x=>{ const p=partnerOf(arr,x); if(p){ const ka=key.get(x), kb=key.get(p); if(ka!==kb) arr.forEach(y=>{ if(key.get(y)===kb) key.set(y,ka) }) } });
+  const order=[], members=new Map(); arr.forEach(x=>{ const k=key.get(x); if(!members.has(k)){ members.set(k,[]); order.push(k) } members.get(k).push(x) });
+  const laidOut = k => { const mem=members.get(k), out=[]; mem.forEach(x=>{ if(out.includes(x) || rootOf(x)!==x) return; let c=x; const seen=new Set(); while(c && !seen.has(c) && mem.includes(c)){ out.push(c); seen.add(c); c=standOf(c) } }); mem.forEach(x=>{ if(!out.includes(x)) out.push(x) }); return out };
+  const fk=key.get(arr[from]), tk=key.get(arr[to]);
+  if(fk!==tk){ order.splice(order.indexOf(fk),1); const at=order.indexOf(tk)+(to>from?1:0); order.splice(at,0,fk) }
+  const next=order.flatMap(laidOut); arr.splice(0,arr.length,...next);
   normalizeSS(arr);
   if(ctx==='A'){ A.cur=Math.max(0,A.items.findIndex(x=>x.uid===curUid)); A.orderDirty=true }
   saveCtx(ctx); render();
