@@ -403,6 +403,9 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 .row.isss.ispyr{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(212,167,44,.28) 35%,var(--surface) 85%)}
 .exhead.ispyr{border-radius:16px;padding:12px 12px 12px 14px;margin-top:8px;background:linear-gradient(90deg,rgba(212,167,44,.42) 0%,rgba(212,167,44,.16) 45%,var(--surface) 90%)}
 .exhead.isss.ispyr{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(212,167,44,.28) 40%,var(--surface) 90%)}
+
+.ormest{font-size:13px;color:var(--muted);font-weight:500}
+.ormest b{color:var(--ink);font-weight:700}
 </style>
 </head>
 <body>
@@ -416,7 +419,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.15-c';
+const APP_VERSION = '2026.10.15-d';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -767,6 +770,7 @@ function migrate(){ let did=false;
   // Day 10: single-leg dumbbell calf raise instead of repeating Day 2's barbell raise
   if(!S.fixD10calf){ const d=(S.days||[])[9]; const it=d&&d.items.find(x=>x.ex==='calf_bb'); if(it){ it.ex='calf_db_sl'; delete it.sub } S.fixD10calf=true; fixed=true }
   // use every 1:1 as a stand-in (goal stays visible as skipped; tap it to switch back)
+  if(!S.fixPyr2){ const old=['70,77,85','65,72,80,85','60,68,75,80,85','60,65,70,75,80,85']; (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.st==='pyr' && Array.isArray(it.pct) && old.includes(it.pct.join(','))) it.pct=pyrDefault(it.pct.length) })); S.fixPyr2=true; fixed=true }
   if(!S.fixAllSwaps){ (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.ph || it.sub) return; const a=alt1(it.ex); if(a) it.sub=a })); S.fixAllSwaps=true; fixed=true }
   if(!S.fixD11cg){ const d=(S.days||[])[10]; if(d && !d.items.some(x=>x.ex==='closegrip_ez')){ const it={uid:'d11_cg', ex:'closegrip_ez', sets:3, lo:6, hi:10, rest:120, focus:'triceps · pecs'}; const at=d.items.findIndex(x=>x.ex==='bench_db'); d.items.splice(at>=0?at+1:d.items.length,0,it) } S.fixD11cg=true; fixed=true }
   // Day 5's lat crossover is its own exercise (straight-arm, cables crossed overhead), not the cross-body pulldown
@@ -950,7 +954,7 @@ function oneRM(exId){ const o=S.orm&&S.orm[exId]; if(o) return o; const e=estRM(
 function ormFor(it){ const r=oneRM(it.ex); if(r) return r; const f=it.rows?workRows(it)[0]:null; const w=num(f&&f.w); if(!w) return null; const t=it.lo!=null?Math.round(((it.lo)+(it.hi??it.lo))/2):10; return w*(1+t/30) }
 function pctOf(it,r){ if(loadMode(lib(it.ex))!=='wt') return null; const o=ormFor(it), w=num(r.w); return o&&w ? Math.round(w/o*100) : null }
 const WARM_PCT=[50,60,70];
-function pyrDefault(n){ const T={3:[70,77,85],4:[65,72,80,85],5:[60,68,75,80,85],6:[60,65,70,75,80,85]}; if(T[n]) return T[n].slice(); return Array.from({length:n},(_,i)=>Math.round(60+25*i/(n-1))) }
+function pyrDefault(n){ const T={3:[75,90,85],4:[70,80,90,85],5:[65,75,85,90,85],6:[65,75,85,90,85,80]}; if(T[n]) return T[n].slice(); const a=T[6].slice(); while(a.length<n) a.push(Math.max(60,a[a.length-1]-5)); return a }
 function pyrPcts(it){ const n=it.sets; const p=Array.isArray(it.pct)&&it.pct.length===n ? it.pct : pyrDefault(Math.max(3,n)); return p.slice(0,n) }
 function repsForPct(p){ return p ? Math.max(1,Math.round(30*(100/p-1))) : null }
 const MAX_DROPS=5;
@@ -1254,9 +1258,11 @@ function viewLog(){
 }
 
 function ormLine(it,ex){ if(loadMode(ex)!=='wt') return ''; const own=S.orm&&S.orm[ex.id], e=estRM(ex.id), u=S.unit;
-  const src = own ? 'your number · clear it to use the estimate' : e ? `estimated from ${e.w}×${e.r}${e.live?' today':''}` : 'no history yet · estimated from today\'s working weight';
-  const ph = e ? fmtW(roundW(e.v,ex)) : (ormFor(it)?fmtW(roundW(ormFor(it),ex)):'');
-  return `<div class="ormline"><span>1RM</span><input id="ormIn" data-orm="${ex.id}" inputmode="decimal" value="${own||''}" placeholder="${ph||'–'}" aria-label="One-rep max"><span>${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${src}${it.st==='pyr'?' · pyramid':it.st==='drop'?' · drop set':''}</span></div>` }
+  return `<div class="ormline"><span>1RM</span><input id="ormIn" data-orm="${ex.id}" inputmode="decimal" value="${own||''}" placeholder="${ormEstTxt(it,ex).v||'–'}" aria-label="One-rep max"><span>${u}${dbCount(ex)===2?' each':''}</span><span class="ormest" id="ormEst">${ormEstHTML(it,ex,own)}</span></div>` }
+// the estimate on its own (ignores a number you typed), so it can sit beside the box
+function ormEstTxt(it,ex){ const e=estRM(ex.id); if(e) return {v:fmtW(roundW(e.v,ex)), src:`from ${e.w}×${e.r}${e.live?' today':''}`};
+  const f=workRows(it)[0], w=num(f&&f.w); if(!w) return {v:'', src:'log a set to estimate'}; const t=it.lo!=null?Math.round((it.lo+(it.hi??it.lo))/2):10; return {v:fmtW(roundW(w*(1+t/30),ex)), src:'from today\'s weight'} }
+function ormEstHTML(it,ex,own){ const o=ormEstTxt(it,ex); return `${o.v?`Est. <b>${o.v}</b> · `:''}${o.src}${own?' · using your number':''}` }
 function wCell(r,i,lm,ex){
   if(lm==='assist'||lm==='band'){
     const opts=(lm==='assist'?`<option value="none" ${r.band==='none'||!r.band?'selected':''}>None</option>`:`<option value="" ${!r.band?'selected':''}>–</option>`)+bandsSorted().map(b=>`<option value="${b.id}" ${r.band===b.id?'selected':''}>${esc(b.name)}</option>`).join('');
@@ -1827,7 +1833,7 @@ function keepEd(){ const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.val
   if(ui.sheet && ui.sheet.st==='pyr' && $('#edPct0')){ ui.sheet.pct=(ui.sheet.pct||[]).map((v,i)=>{ const e=$('#edPct'+i); return e ? (num(e.value)??v) : v }) } }
 function styleEditor(s,it){ const st=s.st||''; const ex=lib(it.ex), o=oneRM(it.ex), u=S.unit;
   let h=`<div class="sec">Set style</div><div class="seg">${[['','Straight'],['pyr','Pyramid'],['drop','Drop set']].map(([k,l])=>`<button data-act="edSt" data-k="${k}" class="${st===k?'on':''}">${l}</button>`).join('')}</div>`;
-  if(st==='pyr'){ h+=`<div class="small muted" style="margin-top:8px">Weight climbs each set as a % of your 1RM${o?` (${Math.round(o)} ${u})`:''}; reps come down. The suggested start is filled in; change any number.</div>
+  if(st==='pyr'){ h+=`<div class="small muted" style="margin-top:8px">Target % of your 1RM${o?` (${fmtW(roundW(o,ex))} ${u})`:''} for each set. Suggested start: 75 · 90 · 85. Changes are saved to Day ${s.day+1} for every future workout. During a workout each set shows the % of the weight you actually enter.</div>
     <div class="pctgrid">${s.pct.map((p,i)=>`<label class="f">Set ${i+1}<span class="rowline"><input id="edPct${i}" inputmode="numeric" value="${p}">%</span><span class="small muted">≈${repsForPct(p)} reps${o&&loadMode(ex)==='wt'?' · '+roundW(o*p/100,ex)+' '+u:''}</span></label>`).join('')}</div>
     <button class="link small" data-act="edPctReset">Reset to suggested</button>` }
   if(st==='drop'){ h+=`<div class="small muted" style="margin-top:8px">After every set, strip the weight and keep going with no rest (D1, D2 … under each set). Drops are saved apart from your working sets, so they don't affect progression.</div>
@@ -1883,6 +1889,7 @@ document.addEventListener('input',e=>{
   if(el.dataset.step){ const u=S.unit==='kg'?'kg':'lb'; S.steps=S.steps||{}; S.steps[u]=S.steps[u]||{}; const v=num(el.value); if(v>0) S.steps[u][el.dataset.step]=v; else delete S.steps[u][el.dataset.step]; clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
     const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
+    { const oe=document.getElementById('ormEst'); if(oe) oe.innerHTML=ormEstHTML(it,lib(it.ex),S.orm&&S.orm[el.dataset.orm]) }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.dataset.mb && ui.man){ const M=ui.man, b=el.dataset.mb;
     if(b==='date') M.date=el.value; else if(b==='dur') M.dur=el.value; else if(b==='adv') M.adv=el.checked;
@@ -1904,6 +1911,7 @@ document.addEventListener('input',e=>{
       touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv'); if(pv) pv.textContent=rj.prev||'—' });
     }
     if(f==='w') it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent = p!=null?p+'%':r.pct?r.pct+'%':'' } const t=document.getElementById('tot_'+j); if(t){ const w=num(r.w); t.textContent = w?fmtW(w*2)+' total':'' } });
+    if(f==='w'){ const oe=document.getElementById('ormEst'); if(oe) oe.innerHTML=ormEstHTML(it,ex,S.orm&&S.orm[ex.id]) }
     const ll=$('#loadline'); if(ll){ const tmp=document.createElement('div'); tmp.innerHTML=loadLine(it,lib(it.ex)); if(tmp.firstElementChild) ll.innerHTML=tmp.firstElementChild.innerHTML }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveActive,500); return;
   }
