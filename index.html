@@ -442,7 +442,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.22-d';
+const APP_VERSION = '2026.10.23-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -696,7 +696,7 @@ const GROUP = {upec:'pecs',lpec:'pecs',brach:'bi',obl:'abs'};
 const grp = m => GROUP[m] || m;
 const GEAR = [
  ['Home & bodyweight',[['bar','Pull-up bar'],['band','Resistance bands'],['abw','Ab roller'],['stands','Push-up stands'],['bench','Workout bench'],['rings','Gymnastic rings'],['dip','Dip station']]],
- ['Free weights',[['db','Dumbbells'],['bb','Barbell'],['ez','EZ bar'],['plate','Weight plates'],['rack','Squat / bench rack']]],
+ ['Free weights',[['db','Dumbbells'],['bb','Barbell'],['ez','EZ bar'],['plate','Weight plates'],['landmine','Landmine / T-Bar'],['rack','Squat / bench rack']]],
  ['Gym',[['cable','Cable station'],['mach','Machines (press, row, leg press, pec deck, leg ext/curl, Smith)']]],
 ];
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
@@ -709,16 +709,16 @@ function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEF
 const ONE_DB = new Set(['goblet','pullover_db','tri_oh_db','tri_incl_db','situp_db','hipthrust_db','windmill','side_bend','calf_db_sl','rdl_sl','skull_db']);
 const LEG_2DB = new Set(['lunge_rev_db','lunge_deep','bulg_db','stepup_db','dbsplit','dblunge','dbstep']);
 function dbCount(ex){ if(!ex || ex.cat!=='db') return 0; if(ONE_DB.has(ex.id)) return 1; if(LEG_2DB.has(ex.id)) return 2; return ex.u ? 1 : 2 }
-const EQUIP=[['bb','Barbell'],['ez','EZ bar'],['db','Dumbbell'],['cable','Cable'],['mach','Machine'],['plate','Weight plate'],['cal','Bodyweight'],['band','Band']];
-const CATMAP={cable:'mach', ez:'bb', plate:'other'};
+const EQUIP=[['bb','Barbell'],['ez','EZ bar'],['landmine','Landmine / T-Bar'],['db','Dumbbell'],['cable','Cable'],['mach','Machine'],['plate','Weight plate'],['cal','Bodyweight'],['band','Band']];
+const CATMAP={cable:'mach', ez:'bb', plate:'other', landmine:'bb'};
 const gearFor = k => k==='cal' ? [] : [k];
 const lmFor = (k,bw) => k==='cal' ? (bw && bw!=='bw' ? bw : 'bw') : k==='band' ? 'band' : 'wt';
 const EXTRA_CODES=['bench','bar','dip','rings','rack','abw','stands'];
-function natEquip(e){ const c=e.cat0||e.cat, rq=e.req0||e.req||[]; if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
+function natEquip(e){ const c=e.cat0||e.cat, rq=e.req0||e.req||[]; if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('landmine')) return 'landmine'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
 const EXTRA_GEAR=[['bench','Bench'],['bar','Pull-up bar'],['dip','Dip station'],['rings','Rings'],['rack','Rack'],['abw','Ab roller'],['stands','Push-up stands']];
-const GEAR_CODES=['db','bb','ez','plate','rack','cable','mach','band'];
+const GEAR_CODES=['db','bb','ez','plate','landmine','rack','cable','mach','band'];
 function equipOf(e){ if(e.custom && e.equip) return e.equip; if(S && S.cat && S.cat[e.id]) return S.cat[e.id]; const c=e.cat0||e.cat, rq=e.req0||e.req||[];
-  if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
+  if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('landmine')) return 'landmine'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
 function applyDeg(){ Object.values(LIB).forEach(e=>{ const nm=(S && S.names && S.names[e.id]) || e.base || e.name; e.name = nm.includes('{°}') ? nm.replace('{°}', fmtDeg(degOf(e.id))) : nm;
   if(e.cat0===undefined){ e.cat0=e.cat; e.req0=e.req.slice(); e.lm0=e.lm }
   const c=S && S.cat && S.cat[e.id];
@@ -818,6 +818,7 @@ function migrate(){ let did=false;
   // Day 10: single-leg dumbbell calf raise instead of repeating Day 2's barbell raise
   if(!S.fixD10calf){ const d=(S.days||[])[9]; const it=d&&d.items.find(x=>x.ex==='calf_bb'); if(it){ it.ex='calf_db_sl'; delete it.sub } S.fixD10calf=true; fixed=true }
   // use every 1:1 as a stand-in (goal stays visible as skipped; tap it to switch back)
+  if(S.gear && S.gear.landmine===undefined){ S.gear.landmine = !!S.gear.bb; fixed=true }
   if(!S.fixPyr3){ const old=['70,80,90,85','65,75,85,90,85','65,75,85,90,85,80']; (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.st==='pyr' && Array.isArray(it.pct) && old.includes(it.pct.join(','))) it.pct=pyrDefault(it.pct.length) })); S.fixPyr3=true; fixed=true }
   if(!S.fixPyr2){ const old=['70,77,85','65,72,80,85','60,68,75,80,85','60,65,70,75,80,85']; (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.st==='pyr' && Array.isArray(it.pct) && old.includes(it.pct.join(','))) it.pct=pyrDefault(it.pct.length) })); S.fixPyr2=true; fixed=true }
   if(!S.fixAllSwaps){ (S.days||[]).forEach(d=>(d.items||[]).forEach(it=>{ if(it.ph || it.sub) return; const a=alt1(it.ex); if(a) it.sub=a })); S.fixAllSwaps=true; fixed=true }
