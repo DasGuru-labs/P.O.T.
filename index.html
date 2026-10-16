@@ -424,6 +424,9 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 
 .setrow select.rsel{text-align:center;text-align-last:center;font-variant-numeric:tabular-nums;font-weight:600;padding:9px 2px}
 .setrow select.rsel.sug{color:var(--accent-text)}
+
+.swbtn{height:40px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:12px;padding:0 4px;font-variant-numeric:tabular-nums}
+.swbtn.on{background:var(--danger);color:#fff}
 </style>
 </head>
 <body>
@@ -437,7 +440,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.20-c';
+const APP_VERSION = '2026.10.21-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -837,7 +840,7 @@ function mergeSheet(){
     const removed = new Set([...(nd.gone||[]), ...was.filter(ex=>!od.items.some(o=>o.ex===ex || o.sub===ex))]);
     nd.items=nd.items.filter(n=>!removed.has(n.ex) || od.items.some(o=>o.ex===n.ex));
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
-      ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct','eccPct','eccSec'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
+      ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct','eccPct','eccSec','tm'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
     // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
     nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
     const fromSheet = x => /^d\d+_/.test(String(x.uid||''));
@@ -868,8 +871,9 @@ function lib(id){ if(id==='prone_oh') id='pullover_db'; return LIB[id] || (S && 
 function allEx(){ return [...Object.values(LIB), ...Object.values(S.custom||{})] }
 function missing(ex){ return ex.req.filter(r=>!S.gear[r]) }
 function avail(ex){ return missing(ex).length===0 }
-function mode(it){ if(it.ph) return 'reps'; const e=lib(it.ex); return it.lo==null ? 'fail' : (e.t ? 'time' : 'reps') }
-function targetText(it){ if(it.ph) return `${it.sets} × ${it.lo??''}–${it.hi??''}`; const m=mode(it); return m==='fail' ? `${it.sets} × failure` : m==='time' ? `${it.sets} × ${it.lo}–${it.hi}s` : `${it.sets} × ${it.lo}–${it.hi}` }
+function mode(it){ if(it.ph) return 'reps'; const e=lib(it.ex); if(it.lo==null) return (it.tm!=null ? it.tm : e.t) ? 'tfail' : 'fail'; return e.t ? 'time' : 'reps' }
+const isFailMode = m => m==='fail' || m==='tfail';
+function targetText(it){ if(it.ph) return `${it.sets} × ${it.lo??''}–${it.hi??''}`; const m=mode(it); return m==='fail' ? `${it.sets} × reps to failure` : m==='tfail' ? `${it.sets} × time to failure` : m==='time' ? `${it.sets} × ${it.lo}–${it.hi}s` : `${it.sets} × ${it.lo}–${it.hi}` }
 function liveSessions(){ return SESS.filter(s=>!s.deleted).sort((a,b)=>b.end-a.end) }
 function lastFor(exId){ for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(e) return {...e, date:s.end} } return null }
 function repOf(s,ex){ if(ex.u && s.rl==null && s.rr==null) return num(s.r)??0; if(!ex.u && s.r==null && (s.rl!=null||s.rr!=null)) return Math.min(num(s.rl)??0, num(s.rr)??0); return ex.u ? Math.min(num(s.rl)??0, num(s.rr)??0) : (num(s.r)??0) }
@@ -888,7 +892,7 @@ function eff(r,ex,bw){ const lm=loadMode(ex);
   return num(r.w) }
 function fmtSet(s,ex){
   const lm=loadMode(ex); const reps = (ex.u && (s.rl!=null||s.rr!=null)) ? `${s.rl??'–'}/${s.rr??'–'}` : (s.r!=null ? `${s.r}` : (s.rl!=null||s.rr!=null) ? `${s.rl??'–'}/${s.rr??'–'}` : '–');
-  const r = ex.t ? reps+'s' : reps;
+  const r = (ex.t || s.s) ? reps+'s' : reps;
   if(lm==='assist') return `${bandName(s.band)}×${r}`;
   if(lm==='band') return s.band&&s.band!=='none' ? `${bandName(s.band)}×${r}` : r;
   if(lm==='add') return `+${num(s.add)||0}×${r}`;
@@ -1061,7 +1065,7 @@ function prefill(it){
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
   const tmp={...it, rows:warm.concat(rows)}; rebuildDrops(tmp); return tmp.rows;
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct','eccPct','eccSec'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct','eccPct','eccSec','tm'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
 function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
   const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
@@ -1099,6 +1103,7 @@ function logSet(idx){
   if(idx<0) return;
   const row=it.rows[idx];
   if(row.done){ row.done=false; row.skip=false; saveActive(); render(); return }
+  if(A.sw && A.sw.uid===it.uid && A.sw.i===idx){ const secs=Math.max(1,Math.round((Date.now()-A.sw.t0)/1000)); const f=ex.u?'rl':'r'; if(row[f]===''||row[f]==null){ row[f]=String(secs); if(ex.u && !row.rrSet) row.rr=String(secs) } A.sw=null }
   const repsOk = ex.u ? (row.rl!==''&&row.rr!=='') : row.r!=='';
   if(!repsOk){ toast(ex.t?'Enter seconds first':'Enter reps first'); return }
   row.done=true; row.at=Date.now();
@@ -1135,7 +1140,7 @@ function finishWorkout(){
   const now=Date.now();
   const s={id:A.id, type:'lift', dayIdx:A.dayIdx, dayName:A.dayName, start:A.created, end:now, updatedAt:now, dur:Math.round(clockSecs()),
     exercises:A.items.filter(it=>!it.skipped).map(it=>{ const ex=lib(it.ex), lm=loadMode(ex), bw=bwNow();
-      const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:rirStr(r.rir)||null}; if(r.pct) o.pct=r.pct;
+      const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:isFailMode(mode(it))?null:(rirStr(r.rir)||null)}; if(r.pct) o.pct=r.pct; if(mode(it)==='tfail' && !ex.t) o.s=1;
         if(lm==='assist'||lm==='band') o.band=r.band||'none'; if(lm==='add') o.add=num(r.add)||0; if((lm==='assist'||lm==='add') && bw!=null) o.bw=bw; return o };
       const keep = r => r.done && !r.skip && !isZero(r,ex);
       const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(r=>{ const o=rec(r); o.set=workRows(it).indexOf(parentOf(it,r)); o.k=r.drop; return o }); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
@@ -1274,25 +1279,28 @@ function viewLog(){
     <div class="chips">${pr?'<span class="chip ss">Superset</span>':''}${it.st==='drop'?`<span class="chip dr">Drop set · ${it.drops||2} per set</span>`:it.st==='pyr'?'<span class="chip py">Pyramid</span>':it.st==='ecc'?`<span class="chip ec">Eccentric · ${it.eccSec||4} s down · ${it.eccPct||100}% 1RM</span>`:''}${it.emph?`<span class="chip ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>`:''}${armLabel(ex)?`<span class="chip pri">${armLabel(ex)}</span>`:''}${ex.m.map((mm,i)=>`<span class="chip ${i===0&&!armLabel(ex)?'pri':''}">${MUS[mm]||mm}</span>`).join('')}</div>
     <div class="exbtns"><button class="btn sm ghost" data-act="swap" data-mode="swap" data-uid="${it.uid}">Swap</button><button class="btn sm ghost" data-act="swap" data-mode="stand" data-uid="${it.uid}">Stand-in</button><button class="btn sm ghost" data-act="editItem" data-uid="${it.uid}">Edit</button><button class="btn sm ghost" data-act="exInfo" data-ex="${ex.id}">History</button><button class="btn sm ghost" data-act="skipEx">${it.skipped?'Unskip':'Skip'}</button></div>`;
   const cur = it.rows.findIndex(r=>!r.done);
-  const repLbl = m==='time'?'Sec':'Reps';
+  const timeBox = m==='tfail' || m==='time' || (!!ex.t && m!=='fail'); const failM = isFailMode(m);
+  const repLbl = timeBox ? 'Time' : 'Reps';
   const lm=loadMode(ex); const wLbl = lm==='assist'||lm==='band' ? 'Band' : lm==='add' ? '+'+unit : lm==='bw' ? 'Load' : (dbCount(ex)===2 ? unit+' ea' : unit);
   if(it.ghost && it.skipped){ const si=standinOf(it); h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Goal exercise · skipped</div><div class="small muted">You're using ${esc(si?lib(si.ex).name:'a stand-in')} for now. Your history for both is kept separately.</div><button class="btn sm primary" style="align-self:center" data-act="useGoal">Do this one today instead</button></div>` }
   else if(it.ghost){ h+=`<div class="small muted" style="margin-top:8px">Doing your goal exercise today. <button class="link" data-act="useStandIn">Use the stand-in instead</button></div>` }
   if(it.ghost && it.skipped){} else if(it.skipped){ h+=`<div class="card skipcard stack"><div style="font-weight:700;font-size:18px">Skipped today</div><div class="small muted">Nothing from this exercise is saved. Next time it starts from your last real session.</div><button class="btn sm ghost" style="align-self:center" data-act="skipEx">Unskip</button></div>` } else {
-  h+=`<div class="sets ${ex.u?'uni':''}"><div class="sethead"><span style="text-align:center">Set</span><span>Last</span><span style="text-align:center">${wLbl}</span>${ex.u?`<span style="text-align:center">L</span><span style="text-align:center">R</span>`:`<span style="text-align:center">${repLbl}</span>`}<span style="text-align:center">RiR</span><span></span></div>`;
+  h+=`<div class="sets ${ex.u?'uni':''}"><div class="sethead"><span style="text-align:center">Set</span><span>Last</span><span style="text-align:center">${wLbl}</span>${ex.u?`<span style="text-align:center">L</span><span style="text-align:center">R</span>`:`<span style="text-align:center">${repLbl}</span>`}<span style="text-align:center">${failM ? (m==='tfail'?'Timer':'') : 'RiR'}</span><span></span></div>`;
   it.rows.forEach((r,i)=>{
-    const rir=rirSel(`data-set="${i}" data-f="rir"`, r.rir);
+    const swOn = A.sw && A.sw.uid===it.uid && A.sw.i===i;
+    const rir = !failM ? rirSel(`data-set="${i}" data-f="rir"`, r.rir)
+      : m==='tfail' && !r.done ? `<button class="swbtn ${swOn?'on':''}" data-act="swToggle" data-i="${i}" aria-label="${swOn?'Stop timer':'Start timer'}">${swOn?`<span id="swT">${fmtDur(Math.floor((Date.now()-A.sw.t0)/1000))}</span>`:'Start'}</button>` : '<span></span>';
     const pc=pctOf(it,r), tp=it.st==='pyr'&&r.pct&&!r.warm ? repsForPct(r.pct) : null;
     const isPeak = it.st==='pyr' && !r.warm && !r.drop && workRows(it).indexOf(r)===peakIdx(workRows(it).map(x=>x.pct||0));
-    const tmd = m==='time' || !!ex.t;
-    const reps = ex.u ? repSel(`data-set="${i}" data-f="rl"`, r.rl, {timed:tmd, cls:r.sugR?'sug':'', label:'Left'}) + repSel(`data-set="${i}" data-f="rr"`, r.rr, {timed:tmd, cls:r.sugR?'sug':'', label:'Right'})
-                     : repSel(`data-set="${i}" data-f="r"`, r.r, {timed:tmd, cls:r.sugR?'sug':'', ph: m==='fail'?'max':tp&&m==='reps'?'~'+tp:'–', label:repLbl});
+    const tmd = timeBox;
+    const reps = ex.u ? repSel(`data-set="${i}" data-f="rl"`, r.rl, {timed:tmd, cls:r.sugR?'sug':'', label:'Left', ph:failM?'Fail':'–'}) + repSel(`data-set="${i}" data-f="rr"`, r.rr, {timed:tmd, cls:r.sugR?'sug':'', label:'Right', ph:failM?'Fail':'–'})
+                     : repSel(`data-set="${i}" data-f="r"`, r.r, {timed:tmd, cls:r.sugR?'sug':'', ph: failM?'Failure':tp&&m==='reps'?'~'+tp:'–', label:repLbl});
     h+=`<div class="setrow ${isPeak?'peak':''} ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${r.drop&&it.rows[i+1]&&it.rows[i+1].drop?'dmid':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}${isPeak?'<small class="pk">Peak</small>':''}</span><span class="pv">${esc(r.prev||'—')}</span>
       ${wCell(r,i,lm,ex)}${reps}${rir}
       <button class="check" data-act="logSet" data-i="${i}" aria-label="Log set ${i+1}">${ICON.check}</button></div>`;
   });
   h+=`</div>${loadLine(it,ex)}${ormLine(it,ex)}<div class="setops"><button data-act="addSet">+ Set</button><button data-act="addWarm">+ Warm-up</button>${it.rows.some(r=>r.warm&&!r.done)?'<button data-act="rmWarm">− Warm-up</button>':''}${cur>=0?'<button data-act="skipSet">Skip set</button>':''}${workRows(it).length>1&&!it.rows[lastWorkIdx(it)].done?'<button data-act="rmSet">− Set</button>':''}</div>`;
-  if(cur<0 && workRows(it).length && m!=='fail' && lm!=='bw' && workRows(it).some(r=>!r.skip)){
+  if(cur<0 && workRows(it).length && !failM && lm!=='bw' && workRows(it).some(r=>!r.skip)){
     const hitTop = workRows(it).every(r=>repOf(r,ex)>=it.hi);
     const lastRow=workRows(it)[workRows(it).length-1]; const step = unit==='kg'?2.5:5;
     const set = A.inc && A.inc[it.ex]!=null; const iv = set ? A.inc[it.ex] : null;
@@ -1621,8 +1629,8 @@ function renderSheet(){
      ${(()=>{ return ''; const ex2=lib(it.ex); const arms = (ex2.cat==='db' && !LEG_2DB.has(ex2.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex2.id}" data-k="one" class="${ex2.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex2.id}" data-k="both" class="${!ex2.u?'on':''}">Both arms</button></div>` : '';
         return arms + (ex2.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex2.id}" data-d="${d}" class="${degOf(ex2.id)===d?'on':''}">${fmtDeg(d)}</button>`).join('')}</div>` : '') })()}
      <div class="sec">Sets</div><div class="stepper"><button data-act="edSets" data-d="-1">−</button><span class="v" id="edSetsV">${s.sets}</span><button data-act="edSets" data-d="1">+</button></div>
-     <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['time','Timed'],['fail','To failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
-     ${m!=='fail'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}${repSel('id="edLo"', s.lo, {timed:m==='time', min:1, blank:false, label:'From'})}</label><label class="f">To${m==='time'?' (sec)':''}${repSel('id="edHi"', s.hi, {timed:m==='time', min:1, blank:false, label:'To'})}</label></div>`:''}
+     <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['fail','Reps to Failure'],['tfail','Time to Failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
+     ${m==='reps'||m==='time'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}${repSel('id="edLo"', s.lo, {timed:m==='time', min:1, blank:false, label:'From'})}</label><label class="f">To${m==='time'?' (sec)':''}${repSel('id="edHi"', s.hi, {timed:m==='time', min:1, blank:false, label:'To'})}</label></div>`:''}
      ${s.ctx==='P'?`<div class="sec">Warm-up sets</div><div class="stepper"><button data-act="edWu" data-d="-1">−</button><span class="v">${s.wu||0}</span><button data-act="edWu" data-d="1">+</button><span class="small muted" style="margin-left:6px">${s.wu?'Added before your working sets':'None'}</span></div>`:''}
      ${styleEditor(s,it)}
      <div class="sec">Rest between sets (seconds)</div><input id="edRest" inputmode="numeric" value="${it.rest}">
@@ -1772,7 +1780,7 @@ const H = {
   editDone:()=>{ ui.editDay=null; ui.reorder=false; render(); toast('Day saved') },
   reorderToggle:()=>{ ui.reorder=!ui.reorder; const y=window.scrollY; render(); window.scrollTo(0,y); if(ui.reorder) toast('Drag the handles to reorder') },
   standMenu:el=>{ const c=sheetCtx(); openSheet({type:'standMenu', uid:el.dataset.uid, day:c.day}) },
-  standEdit:()=>{ const s=ui.sheet; const it=S.days[s.day].items.find(x=>x.uid===s.uid); if(!it) return; openSheet({type:'edit', uid:s.uid, ctx:'P', day:s.day, useSub:true, sets:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts(it) : pyrDefault(Math.max(3,it.sets)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
+  standEdit:()=>{ const s=ui.sheet; const it=S.days[s.day].items.find(x=>x.uid===s.uid); if(!it) return; openSheet({type:'edit', uid:s.uid, ctx:'P', day:s.day, useSub:true, sets:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:(mode(it)==='time'?'tfail':mode(it)), st:it.st||'', pct: it.st==='pyr' ? pyrPcts(it) : pyrDefault(Math.max(3,it.sets)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   standChange:()=>{ const s=ui.sheet; openSheet({type:'swap', uid:s.uid, ctx:'P', day:s.day, tmp:true, keep:true, mode:'stand'}) },
   standChange2:el=>{ const s=ui.sheet; openSheet({type:'swap', uid:el.dataset.uid, ctx:'P', day:s.day, tmp:true, keep:true, mode:'stand'}) },
   standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ it.ex=it.sub; delete it.sub; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
@@ -1789,6 +1797,11 @@ const H = {
   jump:el=>{ A.cur=+el.dataset.i; saveActive(); render() },
   prev:()=>{ if(A.cur>0){A.cur--; saveActive(); render(); window.scrollTo(0,0)} },
   next:()=>{ const g=groupIdx(A.cur); const t = g.every(j=>itemDone(A.items[j])) ? Math.max(...g)+1 : A.cur+1; if(t<A.items.length){ A.cur=t; saveActive(); render(); window.scrollTo(0,0) } },
+  swToggle:el=>{ const it=curItem(), i=+el.dataset.i; const row=it.rows[i]; if(!row) return;
+    if(A.sw && A.sw.uid===it.uid && A.sw.i===i){ const secs=Math.max(1,Math.round((Date.now()-A.sw.t0)/1000)); A.sw=null;
+      const f = lib(it.ex).u ? (row.rl===''||row.rl==null ? 'rl' : 'rr') : 'r'; row[f]=String(secs); if(f==='rl' && !row.rrSet) row.rr=String(secs); row.autoR=false; row.sugR=false;
+      saveActive(); render(); toast(`${fmtDur(secs)} recorded`); return }
+    A.sw={uid:it.uid, i, t0:Date.now()}; const c=A.clock; if(!c.started){ c.started=true; c.since=Date.now(); c.paused=false } saveActive(); render() },
   logSet:el=>{ unlockAudio(); logSet(el.dataset.i!=null?+el.dataset.i:null) },
   addWarm:()=>{ const it=curItem(); const n=it.rows.filter(r=>r.warm).length; if(n>=3){ toast('Up to 3 warm-ups'); return }
     it.rows.splice(n,0,warmRow(it,n,workRows(it)[0],lastFor(it.ex))); syncWarm(it); saveActive(); render() },
@@ -1839,7 +1852,7 @@ const H = {
   bwRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
   wkDays:el=>{ ui.wkDays=+el.dataset.k; const y=window.scrollY; render(); window.scrollTo(0,y) },
   editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets; c.useSub = !!(ui.sheet && ui.sheet.useSub);
-    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:mode(it), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
+    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:(mode(it)==='time'?'tfail':mode(it)), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   edEccPct:el=>{ keepEd(); ui.sheet.eccPct=Math.max(80,Math.min(150,ui.sheet.eccPct+ +el.dataset.d)); renderSheet() },
   edEccSec:el=>{ keepEd(); ui.sheet.eccSec=Math.max(2,Math.min(10,ui.sheet.eccSec+ +el.dataset.d)); renderSheet() },
   edSt:el=>{ keepEd(); const s=ui.sheet; s.st=el.dataset.k; if(s.st==='pyr'){ if(s.sets<3) s.sets=3; if(s.pct.length!==s.sets) s.pct=pyrDefault(s.sets) } renderSheet() },
@@ -1848,9 +1861,9 @@ const H = {
   edDropPct:el=>{ keepEd(); ui.sheet.dropPct=Math.max(10,Math.min(40,ui.sheet.dropPct+ +el.dataset.d)); renderSheet() },
   edWu:el=>{ keepEd(); ui.sheet.wu=Math.max(0,Math.min(3,(ui.sheet.wu||0)+ +el.dataset.d)); renderSheet() },
   edSets:el=>{ keepEd(); const s=ui.sheet; s.sets=Math.max(s.st==='pyr'?3:1,Math.min(10,s.sets+ +el.dataset.d)); if(s.st==='pyr' && s.pct.length!==s.sets) s.pct=pyrDefault(s.sets); renderSheet() },
-  edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(s.m==='fail'){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=s.m==='time'?20:8; s.hi=s.m==='time'?40:12 } renderSheet() },
+  edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(isFailMode(s.m)){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=8; s.hi=12 } renderSheet() },
   edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return } saveExFields((s.useSub && (s.ctx==='P'||s.ctx==='T')) ? (effItem(S.days[s.day],it).ex||it.ex) : it.ex, s);
-    it.lo = s.m==='fail'?null:(num(s.lo)??8); it.hi = s.m==='fail'?null:Math.max(it.lo, num(s.hi)??it.lo); it.rest=num($('#edRest').value)??it.rest;
+    const fm=isFailMode(s.m); it.lo = fm?null:(num(s.lo)??8); it.hi = fm?null:Math.max(it.lo, num(s.hi)??it.lo); if(fm) it.tm = s.m==='tfail'; else delete it.tm; it.rest=num($('#edRest').value)??it.rest;
     const styleTo = o => { if(s.st) o.st=s.st; else delete o.st; if(s.st==='pyr'){ if(o.sets<3) o.sets=3; o.pct = s.pct.length===o.sets ? s.pct.slice() : pyrDefault(o.sets) } else delete o.pct;
       if(s.st==='drop'){ o.drops=s.drops; o.dropPct=s.dropPct } else { delete o.drops; delete o.dropPct }
       if(s.st==='ecc'){ o.eccPct=s.eccPct; o.eccSec=s.eccSec } else { delete o.eccPct; delete o.eccSec } };
@@ -1859,7 +1872,7 @@ const H = {
       while(workRows(it).length>s.sets){ const li=lastWorkIdx(it), l=it.rows[li]; if(!l || l.done) break; it.rows=it.rows.filter(r=>r!==l && !(r.drop && r.of===l.rid)) } it.sets=workRows(it).length;
       styleTo(it); applyStyle(it);
       const pit = planItemOf(it);
-      if(pit && s.keep){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest }
+      if(pit && s.keep){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest; if(it.tm!=null) pit.tm=it.tm; else delete pit.tm }
       if(pit && (s.keep || styleChanged)){ styleTo(pit); saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
     else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
     saveCtx(s.ctx); closeSheet(); render() },
@@ -1930,16 +1943,16 @@ function exEditor(c,showTarget){
      <div class="sec">Main muscle</div><select data-cu="m1" data-rerender="1">${Object.entries(MUS).map(([k,l])=>`<option value="${k}" ${c.m1===k?'selected':''}>${l}</option>`).join('')}</select>
      <div class="sec">Secondary</div><div class="pills">${Object.entries(MUS).filter(([k])=>k!==c.m1).map(([k,l])=>`<button data-act="cuMus" data-k="${k}" class="${c.m2s.includes(k)?'on':''}">${l}</button>`).join('')}</div>
      <div class="sec">Movement</div>${seg('comp',[['true','Compound'],['false','Isolation']])}
-     ${showTarget?`<div class="sec">Target</div>${seg('tgt',[['reps','Reps'],['time','Timed'],['fail','To failure']])}`:''}` }
+     ${showTarget?`<div class="sec">Target</div>${seg('tgt',[['reps','Reps'],['fail','Reps to Failure'],['time','Time to Failure']])}`:''}` }
 // save a draft onto an exercise (built-in or your own); the change shows everywhere it's used
 function applyDraft(id,c){ const base=draftBase(c); const hasAng = base.includes('{°}'); const m=[c.m1, ...c.m2s.filter(x=>x!==c.m1)];
   S.deg=S.deg||{}; if(hasAng) S.deg[id]=c.deg;
   const cu=S.custom&&S.custom[id];
-  if(cu){ Object.assign(cu,{base, name:base, equip:c.equip, cat:CATMAP[c.equip]||c.equip, m, req:[...new Set(gearFor(c.equip).concat(c.extras))], lm:lmFor(c.equip,c.bw), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail', u0:c.arms==='one'}); if(S.arm) delete S.arm[id] }
+  if(cu){ Object.assign(cu,{base, name:base, equip:c.equip, cat:CATMAP[c.equip]||c.equip, m, req:[...new Set(gearFor(c.equip).concat(c.extras))], lm:lmFor(c.equip,c.bw), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail'||c.tgt==='time', u0:c.arms==='one'}); if(S.arm) delete S.arm[id] }
   else { const e=LIB[id]; if(!e) return;
     S.names=S.names||{}; if(base===e.base) delete S.names[id]; else S.names[id]=base;
     S.cat=S.cat||{}; if(c.equip===natEquip(e)) delete S.cat[id]; else S.cat[id]=c.equip;
-    S.exo=S.exo||{}; S.exo[id]={m, extras:c.extras.slice(), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail', bw: c.equip==='cal' ? c.bw : null};
+    S.exo=S.exo||{}; S.exo[id]={m, extras:c.extras.slice(), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail'||c.tgt==='time', bw: c.equip==='cal' ? c.bw : null};
     S.arm=S.arm||{}; if((c.arms==='one')===!!e.u0) delete S.arm[id]; else S.arm[id]=c.arms }
   applyDeg() }
 function exFields(ex,s,showTarget){ s.cu = s.cu || deriveDraft(ex); const u=S.unit; let h=exEditor(s.cu,!!showTarget);
@@ -2167,6 +2180,7 @@ document.addEventListener('touchend',endSheetDrag); document.addEventListener('t
 let lastRestKey='';
 function tick(force){
   const ct=$('#clockT'); if(ct && A) ct.textContent=fmtDur(clockSecs());
+  const sw=$('#swT'); if(sw && A && A.sw) sw.textContent=fmtDur(Math.floor((Date.now()-A.sw.t0)/1000));
   const rb=$('#restbar');
   if(!A || !A.rest){ if(!rb.hidden){ rb.hidden=true; rb.innerHTML=''; lastRestKey='' } return }
   const r=A.rest; const left = r.paused ? r.left : r.end-Date.now();
