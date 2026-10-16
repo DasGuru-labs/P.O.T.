@@ -432,7 +432,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.17-c';
+const APP_VERSION = '2026.10.18-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -698,15 +698,23 @@ function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEF
 const ONE_DB = new Set(['goblet','pullover_db','tri_oh_db','tri_incl_db','situp_db','hipthrust_db','windmill','side_bend','calf_db_sl','rdl_sl','skull_db']);
 const LEG_2DB = new Set(['lunge_rev_db','lunge_deep','bulg_db','stepup_db','dbsplit','dblunge','dbstep']);
 function dbCount(ex){ if(!ex || ex.cat!=='db') return 0; if(ONE_DB.has(ex.id)) return 1; if(LEG_2DB.has(ex.id)) return 2; return ex.u ? 1 : 2 }
-const EQUIP=[['bb','Barbell'],['db','Dumbbell'],['cable','Cable'],['mach','Machine'],['cal','Bodyweight'],['band','Band']];
+const EQUIP=[['bb','Barbell'],['ez','EZ bar'],['db','Dumbbell'],['cable','Cable'],['mach','Machine'],['plate','Weight plate'],['cal','Bodyweight'],['band','Band']];
+const CATMAP={cable:'mach', ez:'bb', plate:'other'};
+const gearFor = k => k==='cal' ? [] : [k];
+const lmFor = (k,bw) => k==='cal' ? (bw && bw!=='bw' ? bw : 'bw') : k==='band' ? 'band' : 'wt';
+const EXTRA_GEAR=[['bench','Bench'],['bar','Pull-up bar'],['dip','Dip station'],['rings','Rings'],['rack','Rack'],['abw','Ab roller'],['stands','Push-up stands']];
 const GEAR_CODES=['db','bb','ez','plate','rack','cable','mach','band'];
-function equipOf(e){ if(S && S.cat && S.cat[e.id]) return S.cat[e.id]; const c=e.cat0||e.cat; if(c==='mach') return (e.req0||e.req).includes('cable') ? 'cable' : 'mach'; return c==='other' ? 'bb' : c }
+function equipOf(e){ if(e.custom && e.equip) return e.equip; if(S && S.cat && S.cat[e.id]) return S.cat[e.id]; const c=e.cat0||e.cat, rq=e.req0||e.req||[];
+  if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
 function applyDeg(){ Object.values(LIB).forEach(e=>{ const nm=(S && S.names && S.names[e.id]) || e.base || e.name; e.name = nm.includes('{°}') ? nm.replace('{°}', degOf(e.id)+'°') : nm;
   if(e.cat0===undefined){ e.cat0=e.cat; e.req0=e.req.slice(); e.lm0=e.lm }
   const c=S && S.cat && S.cat[e.id];
-  if(c){ e.cat = c==='cable' ? 'mach' : c; const keep=e.req0.filter(r=>!GEAR_CODES.includes(r)); e.req = keep.concat(c==='cal'?[]:[c]); e.lm = ['bb','db','cable','mach'].includes(c) ? 'wt' : c==='cal' ? 'bw' : 'band' }
+  if(c){ e.cat = CATMAP[c]||c; const keep=e.req0.filter(r=>!GEAR_CODES.includes(r)); e.req = keep.concat(gearFor(c)); e.lm = lmFor(c) }
   else { e.cat=e.cat0; e.req=e.req0.slice(); e.lm=e.lm0 }
-  if(e.u0===undefined) e.u0=e.u; const a=S && S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 }) }
+  if(e.u0===undefined) e.u0=e.u; const a=S && S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 });
+  // your own exercises: angle in the name and the arms choice work the same way
+  Object.values((S && S.custom) || {}).forEach(e=>{ if(!e.base) e.base=e.name; e.tpl = e.base.includes('{°}') ? e.base : null; e.name = e.tpl ? e.base.replace('{°}', (degOf(e.id)??0)+'°') : e.base;
+    if(e.u0===undefined) e.u0=!!e.u; const a=S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 }) }
 function emphTag(it){ return it && it.emph ? `<span class="emtag ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>` : '' }
 function armLabel(ex){ if(ex.cat!=='db' || LEG_2DB.has(ex.id)) return ''; return ex.u ? '1 arm' : (ONE_DB.has(ex.id) ? '1 DB, both hands' : '2 arms') }
 LIB_RAW.forEach(([id,name,cat,m,req,fl])=>{LIB[id]={id,name,base:name,tpl:name.includes('{°}')?name:null,cat,m:m.split(' '),req:req?req.split(' '):[],c:fl.includes('c'),u:fl.includes('u'),t:fl.includes('t'),f:fl.includes('f'),a:fl.includes('a'),w:fl.includes('w')}});
@@ -1507,9 +1515,8 @@ function exListHTML(list, act, extra=''){
 }
 function viewLib(){
   const list=libFiltered(ui.libQ,ui.libCat,ui.libMus);
-  return topbar()+`<div class="h2">Exercises</div><div class="stack" style="margin-top:8px"><input id="libQ" data-bind="libQ" placeholder="Search exercises or muscles" value="${esc(ui.libQ)}" autocomplete="off">${filterBar('lib',ui.libCat,ui.libMus)}</div>
-    <div class="small muted" style="margin-top:8px">${list.length} exercises</div>${exListHTML(list,'exInfo')}
-    <button class="addrow" data-act="customNew">+ Create your own exercise</button>`;
+  return topbar()+`<div class="h2">Exercises</div><button class="addrow" data-act="customNew" style="margin-top:10px">+ Create your own exercise</button><div class="stack" style="margin-top:8px"><input id="libQ" data-bind="libQ" placeholder="Search exercises or muscles" value="${esc(ui.libQ)}" autocomplete="off">${filterBar('lib',ui.libCat,ui.libMus)}</div>
+    <div class="small muted" style="margin-top:8px">${list.length} exercises</div>${exListHTML(list,'exInfo')}`;
 }
 const SW={yellow:'#f2c230',red:'#d8402f',black:'#222',purple:'#7a48b8',green:'#2e9d52',blue:'#2f6fd1',orange:'#ee8a2a',grey:'#8a8f8c',gray:'#8a8f8c',pink:'#e36fa6',white:'#f4f4f4',brown:'#8a5a33'};
 function swatch(n){ const k=Object.keys(SW).find(c=>String(n).toLowerCase().includes(c)); return k?SW[k]:'var(--surface2)' }
@@ -1607,8 +1614,8 @@ function renderSheet(){
   else if(s.type==='add'){ const list=libFiltered(s.q,s.cat||'all',s.mus||'all');
     const sug=(s.sugs||[]).map(id=>lib(id)).filter(e=>e&&e.name);
     h=`<h3>${s.ph?'Pick: '+esc(s.ph):s.replace?'Replace with any exercise':'Add exercise'}</h3><div class="shsub">${s.ctx==='T'?'For your next workout only.':s.ctx==='M'?'Adds to this entry.':(s.tmp||s.ctx==='A')?'':s.replace?'Saved to Day '+(s.day+1)+' for future workouts.':'Adds to Day '+(s.day+1)+' for future workouts.'}</div>${(s.tmp||s.ctx==='A')?keepBox(s):''}
-     <div class="stack" style="margin-top:10px"><input id="addQ" data-bind="addQ" placeholder="Search" value="${esc(s.q||'')}" autocomplete="off">${filterBar('add',s.cat||'all',s.mus||'all')}</div>${sug.length&&!s.q?`<div class="sec">Suggested</div>${exListHTML(sug,'doAdd')}<div class="sec">All matching</div>`:''}${exListHTML(list,'doAdd')}
-     <button class="addrow" data-act="customNew">+ Create your own exercise</button>`;
+     <button class="addrow" data-act="customNew" style="margin-top:10px">+ Create your own exercise</button>
+     <div class="stack" style="margin-top:10px"><input id="addQ" data-bind="addQ" placeholder="Search" value="${esc(s.q||'')}" autocomplete="off">${filterBar('add',s.cat||'all',s.mus||'all')}</div>${sug.length&&!s.q?`<div class="sec">Suggested</div>${exListHTML(sug,'doAdd')}<div class="sec">All matching</div>`:''}${exListHTML(list,'doAdd')}`;
   }
   else if(s.type==='missing'){
     const rows=[]; (s.all?S.days.map((d,i)=>i):[s.day]).forEach(di=>{ const dd=S.days[di]; const list = (A&&A.dayIdx===di&&!s.all)?A.items:dd.items; list.forEach(it0=>{ const it = (s.all||ui.editDay===di||(A&&A.dayIdx===di)) ? it0 : effItem(dd,it0); if(!it.ph && !avail(lib(it.ex))) rows.push({di,it}) }) });
@@ -1642,15 +1649,20 @@ function renderSheet(){
      ${ui.mode!=='log'?`<div class="sec">Add to a day</div><div class="rowline"><select id="toDay" style="flex:1">${S.days.map((d,i)=>`<option value="${i}">Day ${i+1} · ${esc(d.name)}</option>`).join('')}</select><button class="btn sm primary" data-act="addToDay" data-ex="${ex.id}">Add</button></div>`:''}
      ${S.custom[ex.id]?`<div style="margin-top:14px"><button class="btn danger" data-act="customDel" data-ex="${ex.id}">Delete this custom exercise</button></div>`:''}`;
   }
-  else if(s.type==='custom'){
-    h=`<h3>New exercise</h3><div class="stack" style="margin-top:12px"><label class="f">Name<input id="cuName" placeholder="e.g. Landmine press"></label>
-     <div class="grid2"><label class="f">Equipment<select id="cuCat">${Object.entries(CATS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label>
-     <label class="f">Main muscle<select id="cuM1">${Object.entries(MUS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label></div>
-     <label class="f">Also works (optional)<select id="cuM2"><option value="">—</option>${Object.entries(MUS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label>
-     <label class="rowline small"><input type="checkbox" id="cuU" style="width:20px;height:20px"> One arm / leg at a time (log left and right)</label>
-     <label class="rowline small"><input type="checkbox" id="cuC" style="width:20px;height:20px"> Compound movement</label>
-     <label class="f">Body weight<select id="cuLM"><option value="">Not counted (log the weight you lift)</option><option value="assist">Body weight − band assistance</option><option value="add">Body weight + added weight</option><option value="band">Band resistance only</option></select></label>
-     <button class="btn primary" data-act="customSave">Save exercise</button></div>`;
+  else if(s.type==='custom'){ const c=s.cu=s.cu||{name:'', equip:'db', bw:'bw', extras:[], deg:null, arms:'both', m1:'pecs', m2:'', comp:false, tgt:'reps'};
+    const seg=(f,opts)=>`<div class="seg" style="flex-wrap:wrap">${opts.map(([k,l])=>`<button data-act="cuSet" data-f="${f}" data-v="${k}" class="${String(c[f])===String(k)?'on':''}">${l}</button>`).join('')}</div>`;
+    const musOpts=(sel,none)=>(none?`<option value="">—</option>`:'')+Object.entries(MUS).map(([k,l])=>`<option value="${k}" ${sel===k?'selected':''}>${l}</option>`).join('');
+    h=`<h3>New exercise</h3><div class="shsub">Set it up like any other exercise. You can change all of this later with Edit.</div>
+     <div class="sec">Name</div><input id="cuName" data-cu="name" value="${esc(c.name)}" placeholder="e.g. Landmine press" autocomplete="off">
+     <div class="sec">Equipment</div>${seg('equip',EQUIP)}
+     ${c.equip==='cal'?`<div class="sec">Body weight</div>${seg('bw',[['bw','Just body weight'],['add','+ Added weight'],['assist','− Band assistance']])}`:''}
+     <div class="sec">Also uses</div><div class="pills">${EXTRA_GEAR.map(([k,l])=>`<button data-act="cuGear" data-k="${k}" class="${c.extras.includes(k)?'on':''}">${l}</button>`).join('')}</div>
+     ${c.extras.includes('bench')?`<div class="sec">Bench angle</div>${seg('deg',[['','No angle'],...BENCH.map(d=>[d,d+'°'])])}<div class="small muted" style="margin-top:4px">${c.deg!==null&&c.deg!==''?'The angle is added to the name and follows the Bench angle setting.':'Pick an angle for incline/decline work.'}</div>`:''}
+     <div class="sec">Arms / legs</div>${seg('arms',[['one','1 at a time (log left & right)'],['both','Both together']])}
+     <div class="sec">Muscles</div><div class="grid2"><label class="f">Main<select data-cu="m1">${musOpts(c.m1)}</select></label><label class="f">Also works<select data-cu="m2">${musOpts(c.m2,true)}</select></label></div>
+     <div class="sec">Movement</div>${seg('comp',[['true','Compound'],['false','Isolation']])}
+     <div class="sec">Target</div>${seg('tgt',[['reps','Reps'],['time','Timed'],['fail','To failure']])}
+     <div class="stack" style="margin-top:16px"><button class="btn primary" data-act="customSave">Save exercise</button></div>`;
   }
   else if(s.type==='bw'){ const l=bwSorted(); const st=bwStats(); const td=new Date(); const ds=`${td.getFullYear()}-${String(td.getMonth()+1).padStart(2,'0')}-${String(td.getDate()).padStart(2,'0')}`;
     h=`<h3>Body weight</h3><div class="shsub">Counted in pull-ups, dips and other body-weight exercises.</div>
@@ -1700,12 +1712,14 @@ const H = {
   exRename:()=>{ ui.sheet.renaming=true; renderSheet(); setTimeout(()=>{ const i=$('#exNameIn'); if(i){ i.focus(); i.select() } },0) },
   exNameCancel:()=>{ ui.sheet.renaming=false; renderSheet() },
   exNameSave:el=>{ const id=el.dataset.ex; let v=($('#exNameIn').value||'').trim(); if(!v){ toast('Enter a name'); return }
-    if(S.custom && S.custom[id]){ S.custom[id].name=v }
+    if(S.custom && S.custom[id]){ S.custom[id].base=v; S.custom[id].name=v }
     else { const e=LIB[id]; if(!e) return; if(e.tpl){ const cur=degOf(id)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') }
       S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v }
     applyDeg(); saveState(); ui.sheet.renaming=false; render(); toast('Name saved') },
   exNameReset:el=>{ if(S.names) delete S.names[el.dataset.ex]; applyDeg(); saveState(); if(ui.sheet){ ui.sheet.renaming=false; ui.sheet.name=null } render(); toast('Original name restored') },
-  setEquip:el=>{ keepEd(); const id=el.dataset.ex, k=el.dataset.k; const e=LIB[id]; S.cat=S.cat||{}; if(e){ const was=S.cat[id]; delete S.cat[id]; applyDeg(); if(equipOf(e)===k) {} else S.cat[id]=k } applyDeg(); saveState(); render(); toast(`${EQUIP.find(x=>x[0]===k)[1]}`) },
+  setEquip:el=>{ keepEd(); const id=el.dataset.ex, k=el.dataset.k; const cu=S.custom&&S.custom[id];
+    if(cu){ cu.equip=k; cu.cat=CATMAP[k]||k; cu.req=(cu.req||[]).filter(r=>!GEAR_CODES.includes(r)).concat(gearFor(k)); cu.lm=lmFor(k, ['assist','add'].includes(cu.lm)?cu.lm:null); applyDeg(); saveState(); render(); toast(`${EQUIP.find(x=>x[0]===k)[1]}`); return }
+    const e=LIB[id]; S.cat=S.cat||{}; if(e){ const was=S.cat[id]; delete S.cat[id]; applyDeg(); if(equipOf(e)===k) {} else S.cat[id]=k } applyDeg(); saveState(); render(); toast(`${EQUIP.find(x=>x[0]===k)[1]}`) },
   exEdit:el=>{ openSheet({type:'exEdit', ex:el.dataset.ex, name:null, orm:null}) },
   exEditSave:()=>{ keepEd(); const s=ui.sheet; saveExFields(s.ex,s); closeSheet(); render(); toast('Saved') },
   setArm:el=>{ keepEd(); S.arm=S.arm||{}; const e=LIB[el.dataset.ex]; const k=el.dataset.k; if(e && (k==='one')===!!e.u0) delete S.arm[el.dataset.ex]; else S.arm[el.dataset.ex]=k; applyDeg(); saveState(); render(); toast(k==='one'?'One arm at a time: log left and right':'Both arms together') },
@@ -1843,12 +1857,15 @@ const H = {
   exInfo:el=>openSheet({type:'exInfo', ex:el.dataset.ex}),
   addToDay:el=>{ const di=+$('#toDay').value; S.days[di].items.push(mkItem(el.dataset.ex,'P')); S.days[di].rest=false; saveState(); closeSheet(); render(); toast(`Added to Day ${di+1}`) },
   customNew:()=>openSheet({type:'custom', back:ui.sheet}),
-  customSave:()=>{ const name=$('#cuName').value.trim(); if(!name){ toast('Give it a name'); return }
-    const cat=$('#cuCat').value, m1=$('#cuM1').value, m2=$('#cuM2').value; const id='c_'+uid();
-    const reqMap={db:['db'],bb:['bb'],mach:['mach'],band:['band'],cal:[],other:[]};
-    S.custom[id]={id,name,cat,m:m2&&m2!==m1?[m1,m2]:[m1],req:reqMap[cat],c:$('#cuC').checked,u:$('#cuU').checked,t:false,f:false,custom:true};
-    const lmv=$('#cuLM').value; if(lmv) S.custom[id].lm=lmv;
-    saveState(); const back=ui.sheet.back; if(back && back.type==='add'){ ui.sheet=back; back.q=name; } else closeSheet(); render(); toast('Exercise created') },
+  cuSet:el=>{ const c=ui.sheet.cu, f=el.dataset.f; let v=el.dataset.v; if(f==='comp') v = v==='true'; if(f==='deg') v = v===''?null:+v; c[f]=v; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  cuGear:el=>{ const c=ui.sheet.cu, k=el.dataset.k; c.extras = c.extras.includes(k) ? c.extras.filter(x=>x!==k) : c.extras.concat(k); if(k==='bench' && !c.extras.includes('bench')) c.deg=null; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  customSave:()=>{ const c=ui.sheet.cu; const nmEl=$('#cuName'); if(nmEl) c.name=nmEl.value; let name=(c.name||'').trim(); if(!name){ toast('Give it a name'); return }
+    const id='c_'+uid(); let base=name;
+    if(c.extras.includes('bench') && c.deg!==null && c.deg!==undefined){ base = /\d+\s*°/.test(name) ? name.replace(/\d+\s*°/,'{°}') : name+' ({°})'; S.deg=S.deg||{}; S.deg[id]=c.deg }
+    const m1=c.m1, m2=c.m2;
+    S.custom[id]={id, name:base, base, equip:c.equip, cat:CATMAP[c.equip]||c.equip, m:m2&&m2!==m1?[m1,m2]:[m1], req:gearFor(c.equip).concat(c.extras), lm:lmFor(c.equip,c.bw),
+      c:!!c.comp, u:c.arms==='one', u0:c.arms==='one', t:c.tgt==='time', f:c.tgt==='fail', custom:true};
+    applyDeg(); saveState(); const back=ui.sheet.back; if(back && back.type==='add'){ ui.sheet=back; back.q=name; } else closeSheet(); render(); toast('Exercise created') },
   customDel:el=>{ delete S.custom[el.dataset.ex]; saveState(); closeSheet(); render() },
   histOpen:el=>{ ui.histOpen = ui.histOpen===el.dataset.id?null:el.dataset.id; ui.delArm=null; render() },
   delSess:el=>{ const id=el.dataset.id; if(ui.delArm!==id){ ui.delArm=id; render(); return } const s=SESS.find(x=>x.id===id); s.deleted=true; s.updatedAt=Date.now(); delete s.snap; saveSession(s); ui.delArm=null; render(); toast('Deleted') },
@@ -1872,7 +1889,7 @@ function restoreFrom(text){ try{ const o=JSON.parse(text); if(!o.state||!o.state
 document.addEventListener('change',e=>{ if(e.target.id==='restoreFile' && e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>restoreFrom(fr.result); fr.readAsText(e.target.files[0]) } });
 function showBackupText(txt){ openSheet({type:'restore'}); setTimeout(()=>{ const t=$('#restoreTxt'); t.value=txt; t.select(); $('#sheet h3').textContent='Copy this backup'; },0) }
 // exercise-level settings, shown in every edit sheet
-function exFields(ex,s){ const isLib=!!LIB[ex.id]; const eq=isLib?equipOf(ex):null; const u=S.unit;
+function exFields(ex,s){ const isLib=!!LIB[ex.id] || !!ex.custom; const eq=isLib?equipOf(ex):null; const u=S.unit;
   let h=`<div class="sec">Name</div><input id="edName" value="${esc(s.name!=null?s.name:ex.name)}" aria-label="Exercise name">${S.names&&S.names[ex.id]?`<div class="small muted" style="margin-top:4px">Originally: ${esc((ex.base||'').replace('{°}',degOf(ex.id)+'°'))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore</button></div>`:''}`;
   if(isLib) h+=`<div class="sec">Equipment</div><div class="seg" style="flex-wrap:wrap">${EQUIP.map(([k,l])=>`<button data-act="setEquip" data-ex="${ex.id}" data-k="${k}" class="${eq===k?'on':''}">${l}</button>`).join('')}</div>`;
   if(ex.cat!=='cal' && !LEG_2DB.has(ex.id)) h+=`<div class="sec">Arms</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">1 arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">2 arms together</button></div>`;
@@ -1880,7 +1897,7 @@ function exFields(ex,s){ const isLib=!!LIB[ex.id]; const eq=isLib?equipOf(ex):nu
   if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${e.w}×${e.r}`:'No estimate yet'} · leave blank to use the estimate</span></div>` }
   return h }
 function saveExFields(id,s){ const ex=lib(id); let v=(s.name!=null?s.name:ex.name||'').trim();
-  if(v && v!==ex.name){ if(S.custom && S.custom[id]) S.custom[id].name=v; else { const e=LIB[id]; if(e){ if(e.tpl){ const cur=degOf(id)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') } S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v } } }
+  if(v && v!==ex.name){ if(S.custom && S.custom[id]){ const c=S.custom[id]; if(c.tpl){ const cur=(degOf(id)??0)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') } c.base=v; c.name=v } else { const e=LIB[id]; if(e){ if(e.tpl){ const cur=degOf(id)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') } S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v } } }
   if(s.orm!=null){ const o=num(s.orm); S.orm=S.orm||{}; if(o>0) S.orm[id]=o; else delete S.orm[id] }
   applyDeg(); saveState() }
 function keepEd(){ if(!ui.sheet) return; const nm=$('#edName'), om=$('#edOrm'); if(nm) ui.sheet.name=nm.value; if(om) ui.sheet.orm=om.value;
@@ -1946,6 +1963,7 @@ document.addEventListener('input',e=>{
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveDraft,400); return }
   if(el.id==='keepPlan' && ui.sheet){ ui.sheet.keep=el.checked; return }
+  if(el.dataset.cu && ui.sheet && ui.sheet.cu){ ui.sheet.cu[el.dataset.cu]=el.value; return }
   if(el.dataset.step){ const u=S.unit==='kg'?'kg':'lb'; S.steps=S.steps||{}; S.steps[u]=S.steps[u]||{}; const v=num(el.value); if(v>0) S.steps[u][el.dataset.step]=v; else delete S.steps[u][el.dataset.step]; clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
     const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
