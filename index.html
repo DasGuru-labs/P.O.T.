@@ -437,7 +437,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.20-b';
+const APP_VERSION = '2026.10.20-c';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -1253,6 +1253,7 @@ function viewTrain(){
     if(closes) h+=`</div>`;
   });
   h+=`</div>`;
+  if(editing && (day.tmpAdd||[]).length) h+=`<div class="sec">Next workout only</div><div class="list">${day.tmpAdd.map(x=>`<div class="row fixed" data-uid="${x.uid}"><button class="body" data-act="rowMenu" data-uid="${x.uid}"><div class="name">${esc(lib(x.ex).name)}</div><div class="meta"><span class="tmptag">Next workout only</span>${x.sub?' · stand-in: '+esc(lib(x.sub).name):''} · tap to keep it for good</div></button></div>`).join('')}</div>`;
   if(live || editing || !A) h+=`<button class="addrow" data-act="add">+ Add exercise</button>`;
   if(!live && !editing) h+=`<div class="note"><button class="link" data-act="editDay" data-i="${vd}">Edit this day's exercises</button></div>`;
   if(live && A.orderDirty) h+=`<div class="editbar" style="margin-top:10px"><span>Keep this order for future Day ${vd+1} workouts?</span><button class="btn sm primary" data-act="saveOrder">Save order</button></div>`;
@@ -1612,7 +1613,7 @@ function renderSheet(){
   else if(s.type==='rowMenu'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(exOfS(it)); const ms=missing(ex);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(it)} · rest ${fmtRest(it.rest)} · ${it.focus?esc(it.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${ms.length?`<div class="needs" style="padding-top:8px"><span>Needs ${ms.map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
-     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="swap" data-mode="swap" data-uid="${it.uid}">${s.ctx==='A'?'Swap · today only':s.ctx==='P'?'Swap · replace for good':'Swap'}</button>${(s.ctx==='P'||s.ctx==='A'||s.ctx==='T')&&!it.ph?`<button data-act="swap" data-mode="stand" data-uid="${it.uid}">${(s.ctx==='P'||s.ctx==='T')&&it.sub?`Change stand-in (${esc(lib(it.sub).name)})`:'Stand-in · until I switch back'}</button>`:''}<button data-act="editItem" data-uid="${it.uid}">Edit exercise (sets, reps, angle, style)</button>${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button><button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
+     <div class="menu">${s.ctx==='A'?`<button data-act="jumpUid" data-uid="${it.uid}">Go to this exercise</button><button data-act="skipUid" data-uid="${it.uid}">${it.skipped?'Unskip this exercise':'Skip this exercise today'}</button>`:''}<button data-act="editItem" data-uid="${it.uid}">Edit exercise (name, equipment, sets, reps, style)</button><button data-act="swap" data-mode="swap" data-uid="${it.uid}">${s.ctx==='A'?'Swap · today only':s.ctx==='P'?'Swap · replace for good':'Swap · next workout only'}</button>${(s.ctx==='P'||s.ctx==='A'||s.ctx==='T')&&!it.ph?`<button data-act="swap" data-mode="stand" data-uid="${it.uid}">${(s.ctx==='P'||s.ctx==='T')&&it.sub?`Change stand-in (${esc(lib(it.sub).name)})`:'Stand-in · until I switch back'}</button>`:''}${(s.ctx==='P'||s.ctx==='T')&&it.sub?`<button data-act="goalBack">Switch back to ${esc(lib(it.ex).name)}</button>`:''}${(()=>{ const l=ctxList(s.ctx,s.day), i=l.indexOf(it); return it.ss ? `<button data-act="ssSplit">Split superset</button>` : (l[i+1] && !l[i+1].ss && !l[i+1].ph ? `<button data-act="ssJoin">Superset with next: ${esc(lib(l[i+1].ex).name)}</button>` : '') })()}<button data-act="exInfo" data-ex="${ex.id}">History</button>${s.ctx==='T'?`<button data-act="tmpKeep" data-uid="${it.uid}">Keep it in every Day ${s.day+1} workout</button>`:''}<button class="del" data-act="rmItem" data-uid="${it.uid}">Remove from ${scopeName(s)}</button>${s.ctx==='A'&&it.pu?`<button class="del" data-act="rmItemKeep">Remove from Day ${s.day+1} for good</button>`:''}</div>`;
   }
   else if(s.type==='edit'){ const it=findIt(); if(!it){closeSheet();return} const ex=lib(exOfS(it)); const m=s.m||mode(it);
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'':s.ctx==='T'?'For your next workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>${s.ctx==='A'&&it.pu?keepBox(s):''}
@@ -1762,7 +1763,7 @@ const H = {
   rnSave:()=>{ const d=S.days[ui.sheet.day]; d.name=$('#rnName').value.trim()||d.name; d.sub=$('#rnSub').value.trim(); saveState(); closeSheet(); render() },
   rnReset:()=>{ const i=ui.sheet.day; S.days[i].name=PLAN_SEED[i]?.[0]||('Day '+(i+1)); S.days[i].sub=PLAN_SEED[i]?.[1]||''; saveState(); closeSheet(); render() },
   rowMenu:el=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day;
-    if(c.tmp && (S.days[c.day].tmpAdd||[]).some(x=>x.uid===el.dataset.uid)){ openSheet({type:'rowMenu', uid:el.dataset.uid, ctx:'T', day:c.day}); return }
+    if(c.ctx==='P' && (S.days[c.day].tmpAdd||[]).some(x=>x.uid===el.dataset.uid)){ openSheet({type:'rowMenu', uid:el.dataset.uid, ctx:'T', day:c.day}); return }
     const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid);
     const swapped = c.tmp && it && S.days[c.day].tmp && S.days[c.day].tmp[it.uid];
     if(it && it.ph && !swapped){ openSheet({type:'add', ...c, replace:it.uid, uid:it.uid, ph:it.ph, sugs:it.phSug||[], q:'', cat:'all', mus:it.phMus||'all'}); return }
@@ -1777,6 +1778,7 @@ const H = {
   standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ it.ex=it.sub; delete it.sub; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
   ghostMenu:el=>{ const c=sheetCtx(); openSheet({type:'ghostMenu', uid:el.dataset.goal, day:c.day}) },
   tmpUndo:()=>{ const s=ui.sheet; const d=S.days[s.day]; if(d.tmp) delete d.tmp[s.uid]; saveState(); closeSheet(); render(); toast('Swap undone') },
+  tmpKeep:el=>{ const s=ui.sheet; const d=S.days[s.day]; const i=(d.tmpAdd||[]).findIndex(x=>x.uid===(el.dataset.uid||s.uid)); if(i<0) return; const [it]=d.tmpAdd.splice(i,1); d.items.push(it); unGone(d,it.ex); saveState(); closeSheet(); render(); toast(`Added to every Day ${s.day+1} workout`) },
   goalBack:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid) || (d.tmpAdd||[]).find(x=>x.uid===s.uid); if(it){ delete it.sub; if(d.tmp) delete d.tmp[it.uid] } saveState(); closeSheet(); render(); toast(it?`Back to ${lib(it.ex).name||'the plan'}`:'Back to the plan') },
   useGoal:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=standinOf(g); g.skipped=false; if(si) si.skipped=true; saveActive(); render(); toast('Doing the goal exercise today') },
   useStandIn:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=standinOf(g); g.skipped=true; if(si){ si.skipped=false; A.cur=A.items.indexOf(si) } saveActive(); render() },
@@ -1868,7 +1870,7 @@ const H = {
     if(pit){ if(!pit.ph) markGone(d,pit.ex); d.items.splice(d.items.indexOf(pit),1); normalizeSS(d.items); saveState() }
     const i=A.items.indexOf(it); A.items.splice(i,1); normalizeSS(A.items); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1);
     saveActive(); closeSheet(); render(); toast(`Removed from Day ${A.dayIdx+1}`) },
-  add:el=>{ const base = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp&&!!el.dataset.replace, keep:!!ui.sheet.keep} : (()=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day; c.keep=false; return c })(); openSheet({type:'add', ...base, replace: el.dataset.replace||null, q:'', cat:'all', mus:'all'}) },
+  add:el=>{ const base = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp&&!!el.dataset.replace, keep:!!ui.sheet.keep} : (()=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day; c.keep = c.ctx==='P'; return c })(); openSheet({type:'add', ...base, replace: el.dataset.replace||null, q:'', cat:'all', mus:'all'}) },
   addCat:el=>{ ui.sheet.cat=el.dataset.k; renderSheet() },
   doAdd:el=>{ const s=ui.sheet; if(s.replace){ s.uid=s.replace; doReplace(el.dataset.ex); return }
     const ex=el.dataset.ex; if(s.ctx==='P' && !(s.tmp && !s.keep)) unGone(S.days[s.day],ex); if(s.ctx==='A' && s.keep) unGone(S.days[A.dayIdx],ex);
