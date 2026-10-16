@@ -419,6 +419,8 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 .row.isss.isecc{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(163,214,92,.26) 35%,var(--surface) 85%)}
 .exhead.isecc{border-radius:16px;padding:12px 12px 12px 14px;margin-top:8px;background:linear-gradient(90deg,rgba(163,214,92,.40) 0%,rgba(163,214,92,.15) 45%,var(--surface) 90%)}
 .exhead.isss.isecc{background:linear-gradient(90deg,rgba(125,156,200,.42) 0%,rgba(163,214,92,.26) 40%,var(--surface) 90%)}
+
+.pills button{margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -432,7 +434,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.18-a';
+const APP_VERSION = '2026.10.19-c';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -691,7 +693,8 @@ const GEAR = [
 ];
 const GEARNAME = Object.fromEntries(GEAR.flatMap(g=>g[1]));
 const LIB = {};
-const BENCH = [0,20,35,50,65,85,90];
+const BENCH = [-20,-10,0,20,35,50,65,85,90];   // negative = decline
+const fmtDeg = d => (d<0 ? '−'+Math.abs(d) : String(d))+'°';
 const DEG_DEFAULT = {row_csdb:35, yraise_incl:35, revfly_incl:35, facepull_db:20, incl_bb:35, incl_db:35, incl_smith:35, fly_incl_cable:35, fly_incl_db:35, tri_incl_db:35, curl_incl:50, spider_incl:35, revfly_incl_b:50, ohp_db:85, helms_row:50, lat_lying_incl:35, lm_press_incl:35, lat_landmine:35, row_csdb_pro:35, spider_bb:35, yraise_perp:35, lat_prone_incl:35, lat_perp:35, shrug_incl:35, fly_press_incl:35, lat_lean_incl:50, lat_ecc_incl:35, yraise_incl1:35};
 function degOf(id){ return (S && S.deg && S.deg[id]!=null) ? S.deg[id] : DEG_DEFAULT[id] }
 // dumbbells held at once (for the total), and your one-arm / both-arm choice per exercise
@@ -702,18 +705,24 @@ const EQUIP=[['bb','Barbell'],['ez','EZ bar'],['db','Dumbbell'],['cable','Cable'
 const CATMAP={cable:'mach', ez:'bb', plate:'other'};
 const gearFor = k => k==='cal' ? [] : [k];
 const lmFor = (k,bw) => k==='cal' ? (bw && bw!=='bw' ? bw : 'bw') : k==='band' ? 'band' : 'wt';
+const EXTRA_CODES=['bench','bar','dip','rings','rack','abw','stands'];
+function natEquip(e){ const c=e.cat0||e.cat, rq=e.req0||e.req||[]; if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
 const EXTRA_GEAR=[['bench','Bench'],['bar','Pull-up bar'],['dip','Dip station'],['rings','Rings'],['rack','Rack'],['abw','Ab roller'],['stands','Push-up stands']];
 const GEAR_CODES=['db','bb','ez','plate','rack','cable','mach','band'];
 function equipOf(e){ if(e.custom && e.equip) return e.equip; if(S && S.cat && S.cat[e.id]) return S.cat[e.id]; const c=e.cat0||e.cat, rq=e.req0||e.req||[];
   if(c==='mach') return rq.includes('cable') ? 'cable' : 'mach'; if(c==='bb' && rq.includes('ez') && !rq.includes('bb')) return 'ez'; if(c==='other') return rq.includes('plate') ? 'plate' : 'bb'; return c }
-function applyDeg(){ Object.values(LIB).forEach(e=>{ const nm=(S && S.names && S.names[e.id]) || e.base || e.name; e.name = nm.includes('{°}') ? nm.replace('{°}', degOf(e.id)+'°') : nm;
+function applyDeg(){ Object.values(LIB).forEach(e=>{ const nm=(S && S.names && S.names[e.id]) || e.base || e.name; e.name = nm.includes('{°}') ? nm.replace('{°}', fmtDeg(degOf(e.id))) : nm;
   if(e.cat0===undefined){ e.cat0=e.cat; e.req0=e.req.slice(); e.lm0=e.lm }
   const c=S && S.cat && S.cat[e.id];
   if(c){ e.cat = CATMAP[c]||c; const keep=e.req0.filter(r=>!GEAR_CODES.includes(r)); e.req = keep.concat(gearFor(c)); e.lm = lmFor(c) }
   else { e.cat=e.cat0; e.req=e.req0.slice(); e.lm=e.lm0 }
+  if(e.m0===undefined){ e.m0=e.m.slice(); e.c0=e.c; e.t0=e.t; e.f0=e.f }
+  const o=S && S.exo && S.exo[e.id];
+  if(o){ e.m=o.m.slice(); e.c=!!o.c; e.t=!!o.t; e.f=!!o.f; e.req=[...new Set(e.req.filter(r=>!EXTRA_CODES.includes(r)).concat(o.extras||[]))]; if(equipOf(e)==='cal' && o.bw) e.lm = o.bw }
+  else { e.m=e.m0.slice(); e.c=e.c0; e.t=e.t0; e.f=e.f0 }
   if(e.u0===undefined) e.u0=e.u; const a=S && S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 });
   // your own exercises: angle in the name and the arms choice work the same way
-  Object.values((S && S.custom) || {}).forEach(e=>{ if(!e.base) e.base=e.name; e.tpl = e.base.includes('{°}') ? e.base : null; e.name = e.tpl ? e.base.replace('{°}', (degOf(e.id)??0)+'°') : e.base;
+  Object.values((S && S.custom) || {}).forEach(e=>{ if(!e.base) e.base=e.name; e.tpl = e.base.includes('{°}') ? e.base : null; e.name = e.tpl ? e.base.replace('{°}', fmtDeg(degOf(e.id)??0)) : e.base;
     if(e.u0===undefined) e.u0=!!e.u; const a=S.arm && S.arm[e.id]; e.u = a==='one' ? true : a==='both' ? false : e.u0 }) }
 function emphTag(it){ return it && it.emph ? `<span class="emtag ${it.emph==='Squeeze'?'sq':'el'}">${it.emph==='Squeeze'?'Squeeze':'Elongated'}</span>` : '' }
 function armLabel(ex){ if(ex.cat!=='db' || LEG_2DB.has(ex.id)) return ''; return ex.u ? '1 arm' : (ONE_DB.has(ex.id) ? '1 DB, both hands' : '2 arms') }
@@ -726,6 +735,9 @@ const PH_LATS = ['Straight-arm lat pulldown or lat pullover','lats',['sa_pd','pu
 const PH_ABS = ['Abs','abs',['hlr','rollout','crunch_cable','revcrunch','legraise','deadbug','plank','vup']];
 const PH = (d,sets,lo,hi,ss) => ({ph:d[0], phMus:d[1], phSug:d[2], ex:null, sets, lo, hi, ss:!!ss});
 const PLAN_V = 9;   // Oct 13 sheet
+// Day order normally stays as you arranged it in the app. Set this to PLAN_V only when Goey explicitly asks
+// to reset each day's order to the sheet (a major overhaul); leave it at 0 otherwise.
+const SHEET_ORDER_PLAN_V = 0;
 const F = (ex,sets,lo,hi,focus,emph,lvl) => { const o={ex,sets,lo,hi,focus}; if(emph) o.emph=emph; if(lvl) o.lvl=lvl; return o };   // emph = Squeeze/Elongate, lvl = Priority/Regular/Light
 const PLAN_SEED = [
  ["Lats \u00b7 Biceps \u00b7 Delts","Priority\u2014lats, delts \u00b7 Second\u2014biceps \u00b7 Iso\u2014pecs, triceps, traps",[F('lat_cable',3,10,14,"mid delts",null,"Primary"),F('row_csm_pro',3,8,12,"lats (elongated) \u00b7 biceps & brachialis \u00b7 traps","Elongate","Primary"),F('revx_lohi',3,10,14,"rear delts",null,"Primary"),F('pullup',3,null,null,"lats (squeeze) \u00b7 biceps & brachialis","Squeeze","Primary"),F('fly_db',2,10,14,"pecs",null,"Isolation"),F('yraise_cable1',3,10,14,"mid/front delts",null,"Primary"),F('tri_pd',2,10,14,"triceps (squeeze)","Squeeze","Isolation"),F('curl_ez',3,6,10,"biceps",null,"Secondary"),F('wristcurl_ez',3,null,null,"forearm flexors",null,"Secondary"),F('shrug_db1_bench',2,8,12,"traps (elongated)","Elongate","Isolation")]],
@@ -815,21 +827,24 @@ function mergeSheet(){
     // keep a day name only if you typed it yourself (names made from muscle groups come from the sheet)
     const autoName = n => String(n||'').split(' · ').every(x=>['Lats','Biceps','Traps','Legs','Glutes','Abs','Pecs','Triceps','Delts','Rest','Cardio'].includes(x));
     if(od.name && od.name!==prevName && !autoName(od.name)){ nd.name=od.name; nd.sub=od.sub }
-    nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[];
+    nd.tmp=od.tmp||{}; nd.tmpAdd=od.tmpAdd||[]; if(od.gone && od.gone.length) nd.gone=od.gone.slice();
+    // exercises you removed (or swapped out) in the app stay out, even if the new sheet still lists them
+    nd.items=nd.items.filter(n=>!(nd.gone||[]).includes(n.ex) || od.items.some(o=>o.ex===n.ex));
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
       ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct','eccPct','eccSec'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
     // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
     nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
     const fromSheet = x => /^d\d+_/.test(String(x.uid||''));
-    const added = od.items.filter(x=>!x.ph && !fromSheet(x) && !nd.items.some(n=>n.ex===x.ex));
+    const added = od.items.filter(x=>!x.ph && (!fromSheet(x) || x.mine) && !nd.items.some(n=>n.ex===x.ex));   // yours: added or swapped in the app
     const keptOld = od.items.filter(x=>prev.includes(x.ex)).map(x=>x.ex);
     const matched = nd.items.filter(ni=>od.items.some(x=>x.ex===ni.ex)).length;
-    const reordered = false;   // the Daily Schedule sheet sets the order
+    const reordered = SHEET_ORDER_PLAN_V !== PLAN_V;   // true = keep the app's order; false = overhaul, the sheet's order wins
     const insertAfterPrev=(list,item,seq)=>{ const k=seq.indexOf(item); for(let j=k-1;j>=0;j--){ const at=list.indexOf(seq[j]); if(at>=0){ list.splice(at+1,0,item); return } } list.unshift(item) };
     let res;
     if(!reordered){ res=nd.items.slice(); const seq=od.items; added.forEach(x=>insertAfterPrev(res,x,seq.map(o=>res.find(r=>r.uid===o.uid)||o))) }
     else { res=[]; od.items.forEach(oi=>{ const m=nd.items.find(n=>n.ex===oi.ex); if(m) res.push(m); else if(added.includes(oi)) res.push(oi) });
       nd.items.filter(n=>!res.includes(n)).forEach(n=>insertAfterPrev(res,n,nd.items)) }
+    { const seen=new Set(); res.forEach(x=>{ if(seen.has(x.uid) && !od.items.includes(x)) x.uid=uid(); seen.add(x.uid) }) }
     nd.items=normalizeSS(res);
   });
   S.days=fresh; S.fixKickBand=S.fixD10calf=S.fixD11cg=S.fixLatX=true;
@@ -1547,7 +1562,9 @@ function closeSheet(){ ui.sheet=null; renderSheet(); if(pendingRS && ui.mode!=='
 function sheetItem(s){ const l=ctxList(s.ctx,s.day); let it=l.find(x=>x.uid===s.uid); if(!it && s.exId){ it = (l[s.idx] && l[s.idx].ex===s.exId) ? l[s.idx] : l.find(x=>x.ex===s.exId); if(it) s.uid=it.uid } return it }
 function ctxList(ctx,dayIdx){ if(ctx==='T'){ const d=S.days[dayIdx]; d.tmpAdd=d.tmpAdd||[]; return d.tmpAdd } return ctx==='M' ? ui.man.items : ctx==='A' ? A.items : S.days[dayIdx].items }
 function planItemOf(a){ return A && a && a.pu ? S.days[A.dayIdx].items.find(x=>x.uid===a.pu) : null }
-function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid]; delete pit.sub;
+function markGone(day,ex){ if(!day||!ex) return; day.gone=[...new Set([...(day.gone||[]), ex])] }
+function unGone(day,ex){ if(day && day.gone) day.gone=day.gone.filter(x=>x!==ex) }
+function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid]; delete pit.sub; if(!pit.ph && pit.ex && pit.ex!==exId) markGone(day,pit.ex); unGone(day,exId); pit.mine=true;
   if(pit.ph){ delete pit.ph; delete pit.phMus; delete pit.phSug; pit.rest=restFor(exId) }
   pit.ex=exId; if(lib(exId).f){ pit.lo=null; pit.hi=null } else if(pit.lo==null){ pit.lo=10; pit.hi=14 } }
 function keepBox(s,txt){ return `<label class="keeprow"><input type="checkbox" id="keepPlan" ${s.keep?'checked':''}><span>${txt||'Keep for future Day '+(s.day+1)+' workouts'}</span></label>` }
@@ -1569,7 +1586,7 @@ function renderSheet(){
      <div class="menu"><button data-act="goalBack">Switch back to ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${ge.id}">History for ${esc(ge.name)}</button><button data-act="exInfo" data-ex="${e.ex}">History for ${esc(lib(e.ex).name)}</button></div>`;
   }
   else if(s.type==='exEdit'){ const ex=lib(s.ex);
-    h=`<h3>Edit ${esc(ex.name)}</h3><div class="shsub">Applies everywhere this exercise is used. Sets and reps are set per day: tap the exercise in a day and choose Edit.</div>${exFields(ex,s)}
+    h=`<h3>Edit ${esc(ex.name)}</h3><div class="shsub">Applies everywhere this exercise is used. Sets and reps are set per day: tap the exercise in a day and choose Edit.</div>${exFields(ex,s,true)}
      <div class="stack" style="margin-top:16px"><button class="btn primary" data-act="exEditSave">Save</button></div>`;
   }
   else if(s.type==='standMenu'){ const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(!it||!it.sub){closeSheet();return}
@@ -1585,7 +1602,7 @@ function renderSheet(){
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${s.ctx==='A'?'':s.ctx==='T'?'For your next workout only.':'Saved to Day '+(s.day+1)+' for future workouts.'}</div>${s.ctx==='A'&&it.pu?keepBox(s):''}
      ${s.useSub?`<div class="small muted" style="margin-top:6px">Stand-in for ${esc(lib(it.ex).name)}. Sets, reps and set style are shared with it.</div>`:''}${exFields(ex,s)}
      ${(()=>{ return ''; const ex2=lib(it.ex); const arms = (ex2.cat==='db' && !LEG_2DB.has(ex2.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex2.id}" data-k="one" class="${ex2.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex2.id}" data-k="both" class="${!ex2.u?'on':''}">Both arms</button></div>` : '';
-        return arms + (ex2.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex2.id}" data-d="${d}" class="${degOf(ex2.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '') })()}
+        return arms + (ex2.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex2.id}" data-d="${d}" class="${degOf(ex2.id)===d?'on':''}">${fmtDeg(d)}</button>`).join('')}</div>` : '') })()}
      <div class="sec">Sets</div><div class="stepper"><button data-act="edSets" data-d="-1">−</button><span class="v" id="edSetsV">${s.sets}</span><button data-act="edSets" data-d="1">+</button></div>
      <div class="sec">Target</div><div class="seg">${[['reps','Reps'],['time','Timed'],['fail','To failure']].map(([k,l])=>`<button data-act="edMode" data-k="${k}" class="${m===k?'on':''}">${l}</button>`).join('')}</div>
      ${m!=='fail'?`<div class="grid2" style="margin-top:10px"><label class="f">From${m==='time'?' (sec)':''}<input id="edLo" inputmode="numeric" value="${s.lo??''}"></label><label class="f">To${m==='time'?' (sec)':''}<input id="edHi" inputmode="numeric" value="${s.hi??''}"></label></div>`:''}
@@ -1636,11 +1653,11 @@ function renderSheet(){
     const hist=liveSessions().filter(x=>x.type==='lift').map(x=>({x,e:x.exercises.find(e=>e.ex===s.ex)})).filter(o=>o.e).slice(0,8);
     const best = hist.reduce((b,o)=>Math.max(b,...o.e.sets.map(z=>z.w||0)),0);
     const arms = (ex.cat==='db' && !LEG_2DB.has(ex.id)) ? `<div class="sec">How you do it</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">One arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">Both arms</button></div>` : '';
-    const angle = arms + (ex.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${d}°</button>`).join('')}</div>` : '');
+    const angle = arms + (ex.tpl ? `<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${fmtDeg(d)}</button>`).join('')}</div>` : '');
     const renamed = (S.names && S.names[ex.id]) || false;
     const nameBlock = s.renaming
       ? `<div class="stack" style="margin-top:6px"><input id="exNameIn" value="${esc(ex.name)}" aria-label="Exercise name"><div class="rowline"><button class="btn sm primary" data-act="exNameSave" data-ex="${ex.id}">Save name</button>${renamed?`<button class="btn sm ghost" data-act="exNameReset" data-ex="${ex.id}">Restore original</button>`:''}<button class="btn sm ghost" data-act="exNameCancel">Cancel</button></div>${ex.tpl?'<div class="small muted">Keep the angle (like 35°) in the name and it will still follow the Bench angle buttons.</div>':''}</div>`
-      : `<div class="rowline" style="justify-content:space-between;flex-wrap:nowrap"><h3>${esc(ex.name)}</h3><button class="btn sm ghost" data-act="exEdit" data-ex="${ex.id}">Edit</button></div>${renamed&&ex.base?`<div class="small muted">Originally: ${esc(ex.base.replace('{°}',degOf(ex.id)+'°'))}</div>`:''}`;
+      : `<div class="rowline" style="justify-content:space-between;flex-wrap:nowrap"><h3>${esc(ex.name)}</h3><button class="btn sm ghost" data-act="exEdit" data-ex="${ex.id}">Edit</button></div>${renamed&&ex.base?`<div class="small muted">Originally: ${esc(ex.base.replace('{°}',fmtDeg(degOf(ex.id))))}</div>`:''}`;
     h=`${nameBlock}<div class="shsub">${CATS[ex.cat]}${ex.u?' · one side at a time':''}${ex.req.length?' · uses '+ex.req.map(r=>GEARNAME[r].split(' (')[0].toLowerCase()).join(', '):''}</div>
      <div class="chips">${ex.m.map((m,i)=>`<span class="chip ${i===0?'pri':''}">${MUS[m]||m}</span>`).join('')}</div>
      ${missing(ex).length?`<div class="needs" style="padding-top:10px"><span>You don't have: ${missing(ex).map(r=>GEARNAME[r]).join(', ')}</span></div>`:''}
@@ -1649,19 +1666,9 @@ function renderSheet(){
      ${ui.mode!=='log'?`<div class="sec">Add to a day</div><div class="rowline"><select id="toDay" style="flex:1">${S.days.map((d,i)=>`<option value="${i}">Day ${i+1} · ${esc(d.name)}</option>`).join('')}</select><button class="btn sm primary" data-act="addToDay" data-ex="${ex.id}">Add</button></div>`:''}
      ${S.custom[ex.id]?`<div style="margin-top:14px"><button class="btn danger" data-act="customDel" data-ex="${ex.id}">Delete this custom exercise</button></div>`:''}`;
   }
-  else if(s.type==='custom'){ const c=s.cu=s.cu||{name:'', equip:'db', bw:'bw', extras:[], deg:null, arms:'both', m1:'pecs', m2:'', comp:false, tgt:'reps'};
-    const seg=(f,opts)=>`<div class="seg" style="flex-wrap:wrap">${opts.map(([k,l])=>`<button data-act="cuSet" data-f="${f}" data-v="${k}" class="${String(c[f])===String(k)?'on':''}">${l}</button>`).join('')}</div>`;
-    const musOpts=(sel,none)=>(none?`<option value="">—</option>`:'')+Object.entries(MUS).map(([k,l])=>`<option value="${k}" ${sel===k?'selected':''}>${l}</option>`).join('');
-    h=`<h3>New exercise</h3><div class="shsub">Set it up like any other exercise. You can change all of this later with Edit.</div>
-     <div class="sec">Name</div><input id="cuName" data-cu="name" value="${esc(c.name)}" placeholder="e.g. Landmine press" autocomplete="off">
-     <div class="sec">Equipment</div>${seg('equip',EQUIP)}
-     ${c.equip==='cal'?`<div class="sec">Body weight</div>${seg('bw',[['bw','Just body weight'],['add','+ Added weight'],['assist','− Band assistance']])}`:''}
-     <div class="sec">Also uses</div><div class="pills">${EXTRA_GEAR.map(([k,l])=>`<button data-act="cuGear" data-k="${k}" class="${c.extras.includes(k)?'on':''}">${l}</button>`).join('')}</div>
-     ${c.extras.includes('bench')?`<div class="sec">Bench angle</div>${seg('deg',[['','No angle'],...BENCH.map(d=>[d,d+'°'])])}<div class="small muted" style="margin-top:4px">${c.deg!==null&&c.deg!==''?'The angle is added to the name and follows the Bench angle setting.':'Pick an angle for incline/decline work.'}</div>`:''}
-     <div class="sec">Arms / legs</div>${seg('arms',[['one','1 at a time (log left & right)'],['both','Both together']])}
-     <div class="sec">Muscles</div><div class="grid2"><label class="f">Main<select data-cu="m1">${musOpts(c.m1)}</select></label><label class="f">Also works<select data-cu="m2">${musOpts(c.m2,true)}</select></label></div>
-     <div class="sec">Movement</div>${seg('comp',[['true','Compound'],['false','Isolation']])}
-     <div class="sec">Target</div>${seg('tgt',[['reps','Reps'],['time','Timed'],['fail','To failure']])}
+  else if(s.type==='custom'){ const c=s.cu=s.cu||{name:'', equip:'db', bw:'bw', extras:[], deg:null, arms:'both', m1:'pecs', m2s:[], comp:false, tgt:'reps'};
+    if(!c.m2s) c.m2s = c.m2 ? [c.m2] : [];
+    h=`<h3>New exercise</h3><div class="shsub">Set it up like any other exercise. You can change all of this later with Edit.</div>${exEditor(c,true)}
      <div class="stack" style="margin-top:16px"><button class="btn primary" data-act="customSave">Save exercise</button></div>`;
   }
   else if(s.type==='bw'){ const l=bwSorted(); const st=bwStats(); const td=new Date(); const ds=`${td.getFullYear()}-${String(td.getMonth()+1).padStart(2,'0')}-${String(td.getDate()).padStart(2,'0')}`;
@@ -1713,10 +1720,10 @@ const H = {
   exNameCancel:()=>{ ui.sheet.renaming=false; renderSheet() },
   exNameSave:el=>{ const id=el.dataset.ex; let v=($('#exNameIn').value||'').trim(); if(!v){ toast('Enter a name'); return }
     if(S.custom && S.custom[id]){ S.custom[id].base=v; S.custom[id].name=v }
-    else { const e=LIB[id]; if(!e) return; if(e.tpl){ const cur=degOf(id)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') }
+    else { const e=LIB[id]; if(!e) return; if(e.tpl){ const cur=fmtDeg(degOf(id)); if(v.includes(cur)) v=v.replace(cur,'{°}') }
       S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v }
     applyDeg(); saveState(); ui.sheet.renaming=false; render(); toast('Name saved') },
-  exNameReset:el=>{ if(S.names) delete S.names[el.dataset.ex]; applyDeg(); saveState(); if(ui.sheet){ ui.sheet.renaming=false; ui.sheet.name=null } render(); toast('Original name restored') },
+  exNameReset:el=>{ if(S.names) delete S.names[el.dataset.ex]; applyDeg(); saveState(); if(ui.sheet){ ui.sheet.renaming=false; ui.sheet.name=null; if(ui.sheet.cu) ui.sheet.cu.name=lib(el.dataset.ex).name } render(); toast('Original name restored') },
   setEquip:el=>{ keepEd(); const id=el.dataset.ex, k=el.dataset.k; const cu=S.custom&&S.custom[id];
     if(cu){ cu.equip=k; cu.cat=CATMAP[k]||k; cu.req=(cu.req||[]).filter(r=>!GEAR_CODES.includes(r)).concat(gearFor(k)); cu.lm=lmFor(k, ['assist','add'].includes(cu.lm)?cu.lm:null); applyDeg(); saveState(); render(); toast(`${EQUIP.find(x=>x[0]===k)[1]}`); return }
     const e=LIB[id]; S.cat=S.cat||{}; if(e){ const was=S.cat[id]; delete S.cat[id]; applyDeg(); if(equipOf(e)===k) {} else S.cat[id]=k } applyDeg(); saveState(); render(); toast(`${EQUIP.find(x=>x[0]===k)[1]}`) },
@@ -1839,15 +1846,16 @@ const H = {
     else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
     saveCtx(s.ctx); closeSheet(); render() },
   rmItem:el=>{ const s=ui.sheet; const list=ctxList(s.ctx,s.day); const it0=sheetItem(s); const i=it0?list.indexOf(it0):-1; if(i<0){ closeSheet(); return }
+    if(s.ctx==='P' && it0 && !it0.ph) markGone(S.days[s.day], it0.ex);
     list.splice(i,1); normalizeSS(list); if(s.ctx==='A'){ fixLinks(list); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1) } saveCtx(s.ctx); closeSheet(); render() },
   rmItemKeep:()=>{ const s=ui.sheet; const it=sheetItem(s); if(!it) return; const pit=planItemOf(it); const d=S.days[A.dayIdx];
-    if(pit){ d.items.splice(d.items.indexOf(pit),1); normalizeSS(d.items); saveState() }
+    if(pit){ if(!pit.ph) markGone(d,pit.ex); d.items.splice(d.items.indexOf(pit),1); normalizeSS(d.items); saveState() }
     const i=A.items.indexOf(it); A.items.splice(i,1); normalizeSS(A.items); if(!A.items.length){ A.items.push(mkItem('pushup','A')) } A.cur=Math.min(A.cur,A.items.length-1);
     saveActive(); closeSheet(); render(); toast(`Removed from Day ${A.dayIdx+1}`) },
   add:el=>{ const base = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day, tmp:ui.sheet.tmp&&!!el.dataset.replace, keep:!!ui.sheet.keep} : (()=>{ const c=sheetCtx(); c.tmp = c.ctx==='P' && ui.editDay!==c.day; c.keep=false; return c })(); openSheet({type:'add', ...base, replace: el.dataset.replace||null, q:'', cat:'all', mus:'all'}) },
   addCat:el=>{ ui.sheet.cat=el.dataset.k; renderSheet() },
   doAdd:el=>{ const s=ui.sheet; if(s.replace){ s.uid=s.replace; doReplace(el.dataset.ex); return }
-    const ex=el.dataset.ex;
+    const ex=el.dataset.ex; if(s.ctx==='P' && !(s.tmp && !s.keep)) unGone(S.days[s.day],ex); if(s.ctx==='A' && s.keep) unGone(S.days[A.dayIdx],ex);
     if(s.ctx==='P' && s.tmp && !s.keep){ const d=S.days[s.day]; d.tmpAdd=d.tmpAdd||[]; d.tmpAdd.push(mkItem(ex,'P')); saveState(); closeSheet(); render(); toast('Added to your next workout'); return }
     if(s.ctx==='A'){ const ni=mkItem(ex,'A'); ni.pu=null;
       if(s.keep){ const pit=mkItem(ex,'P'); S.days[A.dayIdx].items.push(pit); ni.pu=pit.uid; saveState() }
@@ -1857,15 +1865,11 @@ const H = {
   exInfo:el=>openSheet({type:'exInfo', ex:el.dataset.ex}),
   addToDay:el=>{ const di=+$('#toDay').value; S.days[di].items.push(mkItem(el.dataset.ex,'P')); S.days[di].rest=false; saveState(); closeSheet(); render(); toast(`Added to Day ${di+1}`) },
   customNew:()=>openSheet({type:'custom', back:ui.sheet}),
-  cuSet:el=>{ const c=ui.sheet.cu, f=el.dataset.f; let v=el.dataset.v; if(f==='comp') v = v==='true'; if(f==='deg') v = v===''?null:+v; c[f]=v; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
-  cuGear:el=>{ const c=ui.sheet.cu, k=el.dataset.k; c.extras = c.extras.includes(k) ? c.extras.filter(x=>x!==k) : c.extras.concat(k); if(k==='bench' && !c.extras.includes('bench')) c.deg=null; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  cuSet:el=>{ keepEd(); const c=ui.sheet.cu, f=el.dataset.f; let v=el.dataset.v; if(f==='comp') v = v==='true'; if(f==='deg') v = v===''?null:+v; c[f]=v; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  cuMus:el=>{ keepEd(); const c=ui.sheet.cu, k=el.dataset.k; c.m2s = c.m2s.includes(k) ? c.m2s.filter(x=>x!==k) : c.m2s.concat(k); const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  cuGear:el=>{ keepEd(); const c=ui.sheet.cu, k=el.dataset.k; c.extras = c.extras.includes(k) ? c.extras.filter(x=>x!==k) : c.extras.concat(k); if(k==='bench' && !c.extras.includes('bench')) c.deg=null; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
   customSave:()=>{ const c=ui.sheet.cu; const nmEl=$('#cuName'); if(nmEl) c.name=nmEl.value; let name=(c.name||'').trim(); if(!name){ toast('Give it a name'); return }
-    const id='c_'+uid(); let base=name;
-    if(c.extras.includes('bench') && c.deg!==null && c.deg!==undefined){ base = /\d+\s*°/.test(name) ? name.replace(/\d+\s*°/,'{°}') : name+' ({°})'; S.deg=S.deg||{}; S.deg[id]=c.deg }
-    const m1=c.m1, m2=c.m2;
-    S.custom[id]={id, name:base, base, equip:c.equip, cat:CATMAP[c.equip]||c.equip, m:m2&&m2!==m1?[m1,m2]:[m1], req:gearFor(c.equip).concat(c.extras), lm:lmFor(c.equip,c.bw),
-      c:!!c.comp, u:c.arms==='one', u0:c.arms==='one', t:c.tgt==='time', f:c.tgt==='fail', custom:true};
-    applyDeg(); saveState(); const back=ui.sheet.back; if(back && back.type==='add'){ ui.sheet=back; back.q=name; } else closeSheet(); render(); toast('Exercise created') },
+    const id='c_'+uid(); if(!c.m2s) c.m2s=[]; S.custom[id]={id, custom:true, name, base:name, m:[c.m1], req:[]}; applyDraft(id,c); saveState(); const back=ui.sheet.back; if(back && back.type==='add'){ ui.sheet=back; back.q=name; } else closeSheet(); render(); toast('Exercise created') },
   customDel:el=>{ delete S.custom[el.dataset.ex]; saveState(); closeSheet(); render() },
   histOpen:el=>{ ui.histOpen = ui.histOpen===el.dataset.id?null:el.dataset.id; ui.delArm=null; render() },
   delSess:el=>{ const id=el.dataset.id; if(ui.delArm!==id){ ui.delArm=id; render(); return } const s=SESS.find(x=>x.id===id); s.deleted=true; s.updatedAt=Date.now(); delete s.snap; saveSession(s); ui.delArm=null; render(); toast('Deleted') },
@@ -1889,18 +1893,55 @@ function restoreFrom(text){ try{ const o=JSON.parse(text); if(!o.state||!o.state
 document.addEventListener('change',e=>{ if(e.target.id==='restoreFile' && e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>restoreFrom(fr.result); fr.readAsText(e.target.files[0]) } });
 function showBackupText(txt){ openSheet({type:'restore'}); setTimeout(()=>{ const t=$('#restoreTxt'); t.value=txt; t.select(); $('#sheet h3').textContent='Copy this backup'; },0) }
 // exercise-level settings, shown in every edit sheet
-function exFields(ex,s){ const isLib=!!LIB[ex.id] || !!ex.custom; const eq=isLib?equipOf(ex):null; const u=S.unit;
-  let h=`<div class="sec">Name</div><input id="edName" value="${esc(s.name!=null?s.name:ex.name)}" aria-label="Exercise name">${S.names&&S.names[ex.id]?`<div class="small muted" style="margin-top:4px">Originally: ${esc((ex.base||'').replace('{°}',degOf(ex.id)+'°'))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore</button></div>`:''}`;
-  if(isLib) h+=`<div class="sec">Equipment</div><div class="seg" style="flex-wrap:wrap">${EQUIP.map(([k,l])=>`<button data-act="setEquip" data-ex="${ex.id}" data-k="${k}" class="${eq===k?'on':''}">${l}</button>`).join('')}</div>`;
-  if(ex.cat!=='cal' && !LEG_2DB.has(ex.id)) h+=`<div class="sec">Arms</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">1 arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">2 arms together</button></div>`;
-  if(ex.tpl) h+=`<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${d}°</button>`).join('')}</div>`;
+// what an exercise is, as an editable draft
+function deriveDraft(ex){ const lm=loadMode(ex);
+  return {name: ex.name, equip: equipOf(ex), bw: (lm==='add'||lm==='assist') ? lm : 'bw', extras: (ex.req||[]).filter(r=>EXTRA_CODES.includes(r)),
+    deg: ex.tpl ? (degOf(ex.id)??0) : null, arms: ex.u?'one':'both', m1: ex.m[0], m2s: ex.m.slice(1), comp: !!ex.c, tgt: ex.t?'time':ex.f?'fail':'reps'} }
+function draftBase(c){ let name=(c.name||'').trim(); const ang=/\s*\(\s*[−-]?\d+\s*°\s*\)|[−-]?\d+\s*°/;
+  if(c.deg!==null && c.deg!==undefined && c.deg!=='' && c.extras.includes('bench')) return ang.test(name) ? name.replace(/[−-]?\d+\s*°/,'{°}') : name+' ({°})';
+  return name.replace(/\s*\(\s*[−-]?\d+\s*°\s*\)/,'').replace(/[−-]?\d+\s*°\s*/,'').replace(/\s{2,}/g,' ').trim() }
+function exEditor(c,showTarget){
+  const seg=(f,opts)=>`<div class="seg" style="flex-wrap:wrap">${opts.map(([k,l])=>`<button data-act="cuSet" data-f="${f}" data-v="${k}" class="${String(c[f])===String(k)?'on':''}">${l}</button>`).join('')}</div>`;
+  return `<div class="sec">Name</div><input id="cuName" data-cu="name" value="${esc(c.name)}" placeholder="e.g. Landmine press" autocomplete="off">
+     <div class="sec">Equipment</div>${seg('equip',EQUIP)}
+     ${c.equip==='cal'?`<div class="sec">Body weight</div>${seg('bw',[['bw','Just body weight'],['add','+ Added weight'],['assist','− Band assistance']])}`:''}
+     <div class="sec">Also uses</div><div class="pills">${EXTRA_GEAR.map(([k,l])=>`<button data-act="cuGear" data-k="${k}" class="${c.extras.includes(k)?'on':''}">${l}</button>`).join('')}</div>
+     ${c.extras.includes('bench')?`<div class="sec">Bench angle</div>${seg('deg',[['','No angle'],...BENCH.map(d=>[d,fmtDeg(d)])])}<div class="small muted" style="margin-top:4px">${c.deg!==null&&c.deg!==''?'The angle is part of the name and follows this setting.':'Pick an angle for incline or decline work.'}</div>`:''}
+     <div class="sec">Arms / legs</div>${seg('arms',[['one','1 at a time (log left & right)'],['both','Both together']])}
+     <div class="sec">Main muscle</div><select data-cu="m1" data-rerender="1">${Object.entries(MUS).map(([k,l])=>`<option value="${k}" ${c.m1===k?'selected':''}>${l}</option>`).join('')}</select>
+     <div class="sec">Secondary</div><div class="pills">${Object.entries(MUS).filter(([k])=>k!==c.m1).map(([k,l])=>`<button data-act="cuMus" data-k="${k}" class="${c.m2s.includes(k)?'on':''}">${l}</button>`).join('')}</div>
+     <div class="sec">Movement</div>${seg('comp',[['true','Compound'],['false','Isolation']])}
+     ${showTarget?`<div class="sec">Target</div>${seg('tgt',[['reps','Reps'],['time','Timed'],['fail','To failure']])}`:''}` }
+// save a draft onto an exercise (built-in or your own); the change shows everywhere it's used
+function applyDraft(id,c){ const base=draftBase(c); const hasAng = base.includes('{°}'); const m=[c.m1, ...c.m2s.filter(x=>x!==c.m1)];
+  S.deg=S.deg||{}; if(hasAng) S.deg[id]=c.deg;
+  const cu=S.custom&&S.custom[id];
+  if(cu){ Object.assign(cu,{base, name:base, equip:c.equip, cat:CATMAP[c.equip]||c.equip, m, req:[...new Set(gearFor(c.equip).concat(c.extras))], lm:lmFor(c.equip,c.bw), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail', u0:c.arms==='one'}); if(S.arm) delete S.arm[id] }
+  else { const e=LIB[id]; if(!e) return;
+    S.names=S.names||{}; if(base===e.base) delete S.names[id]; else S.names[id]=base;
+    S.cat=S.cat||{}; if(c.equip===natEquip(e)) delete S.cat[id]; else S.cat[id]=c.equip;
+    S.exo=S.exo||{}; S.exo[id]={m, extras:c.extras.slice(), c:!!c.comp, t:c.tgt==='time', f:c.tgt==='fail', bw: c.equip==='cal' ? c.bw : null};
+    S.arm=S.arm||{}; if((c.arms==='one')===!!e.u0) delete S.arm[id]; else S.arm[id]=c.arms }
+  applyDeg() }
+function exFields(ex,s,showTarget){ s.cu = s.cu || deriveDraft(ex); const u=S.unit; let h=exEditor(s.cu,!!showTarget);
+  if(S.names&&S.names[ex.id]) h+=`<div class="small muted" style="margin-top:6px">Originally: ${esc((ex.base||'').replace('{°}',fmtDeg(degOf(ex.id)??0)))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore name</button></div>`;
   if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${e.w}×${e.r}`:'No estimate yet'} · leave blank to use the estimate</span></div>` }
   return h }
-function saveExFields(id,s){ const ex=lib(id); let v=(s.name!=null?s.name:ex.name||'').trim();
-  if(v && v!==ex.name){ if(S.custom && S.custom[id]){ const c=S.custom[id]; if(c.tpl){ const cur=(degOf(id)??0)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') } c.base=v; c.name=v } else { const e=LIB[id]; if(e){ if(e.tpl){ const cur=degOf(id)+'°'; if(v.includes(cur)) v=v.replace(cur,'{°}') } S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v } } }
+function exFieldsOld(ex,s){ const isLib=!!LIB[ex.id] || !!ex.custom; const eq=isLib?equipOf(ex):null; const u=S.unit;
+  let h=`<div class="sec">Name</div><input id="edName" value="${esc(s.name!=null?s.name:ex.name)}" aria-label="Exercise name">${S.names&&S.names[ex.id]?`<div class="small muted" style="margin-top:4px">Originally: ${esc((ex.base||'').replace('{°}',fmtDeg(degOf(ex.id))))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore</button></div>`:''}`;
+  if(isLib) h+=`<div class="sec">Equipment</div><div class="seg" style="flex-wrap:wrap">${EQUIP.map(([k,l])=>`<button data-act="setEquip" data-ex="${ex.id}" data-k="${k}" class="${eq===k?'on':''}">${l}</button>`).join('')}</div>`;
+  if(ex.cat!=='cal' && !LEG_2DB.has(ex.id)) h+=`<div class="sec">Arms</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">1 arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">2 arms together</button></div>`;
+  if(ex.tpl) h+=`<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${fmtDeg(d)}</button>`).join('')}</div>`;
+  if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${e.w}×${e.r}`:'No estimate yet'} · leave blank to use the estimate</span></div>` }
+  return h }
+function saveExFields(id,s){ const nm=$('#cuName'); if(s.cu && nm) s.cu.name=nm.value; if(s.cu){ if(!(s.cu.name||'').trim()) s.cu.name=lib(id).name; applyDraft(id,s.cu) }
+  if(s.orm!=null){ const o=num(s.orm); S.orm=S.orm||{}; if(o>0) S.orm[id]=o; else delete S.orm[id] }
+  saveState() }
+function saveExFieldsOld(id,s){ const ex=lib(id); let v=(s.name!=null?s.name:ex.name||'').trim();
+  if(v && v!==ex.name){ if(S.custom && S.custom[id]){ const c=S.custom[id]; if(c.tpl){ const cur=fmtDeg(degOf(id)??0); if(v.includes(cur)) v=v.replace(cur,'{°}') } c.base=v; c.name=v } else { const e=LIB[id]; if(e){ if(e.tpl){ const cur=fmtDeg(degOf(id)); if(v.includes(cur)) v=v.replace(cur,'{°}') } S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v } } }
   if(s.orm!=null){ const o=num(s.orm); S.orm=S.orm||{}; if(o>0) S.orm[id]=o; else delete S.orm[id] }
   applyDeg(); saveState() }
-function keepEd(){ if(!ui.sheet) return; const nm=$('#edName'), om=$('#edOrm'); if(nm) ui.sheet.name=nm.value; if(om) ui.sheet.orm=om.value;
+function keepEd(){ if(!ui.sheet) return; const nm=$('#cuName'), om=$('#edOrm'); if(nm && ui.sheet.cu) ui.sheet.cu.name=nm.value; if(om) ui.sheet.orm=om.value;
   const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.value; if(hi) ui.sheet.hi=hi.value;
   if(ui.sheet && ui.sheet.st==='pyr' && $('#edPct0')){ ui.sheet.pct=(ui.sheet.pct||[]).map((v,i)=>{ const e=$('#edPct'+i); return e ? (num(e.value)??v) : v }) } }
 function styleEditor(s,it){ const st=s.st||''; const ex=lib(it.ex), o=oneRM(it.ex), u=S.unit;
@@ -1963,7 +2004,7 @@ document.addEventListener('input',e=>{
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveDraft,400); return }
   if(el.id==='keepPlan' && ui.sheet){ ui.sheet.keep=el.checked; return }
-  if(el.dataset.cu && ui.sheet && ui.sheet.cu){ ui.sheet.cu[el.dataset.cu]=el.value; return }
+  if(el.dataset.cu && ui.sheet && ui.sheet.cu){ ui.sheet.cu[el.dataset.cu]=el.value; if(el.dataset.cu==='m1'){ ui.sheet.cu.m2s=ui.sheet.cu.m2s.filter(x=>x!==el.value); keepEd(); const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st } return }
   if(el.dataset.step){ const u=S.unit==='kg'?'kg':'lb'; S.steps=S.steps||{}; S.steps[u]=S.steps[u]||{}; const v=num(el.value); if(v>0) S.steps[u][el.dataset.step]=v; else delete S.steps[u][el.dataset.step]; clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
     const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
