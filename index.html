@@ -429,6 +429,8 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 .swbtn.on{background:var(--danger);color:#fff}
 
 .chip.si{background:transparent;border:1px solid var(--stand)!important;color:var(--stand)}
+
+.pv .tw{display:block;font-size:11px;color:var(--accent-text);font-weight:700;margin-top:1px}
 </style>
 </head>
 <body>
@@ -442,7 +444,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.23-a';
+const APP_VERSION = '2026.10.24-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -846,7 +848,7 @@ function mergeSheet(){
     const removed = new Set([...(nd.gone||[]), ...was.filter(ex=>!od.items.some(o=>o.ex===ex || o.sub===ex))]);
     nd.items=nd.items.filter(n=>!removed.has(n.ex) || od.items.some(o=>o.ex===n.ex));
     nd.items.forEach(ni=>{ const oi=od.items.find(x=>x.ex===ni.ex); if(!oi) return;
-      ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct','eccPct','eccSec','tm'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
+      ni.uid=oi.uid; ['wu','sub','ss','rest','st','pct','drops','dropPct','eccPct','eccSec','tm','subSets','subLo','subHi','subTm'].forEach(k=>{ if(oi[k]!=null) ni[k]=oi[k] }) });
     // new cable/machine exercises start on their 1:1 stand-in, like the rest of your plan
     nd.items.forEach(ni=>{ if(!od.items.some(x=>x.ex===ni.ex) && !ni.sub){ const a=alt1(ni.ex); if(a) ni.sub=a } });
     const fromSheet = x => /^d\d+_/.test(String(x.uid||''));
@@ -1008,12 +1010,16 @@ function stepKind(ex){ return !ex ? 'bb' : ex.cat==='db' ? 'db' : ex.cat==='mach
 function stepFor(ex){ const k=stepKind(ex); const u=S.unit==='kg'?'kg':'lb'; const v=S.steps&&S.steps[u]&&num(S.steps[u][k]); return v>0 ? v : STEP_DEF[u][k] }
 function roundW(x,ex){ const st=ex?stepFor(ex):wStep(); return Math.max(st, Math.round(Math.round(x/st)*st*100)/100) }
 const fmtW = v => (Math.round(v*100)/100).toString();
-function estRM(exId){ const ex=lib(exId); if(loadMode(ex)!=='wt') return null; let best=null, n=0;
+const ORM_FROM_DEFAULT={fly_press:'fly_db', fly_press_incl:'fly_incl_db'};   // the press is about the fly's lowering, so it uses the fly's 1RM
+function ormSrc(id){ const v = S.ormFrom && Object.prototype.hasOwnProperty.call(S.ormFrom,id) ? S.ormFrom[id] : ORM_FROM_DEFAULT[id]; return v && v!==id && lib(v) && lib(v).name ? v : null }
+function estRM(exId,depth){ const src=ormSrc(exId); if(src && (depth||0)<3){ const e=estRM(src,(depth||0)+1); const o=S.orm&&S.orm[src]; if(o) return {v:o, w:null, r:null, own:true, from:src}; return e ? {...e, from:src} : null }
+  const ex=lib(exId); if(loadMode(ex)!=='wt') return null; let best=null, n=0;
   if(A) A.items.forEach(it=>{ if(it.ex!==exId || it.skipped) return; workRows(it).forEach(x=>{ if(!x.done) return; const w=num(x.w), r=ex.u?Math.min(num(x.rl)||0,num(x.rr)||0):num(x.r); if(w>0 && r>0 && r<=20){ const v=w*(1+r/30); if(!best||v>best.v) best={v,w,r,date:Date.now(),live:true} } }) });
   for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(!e) continue;
     e.sets.forEach(x=>{ const w=num(x.w), r=repOf(x,ex); if(w>0 && r>0 && r<=20){ const v=w*(1+r/30); if(!best||v>best.v) best={v,w,r,date:s.end} } }); if(++n>=6) break }
   return best }
 function oneRM(exId){ const o=S.orm&&S.orm[exId]; if(o) return o; const e=estRM(exId); return e?Math.round(e.v*10)/10:null }
+const estTxt = e => e.from ? `${lib(e.from).name}${e.own?' (your number)':` ${e.w}×${e.r}`}` : `${e.w}×${e.r}`;
 function ormFor(it){ const r=oneRM(it.ex); if(r) return r; const f=it.rows?workRows(it)[0]:null; const w=num(f&&f.w); if(!w) return null; const t=it.lo!=null?Math.round(((it.lo)+(it.hi??it.lo))/2):10; return w*(1+t/30) }
 function pctOf(it,r){ if(loadMode(lib(it.ex))!=='wt') return null; const o=ormFor(it), w=num(r.w); return o&&w ? Math.round(w/o*100) : null }
 const WARM_PCT=[50,60,70];
@@ -1078,7 +1084,10 @@ function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
 function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
   const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
+  if(!tt && it.subSets!=null){ c.sets=it.subSets; c.lo=it.subLo; c.hi=it.subHi; if(it.subTm!=null) c.tm=it.subTm; else delete c.tm; return c }   // stand-in's own sets & reps
   const e=lib(t); if(e.f){ c.lo=null; c.hi=null } else if(c.lo==null){ c.lo=10; c.hi=14 } return c }
+// before changing a goal's sets/reps, pin its stand-in's current sets/reps so they don't follow
+function pinSub(day,it){ if(!it || !it.sub || it.subSets!=null) return; const e=effItem(day,it); it.subSets=e.sets; it.subLo=e.lo; it.subHi=e.hi; if(e.tm!=null) it.subTm=e.tm }
 function expandDay(day){ return day.items.flatMap(it=>{ const e=effItem(day,it); if(e===it || it.ph || e.tmpSwap) return [e];
   const g={...it, ghost:true, goalOf:it.uid}; delete g.ss; return [g, e] }) }
 function standinOf(g){ return A ? (A.items.find(x=>x.par && x.par===g.uid) || A.items.find(x=>!x.ghost && x.pu && x.pu===g.goalOf)) : null }
@@ -1307,7 +1316,7 @@ function viewLog(){
     const tmd = timeBox;
     const reps = ex.u ? repSel(`data-set="${i}" data-f="rl"`, r.rl, {timed:tmd, cls:r.sugR?'sug':'', label:'Left', ph:failM?'Fail':'–'}) + repSel(`data-set="${i}" data-f="rr"`, r.rr, {timed:tmd, cls:r.sugR?'sug':'', label:'Right', ph:failM?'Fail':'–'})
                      : repSel(`data-set="${i}" data-f="r"`, r.r, {timed:tmd, cls:r.sugR?'sug':'', ph: failM?'Failure':tp&&m==='reps'?'~'+tp:'–', label:repLbl});
-    h+=`<div class="setrow ${isPeak?'peak':''} ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${r.drop&&it.rows[i+1]&&it.rows[i+1].drop?'dmid':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}${isPeak?'<small class="pk">Peak</small>':''}</span><span class="pv">${esc(r.prev||'—')}</span>
+    h+=`<div class="setrow ${isPeak?'peak':''} ${r.done?'done':''} ${r.skip?'skip':''} ${r.warm?'warm':''} ${r.drop?'drop':''} ${r.drop&&it.rows[i+1]&&it.rows[i+1].drop?'dmid':''} ${i===cur?'cur':''}"><span class="sn">${r.warm?'W':r.drop?'D'+r.drop:(workRows(it).indexOf(r)+1)}${lm==='wt'?`<small class="pct" id="pct_${i}">${pc!=null?pc+'%':r.pct?r.pct+'%':''}</small>`:''}${isPeak?'<small class="pk">Peak</small>':''}</span><span class="pv"><span class="pvt">${esc(r.prev||'—')}</span>${lm==='wt'&&r.pct?`<small class="tw" id="tw_${i}">${targetW(it,r,ex)}</small>`:''}</span>
       ${wCell(r,i,lm,ex)}${reps}${rir}
       <button class="check" data-act="logSet" data-i="${i}" aria-label="Log set ${i+1}">${ICON.check}</button></div>`;
   });
@@ -1337,10 +1346,12 @@ function viewLog(){
   return h;
 }
 
+function targetW(it,r,ex){ const o=ormFor(it); return o ? `${r.pct}% ≈ ${fmtW(roundW(o*r.pct/100,ex))} ${S.unit}` : `${r.pct}% of 1RM` }
+function refreshTargets(it){ const ex=lib(it.ex); it.rows.forEach((r,j)=>{ const t=document.getElementById('tw_'+j); if(t && r.pct) t.textContent=targetW(it,r,ex) }) }
 function ormLine(it,ex){ if(loadMode(ex)!=='wt') return ''; const own=S.orm&&S.orm[ex.id], e=estRM(ex.id), u=S.unit;
   return `<div class="ormline"><span>1RM</span><input id="ormIn" data-orm="${ex.id}" inputmode="decimal" value="${own||''}" placeholder="${ormEstTxt(it,ex).v||'–'}" aria-label="One-rep max"><span>${u}${dbCount(ex)===2?' each':''}</span><span class="ormest" id="ormEst">${ormEstHTML(it,ex,own)}</span></div>` }
 // the estimate on its own (ignores a number you typed), so it can sit beside the box
-function ormEstTxt(it,ex){ const e=estRM(ex.id); if(e) return {v:fmtW(roundW(e.v,ex)), src:`from ${e.w}×${e.r}${e.live?' today':''}`};
+function ormEstTxt(it,ex){ const e=estRM(ex.id); if(e) return {v:fmtW(roundW(e.v,ex)), src:`from ${estTxt(e)}${e.live?' today':''}`};
   const f=workRows(it)[0], w=num(f&&f.w); if(!w) return {v:'', src:'log a set to estimate'}; const t=it.lo!=null?Math.round((it.lo+(it.hi??it.lo))/2):10; return {v:fmtW(roundW(w*(1+t/30),ex)), src:'from today\'s weight'} }
 function ormEstHTML(it,ex,own){ const o=ormEstTxt(it,ex); return `${o.v?`Est. <b>${o.v}</b> · `:''}${o.src}${own?' · using your number':''}` }
 // reps are picked from a list everywhere (seconds in 5 s steps for timed sets)
@@ -1601,7 +1612,8 @@ function ctxList(ctx,dayIdx){ if(ctx==='T'){ const d=S.days[dayIdx]; d.tmpAdd=d.
 function planItemOf(a){ return A && a && a.pu ? S.days[A.dayIdx].items.find(x=>x.uid===a.pu) : null }
 function markGone(day,ex){ if(!day||!ex) return; day.gone=[...new Set([...(day.gone||[]), ex])] }
 function unGone(day,ex){ if(day && day.gone) day.gone=day.gone.filter(x=>x!==ex) }
-function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid]; delete pit.sub; if(!pit.ph && pit.ex && pit.ex!==exId) markGone(day,pit.ex); unGone(day,exId); pit.mine=true;
+function clearSubOwn(it){ delete it.subSets; delete it.subLo; delete it.subHi; delete it.subTm }
+function applyPlanSwap(day,pit,exId){ if(day.tmp) delete day.tmp[pit.uid]; delete pit.sub; clearSubOwn(pit); if(!pit.ph && pit.ex && pit.ex!==exId) markGone(day,pit.ex); unGone(day,exId); pit.mine=true;
   if(pit.ph){ delete pit.ph; delete pit.phMus; delete pit.phSug; pit.rest=restFor(exId) }
   pit.ex=exId; if(lib(exId).f){ pit.lo=null; pit.hi=null } else if(pit.lo==null){ pit.lo=10; pit.hi=14 } }
 function keepBox(s,txt){ return `<label class="keeprow"><input type="checkbox" id="keepPlan" ${s.keep?'checked':''}><span>${txt||'Keep for future Day '+(s.day+1)+' workouts'}</span></label>` }
@@ -1793,15 +1805,15 @@ const H = {
   editDone:()=>{ ui.editDay=null; ui.reorder=false; render(); toast('Day saved') },
   reorderToggle:()=>{ ui.reorder=!ui.reorder; const y=window.scrollY; render(); window.scrollTo(0,y); if(ui.reorder) toast('Drag the handles to reorder') },
   standMenu:el=>{ const c=sheetCtx(); openSheet({type:'standMenu', uid:el.dataset.uid, day:c.day}) },
-  standEdit:()=>{ const s=ui.sheet; const it=S.days[s.day].items.find(x=>x.uid===s.uid); if(!it) return; openSheet({type:'edit', uid:s.uid, ctx:'P', day:s.day, useSub:true, sets:it.sets, wu:it.wu||0, lo:it.lo, hi:it.hi, m:(mode(it)==='time'?'tfail':mode(it)), st:it.st||'', pct: it.st==='pyr' ? pyrPcts(it) : pyrDefault(Math.max(3,it.sets)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
+  standEdit:()=>{ const s=ui.sheet; const it0=S.days[s.day].items.find(x=>x.uid===s.uid); if(!it0) return; const it=effItem(S.days[s.day],it0); openSheet({type:'edit', uid:s.uid, ctx:'P', day:s.day, useSub:true, sets:it.sets, wu:it0.wu||0, lo:it.lo, hi:it.hi, m:(mode(it)==='time'?'tfail':mode(it)), st:it.st||'', pct: it.st==='pyr' ? pyrPcts(it) : pyrDefault(Math.max(3,it.sets)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   standChange:()=>{ const s=ui.sheet; openSheet({type:'swap', uid:s.uid, ctx:'P', day:s.day, tmp:true, keep:true, mode:'stand'}) },
   standChange2:el=>{ const s=ui.sheet; openSheet({type:'swap', uid:el.dataset.uid, ctx:'P', day:s.day, tmp:true, keep:true, mode:'stand'}) },
   swapGood:el=>{ const s=ui.sheet||{}; const day = s.day!=null ? s.day : sheetCtx().day; openSheet({type:'swap', uid:el.dataset.uid, ctx:'P', day, tmp:false, mode:'swap'}) },
-  standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ markGone(d,it.ex); it.mine=true; it.ex=it.sub; delete it.sub; if(d.tmp) delete d.tmp[it.uid]; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
+  standPromote:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid); if(it && it.sub){ markGone(d,it.ex); it.mine=true; if(it.subSets!=null){ it.sets=it.subSets; it.lo=it.subLo; it.hi=it.subHi; if(it.subTm!=null) it.tm=it.subTm } clearSubOwn(it); it.ex=it.sub; delete it.sub; if(d.tmp) delete d.tmp[it.uid]; if(lib(it.ex).f){ it.lo=null; it.hi=null } saveState() } closeSheet(); render(); toast('Updated') },
   ghostMenu:el=>{ const c=sheetCtx(); openSheet({type:'ghostMenu', uid:el.dataset.goal, day:c.day}) },
   tmpUndo:()=>{ const s=ui.sheet; const d=S.days[s.day]; if(d.tmp) delete d.tmp[s.uid]; saveState(); closeSheet(); render(); toast('Swap undone') },
   tmpKeep:el=>{ const s=ui.sheet; const d=S.days[s.day]; const i=(d.tmpAdd||[]).findIndex(x=>x.uid===(el.dataset.uid||s.uid)); if(i<0) return; const [it]=d.tmpAdd.splice(i,1); d.items.push(it); unGone(d,it.ex); saveState(); closeSheet(); render(); toast(`Added to every Day ${s.day+1} workout`) },
-  goalBack:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid) || (d.tmpAdd||[]).find(x=>x.uid===s.uid); if(it){ delete it.sub; if(d.tmp) delete d.tmp[it.uid] } saveState(); closeSheet(); render(); toast(it?`Back to ${lib(it.ex).name||'the plan'}`:'Back to the plan') },
+  goalBack:()=>{ const s=ui.sheet; const d=S.days[s.day]; const it=d.items.find(x=>x.uid===s.uid) || (d.tmpAdd||[]).find(x=>x.uid===s.uid); if(it){ delete it.sub; clearSubOwn(it); if(d.tmp) delete d.tmp[it.uid] } saveState(); closeSheet(); render(); toast(it?`Back to ${lib(it.ex).name||'the plan'}`:'Back to the plan') },
   useGoal:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=standinOf(g); g.skipped=false; if(si) si.skipped=true; saveActive(); render(); toast('Doing the goal exercise today') },
   useStandIn:()=>{ const g=curItem(); if(!g||!g.ghost) return; const si=standinOf(g); g.skipped=true; if(si){ si.skipped=false; A.cur=A.items.indexOf(si) } saveActive(); render() },
   tmpUndo:()=>{ const s=ui.sheet; const d=S.days[s.day]; if(d.tmp) delete d.tmp[s.uid]; saveState(); closeSheet(); render(); toast('Back to the planned exercise') },
@@ -1866,7 +1878,8 @@ const H = {
   bwRange:el=>{ ui.sheet.range=el.dataset.k; renderSheet() },
   wkDays:el=>{ ui.wkDays=+el.dataset.k; const y=window.scrollY; render(); window.scrollTo(0,y) },
   editItem:el=>{ const c = ui.sheet && ui.sheet.ctx ? {ctx:ui.sheet.ctx, day:ui.sheet.day} : sheetCtx(); const it=ctxList(c.ctx,c.day).find(x=>x.uid===el.dataset.uid); const n=c.ctx==='A'?workRows(it).length:it.sets; c.useSub = !!(ui.sheet && ui.sheet.useSub);
-    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep: c.ctx==='A', sets:n, wu:it.wu||0, lo:it.lo, hi:it.hi, m:(mode(it)==='time'?'tfail':mode(it)), st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
+    const e0 = c.useSub && (c.ctx==='P'||c.ctx==='T') ? effItem(S.days[c.day],it) : it; const n0 = c.ctx==='A' ? n : e0.sets;
+    openSheet({type:'edit', uid:el.dataset.uid, ...c, keep:false, sets:n0, lo:e0.lo, hi:e0.hi, m:(mode(e0)==='time'?'tfail':mode(e0)), sets_:n, wu:it.wu||0, st:it.st||'', pct: it.st==='pyr' ? pyrPcts({...it, sets:n}) : pyrDefault(Math.max(3,n)), drops:it.drops||2, dropPct:it.dropPct||20, eccPct:it.eccPct||100, eccSec:it.eccSec||4, name:null, orm:null}) },
   edEccPct:el=>{ keepEd(); ui.sheet.eccPct=Math.max(80,Math.min(150,ui.sheet.eccPct+ +el.dataset.d)); renderSheet() },
   edEccSec:el=>{ keepEd(); ui.sheet.eccSec=Math.max(2,Math.min(10,ui.sheet.eccSec+ +el.dataset.d)); renderSheet() },
   edSt:el=>{ keepEd(); const s=ui.sheet; s.st=el.dataset.k; if(s.st==='pyr'){ if(s.sets<3) s.sets=3; if(s.pct.length!==s.sets) s.pct=pyrDefault(s.sets) } renderSheet() },
@@ -1879,7 +1892,11 @@ const H = {
   edMode:el=>{ keepEd(); const s=ui.sheet; s.m=el.dataset.k; if(isFailMode(s.m)){s.lo=null;s.hi=null} else if(s.lo==null){ s.lo=8; s.hi=12 } renderSheet() },
   edSave:()=>{ keepEd(); const s=ui.sheet; const it=sheetItem(s); if(!it){ closeSheet(); return } saveExFields((s.useSub && (s.ctx==='P'||s.ctx==='T')) ? (effItem(S.days[s.day],it).ex||it.ex) : it.ex, s);
     if(s.emph!=null){ if(s.emph) it.emph=s.emph; else delete it.emph; if(s.ctx==='A'){ const p=planItemOf(it); if(p){ if(s.emph) p.emph=s.emph; else delete p.emph; saveState() } } }
-    const fm=isFailMode(s.m); it.lo = fm?null:(num(s.lo)??8); it.hi = fm?null:Math.max(it.lo, num(s.hi)??it.lo); if(fm) it.tm = s.m==='tfail'; else delete it.tm; it.rest=num($('#edRest').value)??it.rest;
+    const fm=isFailMode(s.m); const nLo = fm?null:(num(s.lo)??8), nHi = fm?null:Math.max(nLo, num(s.hi)??nLo);
+    const subEdit = s.useSub && s.ctx==='P' && it.sub;   // editing the stand-in in a day: its own sets & reps
+    if(subEdit){ it.subSets=Math.max(1,s.sets); it.subLo=nLo; it.subHi=nHi; if(fm) it.subTm = s.m==='tfail'; else delete it.subTm; s.sets_=it.sets; s.sets=it.sets; s.lo=it.lo; s.hi=it.hi }
+    else { if(s.ctx==='P') pinSub(S.days[s.day],it); it.lo=nLo; it.hi=nHi; if(fm) it.tm = s.m==='tfail'; else delete it.tm }
+    it.rest=num($('#edRest').value)??it.rest;
     const styleTo = o => { if(s.st) o.st=s.st; else delete o.st; if(s.st==='pyr'){ if(o.sets<3) o.sets=3; o.pct = s.pct.length===o.sets ? s.pct.slice() : pyrDefault(o.sets) } else delete o.pct;
       if(s.st==='drop'){ o.drops=s.drops; o.dropPct=s.dropPct } else { delete o.drops; delete o.dropPct }
       if(s.st==='ecc'){ o.eccPct=s.eccPct; o.eccSec=s.eccSec } else { delete o.eccPct; delete o.eccSec } };
@@ -1888,9 +1905,12 @@ const H = {
       while(workRows(it).length>s.sets){ const li=lastWorkIdx(it), l=it.rows[li]; if(!l || l.done) break; it.rows=it.rows.filter(r=>r!==l && !(r.drop && r.of===l.rid)) } it.sets=workRows(it).length;
       styleTo(it); applyStyle(it);
       const pit = planItemOf(it);
-      if(pit && s.keep){ pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; pit.rest=it.rest; if(it.tm!=null) pit.tm=it.tm; else delete pit.tm }
+      if(pit && s.keep){ const d=S.days[A.dayIdx];
+        if(pit.sub && it.ex===pit.sub && !it.ghost){ pit.subSets=it.sets; pit.subLo=it.lo; pit.subHi=it.hi; if(it.tm!=null) pit.subTm=it.tm; else delete pit.subTm }   // you're doing the stand-in
+        else { pinSub(d,pit); pit.sets=it.sets; pit.lo=it.lo; pit.hi=it.hi; if(it.tm!=null) pit.tm=it.tm; else delete pit.tm }
+        pit.rest=it.rest }
       if(pit && (s.keep || styleChanged)){ styleTo(pit); saveState(); toast(`Saved to Day ${A.dayIdx+1}`) } }
-    else { it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
+    else { if(!subEdit) it.sets=s.sets; if(s.wu) it.wu=s.wu; else delete it.wu; styleTo(it) }
     saveCtx(s.ctx); closeSheet(); render() },
   rmItem:el=>{ const s=ui.sheet; const list=ctxList(s.ctx,s.day); const it0=sheetItem(s); const i=it0?list.indexOf(it0):-1; if(i<0){ closeSheet(); return }
     if(s.ctx==='P' && it0 && !it0.ph) markGone(S.days[s.day], it0.ex);
@@ -1973,23 +1993,26 @@ function applyDraft(id,c){ const base=draftBase(c); const hasAng = base.includes
   applyDeg() }
 function exFields(ex,s,showTarget){ s.cu = s.cu || deriveDraft(ex); const u=S.unit; let h=exEditor(s.cu,!!showTarget);
   if(S.names&&S.names[ex.id]) h+=`<div class="small muted" style="margin-top:6px">Originally: ${esc((ex.base||'').replace('{°}',fmtDeg(degOf(ex.id)??0)))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore name</button></div>`;
-  if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${e.w}×${e.r}`:'No estimate yet'} · leave blank to use the estimate</span></div>` }
+  if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${estTxt(e)}`:'No estimate yet'} · leave blank to use the estimate</span></div>
+    <label class="f" style="margin-top:8px">Base the 1RM on<select id="edOrmFrom"><option value="">This exercise's own sets</option>${allEx().filter(x=>x.id!==ex.id && loadMode(x)==='wt').sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}" ${(s.ormFrom!=null?s.ormFrom:(ormSrc(ex.id)||''))===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>` }
   return h }
 function exFieldsOld(ex,s){ const isLib=!!LIB[ex.id] || !!ex.custom; const eq=isLib?equipOf(ex):null; const u=S.unit;
   let h=`<div class="sec">Name</div><input id="edName" value="${esc(s.name!=null?s.name:ex.name)}" aria-label="Exercise name">${S.names&&S.names[ex.id]?`<div class="small muted" style="margin-top:4px">Originally: ${esc((ex.base||'').replace('{°}',fmtDeg(degOf(ex.id))))} · <button class="link small" data-act="exNameReset" data-ex="${ex.id}">Restore</button></div>`:''}`;
   if(isLib) h+=`<div class="sec">Equipment</div><div class="seg" style="flex-wrap:wrap">${EQUIP.map(([k,l])=>`<button data-act="setEquip" data-ex="${ex.id}" data-k="${k}" class="${eq===k?'on':''}">${l}</button>`).join('')}</div>`;
   if(ex.cat!=='cal' && !LEG_2DB.has(ex.id)) h+=`<div class="sec">Arms</div><div class="seg"><button data-act="setArm" data-ex="${ex.id}" data-k="one" class="${ex.u?'on':''}">1 arm at a time</button><button data-act="setArm" data-ex="${ex.id}" data-k="both" class="${!ex.u?'on':''}">2 arms together</button></div>`;
   if(ex.tpl) h+=`<div class="sec">Bench angle</div><div class="seg" style="flex-wrap:wrap">${BENCH.map(d=>`<button data-act="setDeg" data-ex="${ex.id}" data-d="${d}" class="${degOf(ex.id)===d?'on':''}">${fmtDeg(d)}</button>`).join('')}</div>`;
-  if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${e.w}×${e.r}`:'No estimate yet'} · leave blank to use the estimate</span></div>` }
+  if(loadMode(ex)==='wt'){ const e=estRM(ex.id); h+=`<div class="sec">1RM</div><div class="rowline" style="flex-wrap:nowrap"><input id="edOrm" inputmode="decimal" style="max-width:110px;text-align:center" value="${esc(s.orm!=null?s.orm:(S.orm&&S.orm[ex.id])||'')}" placeholder="${e?fmtW(roundW(e.v,ex)):'–'}"><span class="muted">${u}${dbCount(ex)===2?' each':''}</span><span class="small muted">${e?`Est. <b style="color:var(--ink)">${fmtW(roundW(e.v,ex))}</b> from ${estTxt(e)}`:'No estimate yet'} · leave blank to use the estimate</span></div>
+    <label class="f" style="margin-top:8px">Base the 1RM on<select id="edOrmFrom"><option value="">This exercise's own sets</option>${allEx().filter(x=>x.id!==ex.id && loadMode(x)==='wt').sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}" ${(s.ormFrom!=null?s.ormFrom:(ormSrc(ex.id)||''))===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>` }
   return h }
 function saveExFields(id,s){ const nm=$('#cuName'); if(s.cu && nm) s.cu.name=nm.value; if(s.cu){ if(!(s.cu.name||'').trim()) s.cu.name=lib(id).name; applyDraft(id,s.cu) }
   if(s.orm!=null){ const o=num(s.orm); S.orm=S.orm||{}; if(o>0) S.orm[id]=o; else delete S.orm[id] }
+  if(s.ormFrom!=null){ S.ormFrom=S.ormFrom||{}; if((s.ormFrom||null)===(ORM_FROM_DEFAULT[id]||null)) delete S.ormFrom[id]; else S.ormFrom[id]=s.ormFrom }
   saveState() }
 function saveExFieldsOld(id,s){ const ex=lib(id); let v=(s.name!=null?s.name:ex.name||'').trim();
   if(v && v!==ex.name){ if(S.custom && S.custom[id]){ const c=S.custom[id]; if(c.tpl){ const cur=fmtDeg(degOf(id)??0); if(v.includes(cur)) v=v.replace(cur,'{°}') } c.base=v; c.name=v } else { const e=LIB[id]; if(e){ if(e.tpl){ const cur=fmtDeg(degOf(id)); if(v.includes(cur)) v=v.replace(cur,'{°}') } S.names=S.names||{}; if(v===e.base) delete S.names[id]; else S.names[id]=v } } }
   if(s.orm!=null){ const o=num(s.orm); S.orm=S.orm||{}; if(o>0) S.orm[id]=o; else delete S.orm[id] }
   applyDeg(); saveState() }
-function keepEd(){ if(!ui.sheet) return; const nm=$('#cuName'), om=$('#edOrm'); if(nm && ui.sheet.cu) ui.sheet.cu.name=nm.value; if(om) ui.sheet.orm=om.value;
+function keepEd(){ if(!ui.sheet) return; const nm=$('#cuName'), om=$('#edOrm'), of=$('#edOrmFrom'); if(of) ui.sheet.ormFrom=of.value; if(nm && ui.sheet.cu) ui.sheet.cu.name=nm.value; if(om) ui.sheet.orm=om.value;
   const lo=$('#edLo'), hi=$('#edHi'); if(lo) ui.sheet.lo=lo.value; if(hi) ui.sheet.hi=hi.value;
   if(ui.sheet && ui.sheet.st==='pyr' && $('#edPct0')){ ui.sheet.pct=(ui.sheet.pct||[]).map((v,i)=>{ const e=$('#edPct'+i); return e ? (num(e.value)??v) : v }) } }
 function styleEditor(s,it){ const st=s.st||''; const ex=lib(it.ex), o=oneRM(it.ex), u=S.unit;
@@ -2027,15 +2050,15 @@ function doReplace(exId){
     else { tgt.ghost=true; tgt.goalOf=pu; tgt.skipped=true; delete tgt.pu; delete tgt.ss; ni.par=tgt.uid; list.splice(ti+1,0,ni); A.cur=ti+1 }
     if(pit0 && pit0.ex===exId){ const g=list.find(x=>x.ghost && x.goalOf===pu); if(g) list.splice(list.indexOf(g),1); A.cur=Math.max(0,list.indexOf(ni)) }
     normalizeSS(list); fixLinks(list);
-    if(s.keep && pit0){ if(pit0.ex===exId) delete pit0.sub; else pit0.sub=exId; if(S.days[A.dayIdx].tmp) delete S.days[A.dayIdx].tmp[pit0.uid]; saveState(); saveActive(); closeSheet(); render(); toast(pit0.ex===exId?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return }
+    if(s.keep && pit0){ if(pit0.sub!==exId) clearSubOwn(pit0); if(pit0.ex===exId) delete pit0.sub; else pit0.sub=exId; if(S.days[A.dayIdx].tmp) delete S.days[A.dayIdx].tmp[pit0.uid]; saveState(); saveActive(); closeSheet(); render(); toast(pit0.ex===exId?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return }
   } else if(s.tmp && s.keep && !it.ph){
-    const d=S.days[s.day]; if(d.tmp) delete d.tmp[it.uid]; if(exId===it.ex) delete it.sub; else it.sub=exId;
+    const d=S.days[s.day]; if(d.tmp) delete d.tmp[it.uid]; if(it.sub!==exId) clearSubOwn(it); if(exId===it.ex) delete it.sub; else it.sub=exId;
     saveState(); closeSheet(); render(); toast(exId===it.ex?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return
   } else if(s.tmp && !s.keep){
     const d=S.days[s.day]; d.tmp=d.tmp||{}; if(exId===it.ex) delete d.tmp[it.uid]; else d.tmp[it.uid]=exId;
     saveState(); closeSheet(); render(); toast(`${lib(exId).name} for your next workout`); return
   } else if(s.mode==='stand' && !it.ph){
-    if(exId===it.ex) delete it.sub; else it.sub=exId; saveState(); closeSheet(); render(); toast(exId===it.ex?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return
+    if(it.sub!==exId) clearSubOwn(it); if(exId===it.ex) delete it.sub; else it.sub=exId; saveState(); closeSheet(); render(); toast(exId===it.ex?'Back to your goal exercise':`${lib(exId).name} is your stand-in until you switch back`); return
   } else {
     applyPlanSwap(S.days[s.day],it,exId);
   }
@@ -2058,7 +2081,7 @@ document.addEventListener('input',e=>{
   if(el.dataset.cu && ui.sheet && ui.sheet.cu){ ui.sheet.cu[el.dataset.cu]=el.value; if(el.dataset.cu==='m1'){ ui.sheet.cu.m2s=ui.sheet.cu.m2s.filter(x=>x!==el.value); keepEd(); const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st } return }
   if(el.dataset.step){ const u=S.unit==='kg'?'kg':'lb'; S.steps=S.steps||{}; S.steps[u]=S.steps[u]||{}; const v=num(el.value); if(v>0) S.steps[u][el.dataset.step]=v; else delete S.steps[u][el.dataset.step]; clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.id==='ormIn' && A){ const v=num(el.value); S.orm=S.orm||{}; if(v>0) S.orm[el.dataset.orm]=v; else delete S.orm[el.dataset.orm];
-    const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } });
+    const it=curItem(); it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent=p!=null?p+'%':r.pct?r.pct+'%':'' } }); refreshTargets(it);
     { const oe=document.getElementById('ormEst'); if(oe) oe.innerHTML=ormEstHTML(it,lib(it.ex),S.orm&&S.orm[el.dataset.orm]) }
     clearTimeout(setSaveT); setSaveT=setTimeout(saveState,600); return }
   if(el.dataset.mb && ui.man){ const M=ui.man, b=el.dataset.mb;
@@ -2078,8 +2101,9 @@ document.addEventListener('input',e=>{
       if(!row.warm){ const before=it.rows.map(r=>r.w); refreshDrops(it); it.rows.forEach((r,j)=>{ if(r.drop && r.w!==before[j]) touched.add(j) }) }
       // reps belong to a weight: look them up again (or clear them) wherever you haven't typed reps yourself
       touched.forEach(j=>{ const rj=it.rows[j]; if(rj.autoR!==false && !rj.done) fillReps(rj,ex, rj.warm?it.rows.filter(x=>x.warm).indexOf(rj):rj.drop?rj.drop-1:workRows(it).indexOf(rj), rj.warm?'warm':rj.drop?'drops':'sets') });
-      touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv'); if(pv) pv.textContent=rj.prev||'—' });
+      touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv .pvt'); if(pv) pv.textContent=rj.prev||'—' });
     }
+    if(f==='w') refreshTargets(it);
     if(f==='w') it.rows.forEach((r,j)=>{ const e=document.getElementById('pct_'+j); if(e){ const p=pctOf(it,r); e.textContent = p!=null?p+'%':r.pct?r.pct+'%':'' } const t=document.getElementById('tot_'+j); if(t){ const w=num(r.w); t.textContent = w?fmtW(w*2)+' total':'' } });
     if(f==='w'){ const oe=document.getElementById('ormEst'); if(oe) oe.innerHTML=ormEstHTML(it,ex,S.orm&&S.orm[ex.id]) }
     const ll=$('#loadline'); if(ll){ const tmp=document.createElement('div'); tmp.innerHTML=loadLine(it,lib(it.ex)); if(tmp.firstElementChild) ll.innerHTML=tmp.firstElementChild.innerHTML }
