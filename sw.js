@@ -3,7 +3,7 @@
 //   wait up to 4 seconds, otherwise use the saved copy so the app still opens at the gym.
 // - Safari shows a blank page if a service worker hands it a redirected response
 //   (GitHub redirects /P.O.T. to /P.O.T./), so redirected responses are rebuilt as plain ones.
-const CACHE = 'pot-v81';
+const CACHE = 'pot-v85';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -52,7 +52,7 @@ self.addEventListener('fetch', e => {
   }
 
   // food lookups always go straight to Open Food Facts (never cached)
-  if (/(^|\.)openfoodfacts\.org$/.test(url.hostname)) return;
+  if (/(^|\.)openfoodfacts\.org$/.test(url.hostname) || url.hostname === 'api.nal.usda.gov') return;
 
   // Fonts and other outside files: use the saved copy first, refresh it in the background.
   e.respondWith((async () => {
