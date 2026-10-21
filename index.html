@@ -493,6 +493,15 @@ input,select,textarea{font-size:max(16px,1em)}
 .fbud.pl-surplus{box-shadow:inset 3px 0 0 var(--accent)}.fbud.pl-maintain{box-shadow:inset 3px 0 0 #64d2ff}.fbud.pl-deficit{box-shadow:inset 3px 0 0 var(--warn)}
 .fcalc{margin-top:10px;padding:12px 14px}
 .fplan.pl-none b{color:var(--accent-text)}
+
+.ftype{margin-top:2px}
+.ftype button{font-size:13px}
+.ftype button.on.ty-workout{background:var(--accent);color:var(--accent-ink)}
+.ftype button.on.ty-cardio{background:#3a8fb7;color:#fff}
+.ftype button.on.ty-rest{background:#636366;color:#fff}
+.fbud.ty-workout{box-shadow:inset 3px 0 0 var(--accent)}.fbud.ty-cardio{box-shadow:inset 3px 0 0 #64d2ff}.fbud.ty-rest{box-shadow:inset 3px 0 0 #8e8e93}
+.smrow{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.smrow>button:first-child{flex:1;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:11px 2px;border:0}
 </style>
 </head>
 <body>
@@ -506,7 +515,7 @@ input,select,textarea{font-size:max(16px,1em)}
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.29-c';
+const APP_VERSION = '2026.10.30-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -2155,7 +2164,8 @@ document.addEventListener('click',e=>{
 let setSaveT=null;
 document.addEventListener('input',e=>{
   const el=e.target;
-  if(el.dataset.fb && ui.sheet && ui.sheet.draft && ui.sheet.draft.budgets){ const [i,m]=el.dataset.fb.split('.'); const B=ui.sheet.draft.budgets; const b=B[i]=B[i]||{}; const v=num(el.value); b[m]= v!=null && v>=0 ? v : null;
+  if(el.dataset.fadj && ui.sheet && ui.sheet.draft && ui.sheet.draft.calc){ const C=ui.sheet.draft.calc; const g=C.goal||'cut'; C.adj[g]=C.adj[g]||{}; C.adj[g][el.dataset.fadj]=num(el.value)||0; return }
+  if(el.dataset.fb && ui.sheet && ui.sheet.draft && ui.sheet.draft.btype){ REB_CAP=(ui.sheet.draft.calc||{}).pmax; const [i,m]=el.dataset.fb.split('.'); const B=ui.sheet.draft.btype; const b=B[i]=B[i]||{}; const v=num(el.value); b[m]= v!=null && v>=0 ? v : null;
     const box=k=>document.querySelector(`[data-fb="${i}.${k}"]`);
     rebalance(b,m); ['kcal','p','c','f'].forEach(k=>{ if(k===m) return; const o=box(k); if(o) o.value=b[k]??'' });
     const n=document.getElementById('fbn_'+i); if(n) n.textContent=budNote(b); return }
@@ -2317,34 +2327,48 @@ function fState(){ S.food=S.food||{}; const F=S.food; F.my=F.my||{}; F.recent=F.
   F.mealsDef=F.mealsDef||3; if(F.budgets && !F.ksetV){ Object.values(F.budgets).forEach(b=>{ if(b && b.kcal!=null) b.kset=true }); F.ksetV=true } F.calc=F.calc||{maint:null, sur:300, def:500, ppl:1, fat:25, pmax:null};
   if(!F.budgets){ F.budgets={}; const t=F.targets; if(t && (t.p!=null||t.c!=null||t.f!=null)){ const b={p:t.p??null,c:t.c??null,f:t.f??null,plan:'maintain'}; (S.days||[]).forEach((d,i)=>F.budgets[i]={...b}); F.budgets.none={...b} } }
   if(!F.mealsV2){ Object.values(S.flog).forEach(list=>list.forEach(e=>{ if(typeof e.meal==='string' && OLD_MEAL[e.meal]) e.meal=OLD_MEAL[e.meal] })); F.mealsV2=true }
+  F.calc.goal=F.calc.goal||'cut'; F.calc.adj=F.calc.adj||{cut:{workout:-250,cardio:-500,rest:-500}, maintain:{workout:0,cardio:0,rest:0}, bulk:{workout:350,cardio:150,rest:100}};
+  F.dateType=F.dateType||{}; F.saved=F.saved||{};
+  if(!F.btype){ const B=F.budgets||{}; const tr=(S.days||[]).findIndex(d=>!d.rest), rs=(S.days||[]).findIndex(d=>d.rest);
+    const pick=i=>{ const b=i>=0?B[i]:null; return b && (b.kcal!=null||b.p!=null) ? {...b} : null };
+    const w=pick(tr)||(B.none?{...B.none}:{}); const r=pick(rs)||(B.none?{...B.none}:{...w}); F.btype={workout:w, cardio:{...r}, rest:{...r}} }
   return F }
+const DTYPES=[['workout','Workout'],['cardio','Cardio'],['rest','Rest']];
+const GOALS=[['cut','Cut'],['maintain','Maintain'],['bulk','Bulk']];
+// what kind of day a date is: a logged workout → Workout; a logged rest day with cardio → Cardio; else Rest. Today follows your next rotation day.
+function autoType(date){ const ss=liveSessions(true).filter(x=>ymd(x.end)===date); if(ss.some(x=>x.type==='lift')) return 'workout'; const r=ss.find(x=>x.type==='rest'); if(r) return r.cardio>0?'cardio':'rest';
+  if(date===ymd(Date.now())){ const d=S.days[S.next]; return d && !d.rest ? 'workout' : 'rest' } return 'rest' }
+function typeFor(date){ return fState().dateType[date] || autoType(date) }
 // calories always come from the macros: protein & carbs 4 kcal/g, fat 9 kcal/g
 const budKcal = b => b && num(b.kcal)!=null ? Math.round(num(b.kcal)) : planKcal(b);
 const planKcal = pl => !pl || (pl.p==null && pl.c==null && pl.f==null) ? null : Math.round(4*(num(pl.p)||0)+4*(num(pl.c)||0)+9*(num(pl.f)||0));
 // which rotation day a date belongs to: the workout you logged that day, or today's next workout
 function dayOfDate(date){ const s=liveSessions(true).find(x=>(x.type==='lift'||x.type==='rest') && ymd(x.end)===date); if(s) return s.dayIdx; return date===ymd(Date.now()) ? S.next : null }
 // a day's budget: the budget for the workout day it belongs to, else the "no workout" budget
-function budgetFor(date){ const F=fState(); const di=dayOfDate(date); const b=(di!=null && F.budgets[di]) || F.budgets.none || {}; return {kcal:budKcal(b), p:num(b.p), c:num(b.c), f:num(b.f), plan:b.plan||null, di} }
+function budgetFor(date){ const F=fState(); const t=typeFor(date); const b=F.btype[t]||{}; return {kcal:budKcal(b), p:num(b.p), c:num(b.c), f:num(b.f), type:t} }
 const targetsFor = budgetFor;
 const planFor = date => budgetFor(date).plan;
 // the estimator: maintenance calories ± your surplus/deficit, protein per lb of body weight, fat as a % of calories, carbs fill the rest
 // priority: calories > protein > carbs > fat. Changing one only moves the ones below it.
+let REB_CAP=null;
 function splitCF(b,R){ const cc=4*(num(b.c)||0), ff=9*(num(b.f)||0); R=Math.max(0,R);
   const share = cc+ff>0 ? cc/(cc+ff) : 0.7; b.c=Math.round(R*share/4); b.f=Math.max(0,Math.round((R-4*b.c)/9)) }
 function rebalance(b,m){ const k=num(b.kcal);
   if(m==='kcal'){ b.kset = k!=null; if(k==null) return; }
   // calories you haven't set yet just add up from the grams
   if(m!=='kcal' && (!b.kset || k==null)){ b.kcal=planKcal(b); return }
-  if(m==='kcal'){ let p=num(b.p)||0; if(4*p>k) p=Math.floor(k/4); b.p=p; splitCF(b, k-4*p) }
+  if(m==='kcal'){ const old=planKcal(b); const cap=num(REB_CAP); const f=old>0 ? k/old : 1; let p=Math.round((num(b.p)||0)*f); if(cap>0) p=Math.min(p,cap); if(4*p>k) p=Math.floor(k/4);
+    b.c=Math.round((num(b.c)||0)*f); b.f=Math.round((num(b.f)||0)*f); b.p=p; splitCF(b, k-4*p) }
   else if(m==='p'){ if(k==null){ b.kcal=planKcal(b); return } splitCF(b, k-4*(num(b.p)||0)) }
   else if(m==='c'){ if(k==null){ b.kcal=planKcal(b); return } b.f=Math.max(0, Math.round((k-4*(num(b.p)||0)-4*(num(b.c)||0))/9)) }
   else if(m==='f'){ if(k==null) b.kcal=planKcal(b) } }
 function budNote(b){ const k=num(b.kcal), m=planKcal(b); if(k==null || m==null) return ''; const d=Math.round(m-k); return Math.abs(d)>8 ? `grams add up to ${m.toLocaleString()} kcal (${d>0?d+' over':(-d)+' under'})` : '' }
 function estMaint(){ const bw=bwNow(); return bw ? Math.round(bw*(S.unit==='kg'?33:15)) : null }
-function calcBudget(plan,C){ const bw=bwNow(); const maint=num(C.maint)||estMaint(); if(!maint) return null;
-  const kcal = maint + (plan==='surplus' ? (num(C.sur)||0) : plan==='deficit' ? -(num(C.def)||0) : 0);
-  let p = bw ? Math.round(bw*(num(C.ppl)||1)*(S.unit==='kg'?2.2:1)) : Math.round(kcal*0.3/4); if(num(C.pmax)>0) p=Math.min(p, Math.round(num(C.pmax)));
-  const f = Math.round(kcal*(num(C.fat)||25)/100/9); const c = Math.max(0, Math.round((kcal-4*p-9*f)/4)); return {kcal, kset:true, p,c,f,plan} }
+// estimator: maintenance + this goal's adjustment for the kind of day; protein per lb at maintenance, scaled with calories (and held to your cap)
+function calcBudget(type,C){ const bw=bwNow(); const maint=num(C.maint)||estMaint(); if(!maint) return null;
+  const adj=(((C.adj||{})[C.goal||'maintain'])||{})[type]; const kcal=Math.round(maint+(num(adj)||0));
+  let p = Math.round(bw ? bw*(num(C.ppl)||1)*(S.unit==='kg'?2.2:1)*kcal/maint : kcal*0.3/4); if(num(C.pmax)>0) p=Math.min(p, Math.round(num(C.pmax)));
+  const f = Math.round(kcal*(num(C.fat)||25)/100/9); const c = Math.max(0, Math.round((kcal-4*p-9*f)/4)); return {kcal, kset:true, p,c,f} }
 function mealsFor(date){ const F=fState(); const used=Math.max(0,...(S.flog[date]||[]).map(e=>+e.meal||1)); return Math.max(S.fmeals[date]||F.mealsDef||3, used, 1) }
 const ymd=d=>{ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0') };
 function fDay(){ return ui.fday || ymd(Date.now()) }
@@ -2404,16 +2428,16 @@ async function fLookup(code){ code=String(code||'').replace(/\D/g,''); if(code.l
     openSheet({type:'f:item', food, meal, amt:canSrv(food)?1:100, unit:canSrv(food)?'srv':'g'}) }
   catch(e){ openSheet({type:'f:add', meal, tab:'scan', err:'Couldn’t reach Open Food Facts. Check your connection and try again.'}) } }
 
-function viewFood(){ const F=fState(); const day=fDay(); const list=S.flog[day]||[]; const tot=sumN(list); const T=targetsFor(day); const today=ymd(Date.now()); const plan=planFor(day), di=dayOfDate(day), nM=mealsFor(day);
+function viewFood(){ const F=fState(); const day=fDay(); const list=S.flog[day]||[]; const tot=sumN(list); const T=targetsFor(day); const today=ymd(Date.now()); const type=T.type, auto=autoType(day), nM=mealsFor(day);
   const lbl = day===today ? 'Today' : day===ymd(Date.now()-864e5) ? 'Yesterday' : new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
   let h=topbar()+`<div class="rowline" style="justify-content:space-between"><div class="h2">Food</div><button class="btn sm ghost" data-act="fTargets">Targets</button></div>`;
   h+=`<div class="fdate"><button class="nav" data-act="fDayShift" data-d="-1" aria-label="Previous day">‹</button><b>${lbl}</b><button class="nav" data-act="fDayShift" data-d="1" ${day>=today?'disabled':''} aria-label="Next day">›</button></div>`;
-  h+=`<button class="fplan pl-${plan||'none'}" data-act="fTargets"><span>${di!=null&&S.days[di]?`Day ${di+1} · ${esc(S.days[di].name)}`:'No workout logged'}</span><b>${T.kcal!=null?(plan?PLAN_NAME[plan]+' budget':'Budget'):'Set budgets'} ▾</b></button>`;
+  h+=`<div class="seg ftype">${DTYPES.map(([k,l])=>`<button data-act="fType" data-k="${k}" class="${type===k?'on ty-'+k:''}">${l} day${auto===k&&!F.dateType[day]?'':''}</button>`).join('')}</div><div class="small muted" style="text-align:center;margin:4px 0 10px">${F.dateType[day]?`Set by you · <button class="link small" data-act="fType" data-k="${auto}">use ${DTYPES.find(x=>x[0]===auto)[1].toLowerCase()} (from your log)</button>`:'Picked from your training log · tap to change'}</div>`;
   const left = T.kcal ? Math.round(T.kcal - tot.kcal) : null;
   h+=`<div class="card fsum"><div class="fk"><div><div class="v">${Math.round(tot.kcal)}</div><div class="k">kcal eaten</div></div><div style="text-align:right"><div class="v ${left!=null&&left<0?'over':''}">${left==null?'—':Math.abs(left)}</div><div class="k">${left==null?'set this day’s budget':left<0?'over budget':'left of '+T.kcal}</div></div></div>
     ${[['p','Protein'],['c','Carbs'],['f','Fat']].map(([k,l])=>{ const v=tot[k], t=T[k]; const pct=t?Math.min(100,v/t*100):0; return `<div class="fbar"><span>${l}</span><div class="bar"><i class="m-${k}" style="width:${pct}%"></i></div><span class="num">${Math.round(v)}${t?' / '+t:''} g</span></div>` }).join('')}</div>`;
   for(let m=1;m<=nM;m++){ const l=mealName(m); const es=list.filter(e=>(+e.meal||1)===m); const mk=Math.round(sumN(es).kcal);
-    h+=`<div class="card fmeal"><div class="fmh"><b>${l}</b><span class="muted small">${es.length?mk+' kcal':''}</span></div>${es.map(e=>{ const n=entryNutr(e); return `<button class="fent" data-act="fEntry" data-id="${e.id}"><div><div class="fn">${esc(e.food.name)}</div><div class="fm">${esc([e.food.brand, amtLabel(e)].filter(Boolean).join(' · '))}</div></div><div class="fk2">${Math.round(n.kcal)}<small>P ${Math.round(n.p)} · C ${Math.round(n.c)} · F ${Math.round(n.f)}</small></div></button>` }).join('')}<button class="link fadd" data-act="fAdd" data-meal="${m}">+ Add food</button></div>` }
+    h+=`<div class="card fmeal"><div class="fmh"><b>${l}</b><span class="muted small">${es.length?`${mk} kcal · <button class="link small" data-act="fSaveMeal" data-m="${m}">Save meal</button>`:''}</span></div>${es.map(e=>{ const n=entryNutr(e); return `<button class="fent" data-act="fEntry" data-id="${e.id}"><div><div class="fn">${esc(e.food.name)}</div><div class="fm">${esc([e.food.brand, amtLabel(e)].filter(Boolean).join(' · '))}</div></div><div class="fk2">${Math.round(n.kcal)}<small>P ${Math.round(n.p)} · C ${Math.round(n.c)} · F ${Math.round(n.f)}</small></div></button>` }).join('')}<button class="link fadd" data-act="fAdd" data-meal="${m}">+ Add food</button></div>` }
   h+=`<div class="rowline" style="justify-content:center;gap:18px;margin-top:10px"><button class="link" data-act="fMealAdd">+ Add meal</button>${nM>1?'<button class="link" style="color:var(--muted)" data-act="fMealRm">− Remove meal</button>':''}</div>`;
   h+=`<div class="small muted" style="text-align:center;margin:14px 0">Food data from <a class="link" href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Labels can be wrong: tap Fix nutrition info.</div>`;
   return h }
@@ -2421,11 +2445,13 @@ function foodList(list,src){ return `<div class="pick">${list.map((f,i)=>{ const
 function foodSheet(s){ const F=fState();
   const nM=mealsFor(s.day||fDay()); const mealSeg=`<div class="seg" style="flex-wrap:wrap">${Array.from({length:nM},(_,k)=>k+1).map(m=>`<button data-act="fMeal" data-m="${m}" class="${(+s.meal||1)===m?'on':''}">Meal ${m}</button>`).join('')}</div>`;
   if(s.type==='f:add'){ const tab=s.tab||(F.recent.length?'recent':'scan'); s.tab=tab;
-    let h=`<h3>Add to ${mealName(s.meal)}</h3><div class="seg" style="margin-top:10px;flex-wrap:wrap">${[['scan','Scan'],['search','Search'],['recent','Recent'],['my','My foods'],['quick','Quick add']].map(([k,l])=>`<button data-act="fTab" data-k="${k}" class="${tab===k?'on':''}">${l}</button>`).join('')}</div>`;
+    let h=`<h3>Add to ${mealName(s.meal)}</h3><div class="seg" style="margin-top:10px;flex-wrap:wrap">${[['scan','Scan'],['search','Search'],['recent','Recent'],['saved','Saved meals'],['my','My foods'],['quick','Quick add']].map(([k,l])=>`<button data-act="fTab" data-k="${k}" class="${tab===k?'on':''}">${l}</button>`).join('')}</div>`;
     if(tab==='scan') h+=`<div class="scanbox"><video id="scanVideo" playsinline muted autoplay></video><div class="scanline"></div></div><div class="small muted" id="scanMsg" style="text-align:center;margin-top:6px">${esc(s.busy||'Tap Start camera, then hold the barcode in the frame.')}</div>${s.err?`<div class="needs" style="margin-top:6px"><span>${esc(s.err)}</span></div>`:''}
       <div class="stack" style="margin-top:8px"><button class="btn primary" data-act="fScan">Start camera</button><div class="rowline" style="flex-wrap:nowrap"><input id="fCode" inputmode="numeric" placeholder="Or type the barcode number" autocomplete="off"><button class="btn sm ghost" data-act="fCodeGo">Look up</button></div></div>`;
     if(tab==='search') h+=`<div class="rowline" style="flex-wrap:nowrap;margin-top:10px"><input id="fQ" placeholder="e.g. Chobani greek yogurt" value="${esc(s.q||'')}" autocomplete="off" enterkeyhint="search"><button class="btn sm primary" data-act="fSearch">Search</button></div>
       ${s.busy?`<div class="small muted" style="margin-top:8px">${esc(s.busy)}</div>`:''}${s.err?`<div class="needs" style="margin-top:8px"><span>${esc(s.err)}</span></div>`:''}${foodList(s.results||[],'res')}`;
+    if(tab==='saved'){ const sv=Object.values(F.saved).sort((a,b)=>a.name.localeCompare(b.name)); h+= sv.length ? `<div class="pick">${sv.map(sm=>{ const kc=Math.round(sumN(sm.items).kcal); return `<div class="smrow"><button data-act="fUseSaved" data-id="${sm.id}"><div><div class="pn">${esc(sm.name)}</div><div class="pm">${sm.items.length} item${sm.items.length>1?'s':''} · ${esc(sm.items.map(i=>i.food.name).join(', '))}</div></div><span class="tag ok">${kc} kcal</span></button><button class="link small" style="color:var(--danger)" data-act="fDelSaved" data-id="${sm.id}">${ui.delSaved===sm.id?'Tap to delete':'Delete'}</button></div>` }).join('')}</div>`
+      : `<div class="empty">No saved meals yet. On the Food tab, tap “Save meal” next to a meal’s calories.</div>` }
     if(tab==='recent') h+= F.recent.length ? foodList(F.recent,'recent') : `<div class="empty">Foods you log show up here for one-tap re-logging.</div>`;
     if(tab==='my'){ const my=Object.values(F.my).sort((a,b)=>a.name.localeCompare(b.name)); h+=`<button class="addrow" data-act="fNew" style="margin-top:10px">+ New food</button>${my.length?foodList(my,'my'):'<div class="empty">Save foods you eat often, or ones that aren’t in the database.</div>'}` }
     if(tab==='quick'){ const q=s.qa||{}; h+=`<div class="stack" style="margin-top:10px"><label class="f">Name (optional)<input data-fq="name" value="${esc(q.name||'')}" placeholder="Quick add"></label><div class="grid2">${NUTR.map(([k,l,u])=>`<label class="f">${l} (${u})<input data-fq="${k}" inputmode="decimal" value="${esc(q[k]??'')}"></label>`).join('')}</div><button class="btn primary" data-act="fQuickSave">Add to ${mealName(s.meal)}</button></div>` }
@@ -2445,24 +2471,30 @@ function foodSheet(s){ const F=fState();
       <div class="small muted" style="font-weight:700">Nutrition per</div><div class="seg"><button data-act="fBasis" data-k="srv" class="${basis==='srv'?'on':''}">1 serving</button><button data-act="fBasis" data-k="100" class="${basis==='100'?'on':''}">100 g</button></div>
       <div class="grid2">${NUTR.map(([k,l,u])=>`<label class="f">${l} (${u})<input data-fd="${k}" inputmode="decimal" value="${esc(d[k])}"></label>`).join('')}</div>
       <button class="btn primary" data-act="fNewSave">${s.back?'Save':s.meal?'Save and add':'Save'}</button>${s.editId&&F.my[s.editId]&&!s.back?'<button class="btn danger" data-act="fMyDel">Delete from My foods</button>':''}</div>` }
-  if(s.type==='f:targets'){ const D=s.draft, C=D.calc, u=S.unit; const bw=bwNow();
-    const seg3=i=>`<div class="seg seg3">${PLANS.map(([k,l])=>`<button data-act="fBPlan" data-i="${i}" data-k="${k}" class="${(D.budgets[i]||{}).plan===k?'on pl-'+k:''}">${l}</button>`).join('')}</div>`;
-    const card=(i,title)=>{ const b=D.budgets[i]||(D.budgets[i]={p:null,c:null,f:null,plan:null}); const kc=budKcal(b);
-      return `<div class="card fbud pl-${b.plan||'none'}"><div class="fmh"><b>${title}</b><span class="small muted" id="fbn_${i}">${budNote(b)}</span></div>
-        <div class="grid4" style="margin-top:6px"><label class="f">Calories<input data-fb="${i}.kcal" inputmode="decimal" value="${esc(kc??'')}"></label>${[['p','Protein'],['c','Carbs'],['f','Fat']].map(([m,ml])=>`<label class="f">${ml} (g)<input data-fb="${i}.${m}" inputmode="decimal" value="${esc(b[m]??'')}"></label>`).join('')}</div>
-        <div style="margin-top:8px">${seg3(i)}</div></div>` };
-    let h=`<h3>Daily budgets</h3><div class="shsub">Each workout day has its own budget. Priority runs calories → protein → carbs → fat: changing one only adjusts the ones after it (protein & carbs 4 kcal/g, fat 9). Tap Surplus, Maintain or Deficit to fill in estimated numbers, then adjust them however you like.</div>`;
-    h+=`<div class="card fcalc"><div class="fmh"><b>Estimator</b><span class="small muted">used only when you tap a plan</span></div>
+  if(s.type==='f:targets'){ const D=s.draft, C=D.calc, u=S.unit, bw=bwNow(); const goal=C.goal||'cut'; const adj=C.adj[goal]||(C.adj[goal]={workout:0,cardio:0,rest:0});
+    const card=(t,title)=>{ const b=D.btype[t]||(D.btype[t]={}); const kc=budKcal(b);
+      return `<div class="card fbud ty-${t}"><div class="fmh"><b>${title}</b><span class="small muted" id="fbn_${t}">${budNote(b)}</span></div>
+        <div class="grid4" style="margin-top:6px"><label class="f">Calories<input data-fb="${t}.kcal" inputmode="decimal" value="${esc(kc??'')}"></label>${[['p','Protein'],['c','Carbs'],['f','Fat']].map(([m,ml])=>`<label class="f">${ml} (g)<input data-fb="${t}.${m}" inputmode="decimal" value="${esc(b[m]??'')}"></label>`).join('')}</div></div>` };
+    let h=`<h3>Budgets</h3><div class="shsub">One budget for each kind of day. Priority runs calories → protein → carbs → fat: changing one adjusts the ones after it. Changing calories scales protein too, unless you set a protein cap.</div>`;
+    h+=DTYPES.map(([k,l])=>card(k,l+' day')).join('');
+    h+=`<div class="card fcalc"><div class="fmh"><b>Estimator</b><span class="small muted">fills all three budgets when you tap the button</span></div>
+      <div class="small muted" style="font-weight:700;margin-top:8px">Goal</div><div class="seg">${GOALS.map(([k,l])=>`<button data-act="fGoal" data-k="${k}" class="${goal===k?'on':''}">${l}</button>`).join('')}</div>
+      <div class="small muted" style="font-weight:700;margin-top:8px">${GOALS.find(x=>x[0]===goal)[1]}: calories vs maintenance</div>
+      <div class="grid3">${DTYPES.map(([k,l])=>`<label class="f">${l} day<input data-fadj="${k}" inputmode="numeric" value="${esc(adj[k]??0)}"></label>`).join('')}</div>
       <div class="grid2" style="margin-top:8px"><label class="f">Maintenance (kcal)<input data-fc="maint" inputmode="decimal" value="${esc(C.maint??'')}" placeholder="${estMaint()?estMaint()+' est.':'e.g. 2500'}"></label>
-        <label class="f">Protein (g per ${u==='kg'?'lb':'lb'} body weight)<input data-fc="ppl" inputmode="decimal" value="${esc(C.ppl??1)}"></label>
-        <label class="f">Surplus (+kcal)<input data-fc="sur" inputmode="decimal" value="${esc(C.sur??300)}"></label><label class="f">Deficit (−kcal)<input data-fc="def" inputmode="decimal" value="${esc(C.def??500)}"></label>
-        <label class="f">Fat (% of calories)<input data-fc="fat" inputmode="decimal" value="${esc(C.fat??25)}"></label><label class="f">Protein cap (g/day)<input data-fc="pmax" inputmode="decimal" value="${esc(C.pmax??'')}" placeholder="no cap"></label></div>
-      <div class="small muted" style="margin-top:6px">${bw?`Body weight ${bw} ${u}. ${C.maint?'':'Maintenance blank: using ~'+estMaint()+' kcal ('+(u==='kg'?'33 per kg':'15 per lb')+'), a rough guess.'}`:'Log your body weight (top of the app) for protein per pound and a maintenance estimate.'}</div>
-      <button class="link small" data-act="fBReest" style="margin-top:6px">Re-estimate every day from its plan</button></div>`;
-    h+=`<div class="sec">Budgets by workout day</div>${S.days.map((d,i)=>card(i,`Day ${i+1} · ${esc(d.rest?'Rest':d.name)}`)).join('')}${card('none','No workout logged')}`;
+        <label class="f">Protein (g per lb body weight)<input data-fc="ppl" inputmode="decimal" value="${esc(C.ppl??1)}"></label>
+        <label class="f">Protein cap (g/day)<input data-fc="pmax" inputmode="decimal" value="${esc(C.pmax??'')}" placeholder="no cap"></label>
+        <label class="f">Fat (% of calories)<input data-fc="fat" inputmode="decimal" value="${esc(C.fat??25)}"></label></div>
+      <div class="small muted" style="margin-top:6px">${bw?`Body weight ${bw} ${u}. ${C.maint?'':'Maintenance blank: using ~'+estMaint()+' kcal, a rough guess.'}`:'Log your body weight (top of the app) for protein per pound and a maintenance estimate.'} Protein is set at maintenance and scales with each day’s calories.</div>
+      <button class="btn sm primary" data-act="fFill" style="margin-top:8px">Fill all three budgets</button></div>`;
     h+=`<div class="sec">Meals per day</div><div class="stepper"><button data-act="fMealsDef" data-d="-1">−</button><span class="v">${D.mealsDef}</span><button data-act="fMealsDef" data-d="1">+</button><span class="small muted" style="margin-left:6px">You can still add or remove meals on any day.</span></div>
       <button class="btn primary" style="margin-top:14px;width:100%" data-act="fTargetsSave">Save</button>`;
     return h }
+  if(s.type==='f:savemeal'){ const es=(S.flog[s.day]||[]).filter(e=>(+e.meal||1)===s.m); const kc=Math.round(sumN(es).kcal);
+    return `<h3>Save ${mealName(s.m)}</h3><div class="shsub">${es.length} item${es.length>1?'s':''} · ${kc} kcal. Log it again in one tap from Add food → Saved meals.</div>
+      <label class="f" style="margin-top:10px">Name<input id="fSmName" value="${esc(s.name||'')}" placeholder="e.g. Oats & whey"></label>
+      <div class="small muted" style="margin-top:8px">${esc(es.map(e=>e.food.name+' ('+amtLabel(e)+')').join(', '))}</div>
+      <button class="btn primary" style="margin-top:12px;width:100%" data-act="fSaveMealGo">Save meal</button>` }
   if(s.type==='f:plan'){ const day=s.day, di=dayOfDate(day), F2=fState(); const base=(di!=null && F2.dayPlan[di]) || F2.defPlan;
     return `<h3>Plan for ${day===ymd(Date.now())?'today':new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</h3><div class="shsub">${di!=null&&S.days[di]?`Day ${di+1} · ${esc(S.days[di].name)} normally uses ${PLAN_NAME[base]}.`:`Days with no workout use ${PLAN_NAME[base]}.`}</div>
       <div class="menu">${PLANS.map(([k,l])=>{ const kc=planKcal(F2.plans[k]); return `<button data-act="fPlanSet" data-k="${k}" class="${planFor(day)===k?'on':''}"><span class="pl-dot pl-${k}"></span>${l}${kc!=null?` · ${kc.toLocaleString()} kcal`:''}${base===k?' <span class="small muted">(usual)</span>':''}</button>` }).join('')}<button data-act="fTargets">Edit targets…</button></div>` }
@@ -2502,8 +2534,18 @@ const FOOD_ACTIONS={
   fQuickSave:()=>{ const s=ui.sheet; const q=s.qa||{}; const nb={kcal:num(q.kcal)||0, p:num(q.p)||0, c:num(q.c)||0, f:num(q.f)||0}; if(!nb.kcal && !nb.p && !nb.c && !nb.f){ toast('Enter calories or macros'); return }
     fState(); const day=fDay(); S.flog[day]=S.flog[day]||[]; S.flog[day].push({id:uid(), meal:s.meal, amt:1, unit:'srv', food:{id:'quick_'+uid(), name:(q.name||'').trim()||'Quick add', brand:'', perSrv:nb, per100:null, srvG:null, srvLabel:''}, at:Date.now()});
     saveState(); closeSheet(); render(); toast(`Added to ${mealName(s.meal)}`) },
-  fTargets:()=>{ const F=fState(); openSheet({type:'f:targets', draft:{budgets:JSON.parse(JSON.stringify(F.budgets)), calc:{...F.calc}, mealsDef:F.mealsDef}}) },
-  fTargetsSave:()=>{ const F=fState(), D=ui.sheet.draft; F.budgets=JSON.parse(JSON.stringify(D.budgets)); F.calc={...D.calc}; F.mealsDef=D.mealsDef; saveState(); closeSheet(); render(); toast('Budgets saved') },
+  fTargets:()=>{ const F=fState(); openSheet({type:'f:targets', draft:{btype:JSON.parse(JSON.stringify(F.btype)), calc:JSON.parse(JSON.stringify(F.calc)), mealsDef:F.mealsDef}}) },
+  fGoal:el=>{ const st=$('#sheet').scrollTop; ui.sheet.draft.calc.goal=el.dataset.k; renderSheet(); $('#sheet').scrollTop=st },
+  fFill:()=>{ const D=ui.sheet.draft; const st=$('#sheet').scrollTop; let ok=true; DTYPES.forEach(([k])=>{ const e=calcBudget(k,D.calc); if(e) D.btype[k]=e; else ok=false }); renderSheet(); $('#sheet').scrollTop=st; toast(ok?'Budgets filled from the estimator':'Enter maintenance calories (or log body weight) first') },
+  fType:el=>{ const F=fState(), day=fDay(), k=el.dataset.k; if(k===autoType(day)) delete F.dateType[day]; else F.dateType[day]=k; saveState(); render() },
+  fSaveMeal:el=>{ const m=+el.dataset.m; openSheet({type:'f:savemeal', m, day:fDay(), name:''}) },
+  fSaveMealGo:()=>{ const s=ui.sheet, F=fState(); const name=(($('#fSmName')||{}).value||'').trim()||(mealName(s.m)+' '+s.day); const es=(S.flog[s.day]||[]).filter(e=>(+e.meal||1)===s.m); if(!es.length){ closeSheet(); return }
+    const id='sm_'+uid(); F.saved[id]={id, name, items:es.map(e=>({food:JSON.parse(JSON.stringify(e.food)), amt:e.amt, unit:e.unit}))}; saveState(); closeSheet(); render(); toast(`Saved “${name}”`) },
+  fUseSaved:el=>{ const s=ui.sheet, F=fState(); const sm=F.saved[el.dataset.id]; if(!sm) return; const day=fDay(); S.flog[day]=S.flog[day]||[];
+    sm.items.forEach(it=>{ S.flog[day].push({id:uid(), meal:s.meal, amt:it.amt, unit:it.unit, food:JSON.parse(JSON.stringify(it.food)), at:Date.now()}); F.recent=[it.food, ...F.recent.filter(x=>x.id!==it.food.id)].slice(0,30) });
+    saveState(); closeSheet(); render(); toast(`${sm.name} added to ${mealName(s.meal)}`) },
+  fDelSaved:el=>{ const F=fState(); const sm=F.saved[el.dataset.id]; if(!sm) return; if(ui.delSaved!==sm.id){ ui.delSaved=sm.id; renderSheet(); return } delete F.saved[sm.id]; ui.delSaved=null; saveState(); renderSheet(); toast('Saved meal deleted') },
+  fTargetsSave:()=>{ const F=fState(), D=ui.sheet.draft; F.btype=JSON.parse(JSON.stringify(D.btype)); F.calc=JSON.parse(JSON.stringify(D.calc)); F.mealsDef=D.mealsDef; saveState(); closeSheet(); render(); toast('Budgets saved') },
   fBPlan:el=>{ const D=ui.sheet.draft, i=el.dataset.i, k=el.dataset.k; const est=calcBudget(k,D.calc); const st=$('#sheet').scrollTop;
     if(!est){ (D.budgets[i]=D.budgets[i]||{}).plan=k; renderSheet(); $('#sheet').scrollTop=st; toast('Enter maintenance calories (or log body weight) to estimate'); return }
     D.budgets[i]=est; renderSheet(); $('#sheet').scrollTop=st },
