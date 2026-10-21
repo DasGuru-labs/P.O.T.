@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -430,7 +430,12 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 
 .chip.si{background:transparent;border:1px solid var(--stand)!important;color:var(--stand)}
 
+.arch{color:var(--warn);font-weight:700;text-transform:none;letter-spacing:0}
 .pv .tw{display:block;font-size:11px;color:var(--accent-text);font-weight:700;margin-top:1px}
+
+html,body,button,input,select,textarea,a,label,.row,.setrow{touch-action:manipulation}
+input,select,textarea{font-size:max(16px,1em)}
+.setrow input,.setrow select,.ormline input,.pctgrid input{font-size:16px}
 </style>
 </head>
 <body>
@@ -444,7 +449,7 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.24-a';
+const APP_VERSION = '2026.10.27-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -885,8 +890,13 @@ function rowMeta(it){ const t=[];
   if(it.st==='pyr') t.push('<span class="pyrtag">Pyramid</span>'); if(it.ss) t.push('<span class="sstag">Superset</span>'); if(it.st==='drop') t.push('<span class="droptag">Drop set</span>'); if(it.st==='ecc') t.push(`<span class="ecctag">Eccentric ${it.eccPct||100}%</span>`);
   if(it.wu) t.push(`${it.wu} warm-up${it.wu>1?'s':''}`); t.push(targetText(it)); return t.join(' · ') }
 function targetText(it){ if(it.ph) return `${it.sets} × ${it.lo??''}–${it.hi??''}`; const m=mode(it); return m==='fail' ? `${it.sets} × reps to failure` : m==='tfail' ? `${it.sets} × time to failure` : m==='time' ? `${it.sets} × ${it.lo}–${it.hi}s` : `${it.sets} × ${it.lo}–${it.hi}` }
-function liveSessions(){ return SESS.filter(s=>!s.deleted).sort((a,b)=>b.end-a.end) }
-function lastFor(exId){ for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(e) return {...e, date:s.end} } return null }
+// workouts before a fresh start are archived: still shown in History, but they no longer feed suggestions, 1RM or records
+function liveSessions(all){ return SESS.filter(s=>!s.deleted && (all || !S.histFrom || s.end>=S.histFrom)).sort((a,b)=>b.end-a.end) }
+function lastFor(exId){ for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length); if(e) return {...e, date:s.end, day:s.dayIdx, pos:s.exercises.indexOf(e)} } return null }
+// the last time you did this exercise in this same day and spot
+function slotLast(exId,day,pu){ for(const s of liveSessions()){ if(s.type!=='lift' || s.dayIdx!==day) continue; const e=s.exercises.find(x=>x.ex===exId && x.sets.length && (!x.pu || !pu || x.pu===pu)); if(e) return {...e, date:s.end, day:s.dayIdx, pos:s.exercises.indexOf(e), slot:true} } return null }
+let PREF=null;   // {day, pu}: look for matching history in this day & spot before anywhere else
+const FATIGUE_PER_SPOT=0.025;
 function repOf(s,ex){ if(ex.u && s.rl==null && s.rr==null) return num(s.r)??0; if(!ex.u && s.r==null && (s.rl!=null||s.rr!=null)) return Math.min(num(s.rl)??0, num(s.rr)??0); return ex.u ? Math.min(num(s.rl)??0, num(s.rr)??0) : (num(s.r)??0) }
 function loadMode(ex){ return ex.lm || (ex.w?'add':ex.a?'assist':ex.cat==='band'?'band':(ex.cat==='cal'||(ex.req||[]).includes('abw'))?'bw':'wt') }
 function bandById(id){ return (S.bands||[]).find(b=>b.id===id) }
@@ -996,8 +1006,10 @@ function rirSel(attr,v){ const c=rirStr(v); return `<select ${attr} aria-label="
 /* reps belong to the weight they were done with */
 function loadKey(o,ex){ const lm=loadMode(ex); if(lm==='wt') return num(o.w)==null?null:'w'+num(o.w); if(lm==='add') return 'a'+(num(o.add)||0); if(lm==='assist'||lm==='band') return 'b'+(o.band||'none'); return 'bw' }
 function histAt(exId,key,i,pool){ if(key==null) return null; const ex=lib(exId);
-  for(const s of liveSessions()){ if(s.type!=='lift') continue; const e=s.exercises.find(x=>x.ex===exId); if(!e) continue; const L=e[pool||'sets']; if(!L||!L.length) continue;
-    const m=L.filter(x=>loadKey(x,ex)===key); if(!m.length) continue; const si=L[i]; return si && loadKey(si,ex)===key ? si : m[Math.min(i,m.length-1)] } return null }
+  const scan = onlySlot => { for(const s of liveSessions()){ if(s.type!=='lift') continue; if(onlySlot && s.dayIdx!==PREF.day) continue;
+    const e=s.exercises.find(x=>x.ex===exId && (!onlySlot || !PREF.pu || !x.pu || x.pu===PREF.pu)); if(!e) continue; const L=e[pool||'sets']; if(!L||!L.length) continue;
+    const m=L.filter(x=>loadKey(x,ex)===key); if(!m.length) continue; const si=L[i]; return si && loadKey(si,ex)===key ? si : m[Math.min(i,m.length-1)] } return null };
+  return (PREF && scan(true)) || scan(false) }
 function fillReps(row,ex,i,pool){ const h=histAt(ex.id,loadKey(row,ex),i,pool); const hv=v=>(v==null||v==='')?'':String(v);
   // working sets: aim for one more rep than last time at this weight (shown in green)
   const plus = (!pool||pool==='sets') && h && !ex.t ? 1 : 0; const up=v=>{ const n=num(v); return n!=null&&n>0 ? String(n+plus) : hv(v) };
@@ -1037,7 +1049,7 @@ function rebuildDrops(it){ const ex=lib(it.ex); const warm=it.rows.filter(r=>r.w
     for(let k=1;k<=Math.max(n, ...mine.filter(d=>d.done).map(d=>d.drop), 0);k++){ let d=mine.find(x=>x.drop===k); if(d && !d.done && k>n) continue; if(!d){ if(k>n) continue; d=newDrop(it,w,k) } d.of=w.rid; res.push(d) }
     out.push(...res) });
   it.rows=out; refreshDrops(it) }
-function refreshDrops(it){ const ex=lib(it.ex); const dp=(it.dropPct||20)/100; let prev=null, wi=-1;
+function refreshDrops(it){ const ex=lib(it.ex); if(it.pref) PREF=it.pref; const dp=(it.dropPct||20)/100; let prev=null, wi=-1;
   it.rows.forEach(r=>{ if(r.warm) return; if(!r.drop){ prev=r; wi++; return }
     if(r.autoW && !r.done){ const w=num(prev&&prev.w); r.w = w?String(roundW(w*(1-dp),ex)):'' }
     if(r.autoR!==false && !r.done) fillReps(r,ex,wi*MAX_DROPS+r.drop-1,'drops'); prev=r }) }
@@ -1059,28 +1071,31 @@ function warmRow(it,k,firstWork,last){
     r:'', rl:'', rr:'', rir:'', done:false, prev:''};
   if(lm==='wt') return fillReps(row,ex,k,'warm');
   const r = lw ? (repOf(lw,ex)||'') : ''; row.r=ex.u?'':String(r); row.rl=ex.u?String(r):''; row.rr=ex.u?String(r):''; row.prev=lw?fmtSet(lw,ex):''; return row }
-function prefill(it){
-  const ex=lib(it.ex), last=lastFor(it.ex), nl=S.nextLoad[it.ex], m=mode(it);
+function prefill(it){ const prevPref=PREF; PREF = it._day!=null ? {day:it._day, pu:it.pu||null} : (it.pref||null);
+  const slot = PREF ? slotLast(it.ex, PREF.day, PREF.pu) : null; const anyL = slot ? null : lastFor(it.ex);
+  const ex=lib(it.ex), last=slot||anyL, nl=S.nextLoad[it.ex], m=mode(it);
+  // not done in this spot before: start from the last time anywhere, a bit lighter if it now comes later in the workout (heavier if earlier)
+  let fat=1, note=''; if(anyL && PREF && it._pos!=null && anyL.pos!=null){ const dp=it._pos-anyL.pos; fat=Math.max(0.8,Math.min(1.2,1-FATIGUE_PER_SPOT*dp)); note=` · Day ${anyL.day+1}${dp?` ${dp>0?'−':'+'}${Math.round(Math.abs(1-fat)*1000)/10}%`:''}` } else if(anyL && PREF) note=` · Day ${anyL.day+1}`;
   const pcts = it.st==='pyr' ? pyrPcts(it) : it.st==='ecc' ? Array(it.sets).fill(it.eccPct||100) : null, orm = oneRM(it.ex);
   const rows=[];
   for(let i=0;i<it.sets;i++){
     const ls = last ? (last.sets[i] || last.sets[last.sets.length-1]) : null;
     const lm = loadMode(ex);
-    let w = typeof nl==='number' ? nl : (ls && num(ls.w)!=null ? num(ls.w) : '');
+    let w = typeof nl==='number' ? nl : (ls && num(ls.w)!=null ? (fat!==1 && lm==='wt' ? roundW(num(ls.w)*fat,ex) : num(ls.w)) : '');
     if(pcts && lm==='wt' && orm) w=roundW(orm*pcts[i]/100,ex);
     let band = (nl && typeof nl==='object') ? nl.band : (ls && ls.band ? ls.band : ''); if(lm==='assist' && !band) band='none';
     const add = (lm==='add' && typeof nl==='number') ? nl : (ls && ls.add!=null ? ls.add : '');
     // reps: what you did at THIS weight before; blank if you've never used it
-    const row={w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:'', rl:'', rr:'', rir:'', done:false, autoR:true, prev: ls?fmtSet(ls,ex):''};
+    const row={w:(lm!=='wt'||w==='')?'':String(w), band, add:add===''?'':String(add), r:'', rl:'', rr:'', rir:'', done:false, autoR:true, prev: ls?fmtSet(ls,ex)+note:''};
     if(pcts) row.pct=pcts[i];
     if(nl!=null && typeof nl==='number' && (lm==='wt'||lm==='add')) row.sugW=true; else if(nl && typeof nl==='object' && (lm==='assist'||lm==='band')) row.sugW=true;
-    row.rid=uid(); rows.push(fillReps(row,ex,i));
+    row.rid=uid(); rows.push(fillReps(row,ex,i)); if(note && ls && row.prev.indexOf(note)<0) row.prev=fmtSet(ls,ex)+note;
   }
 
   const wu=Math.max(0,Math.min(3,it.wu||0)); const warm=[]; for(let k=0;k<wu;k++) warm.push(warmRow(it,k,rows[0],last));
-  const tmp={...it, rows:warm.concat(rows)}; rebuildDrops(tmp); return tmp.rows;
+  const tmp={...it, rows:warm.concat(rows)}; rebuildDrops(tmp); PREF=prevPref; return tmp.rows;
 }
-function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct','eccPct','eccSec','tm'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
+function newActiveItem(it){ const o={uid:uid(), ex:it.ex, sets:it.sets, lo:it.lo, hi:it.hi, rest:it.rest, rows:prefill(it)}; if(it._day!=null) o.pref={day:it._day, pu:it.pu||null}; else if(A && A.dayIdx!=null) o.pref={day:A.dayIdx, pu:it.pu||null}; if(it.wu) o.wu=it.wu; if(it.pu!==undefined) o.pu=it.pu; if(it.focus) o.focus=it.focus; if(it.emph) o.emph=it.emph; if(it.lvl) o.lvl=it.lvl; if(it.ss) o.ss=it.ss; ['st','pct','drops','dropPct','eccPct','eccSec','tm'].forEach(k=>{ if(it[k]!=null) o[k]=it[k] });
   if(it.ghost){ o.ghost=true; o.goalOf=it.goalOf; o.skipped=true; delete o.ss } return o }
 function effItem(day,it){ const tt=day && day.tmp && day.tmp[it.uid]; const t=tt || it.sub; if(!t) return it;
   const c={...it, ex:t, tmpSwap:!!tt, standIn:!it.ph, goalEx:it.ex}; if(it.ph){ delete c.ph; delete c.phMus; delete c.phSug; c.rest=restFor(t) }
@@ -1105,12 +1120,16 @@ function startWorkout(dayIdx){
   const d=S.days[dayIdx];
   if(!d.items.length){ toast('Add an exercise first'); return }
   const real=expandDay(d).map(x=>x.ghost?{...x, pu:null}:{...x, pu:x.uid}).filter(x=>!x.ph).concat((d.tmpAdd||[]).flatMap(expandTmp).map(x=>({...x, pu:null}))); if(!real.length){ toast('Pick an exercise first'); return }
+  { let p=0; real.forEach(x=>{ x._day=dayIdx; if(!x.ghost) x._pos=p++ }) }
   const its=real.map(newActiveItem); its.forEach((x,i)=>{ const n=its[i+1], rn=real[i+1]; if(x.ghost && n && !n.ghost && (n.pu===x.goalOf || (rn && rn.tmpStand && rn.tmpStand===real[i].goalOf))) n.par=x.uid });
   A={id:uid(), dayIdx, dayName:d.name, created:Date.now(), clock:{acc:0,since:null,started:false,paused:false}, cur:0, items:normalizeSS(its), rest:null, inc:{}}; A.cur=Math.max(0,A.items.findIndex(x=>!x.skipped));
   ui.mode='log'; saveActive(); wake(); render();
   const nph=d.items.filter(x=>x.ph && !(d.tmp&&d.tmp[x.uid])).length; if(nph) toast(`${nph} exercise${nph>1?'s':''} still to pick, left out today`);
 }
 function curItem(){ return A.items[A.cur] }
+// moving between exercises jumps over the ones you've skipped
+function nextIdx(){ const g=groupIdx(A.cur); let t = g.every(j=>itemDone(A.items[j])) ? Math.max(...g)+1 : A.cur+1; while(t<A.items.length && A.items[t].skipped) t++; return t<A.items.length ? t : -1 }
+function prevIdx(){ let t=A.cur-1; while(t>=0 && A.items[t].skipped) t--; return t }
 function pauseWorkout(){ const c=A.clock; if(c.since){ c.acc+=Date.now()-c.since; c.since=null } c.paused=true;
   if(A.rest && !A.rest.paused){ A.rest.left=A.rest.end-Date.now(); A.rest.paused=true } saveActive() }
 function resumeWorkout(){ const c=A.clock; c.paused=false; if(c.started) c.since=Date.now();
@@ -1161,7 +1180,7 @@ function finishWorkout(){
       const rec = r => { const o={w:eff(r,ex,bw), r:num(r.r), rl:num(r.rl), rr:num(r.rr), rir:isFailMode(mode(it))?null:(rirStr(r.rir)||null)}; if(r.pct) o.pct=r.pct; if(mode(it)==='tfail' && !ex.t) o.s=1;
         if(lm==='assist'||lm==='band') o.band=r.band||'none'; if(lm==='add') o.add=num(r.add)||0; if((lm==='assist'||lm==='add') && bw!=null) o.bw=bw; return o };
       const keep = r => r.done && !r.skip && !isZero(r,ex);
-      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(r=>{ const o=rec(r); o.set=workRows(it).indexOf(parentOf(it,r)); o.k=r.drop; return o }); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
+      const e={ex:it.ex, name:ex.name, sets:workRows(it).filter(keep).map(rec)}; const pu0 = it.pu || (it.par ? (A.items.find(x=>x.uid===it.par)||{}).goalOf : null); if(pu0) e.pu=pu0; const wm=it.rows.filter(r=>r.warm && keep(r)).map(rec); if(wm.length) e.warm=wm; const dm=it.rows.filter(r=>r.drop && keep(r)).map(r=>{ const o=rec(r); o.set=workRows(it).indexOf(parentOf(it,r)); o.k=r.drop; return o }); if(dm.length) e.drops=dm; return e }).filter(e=>e.sets.length),
     snap:clone(A)};
   for(const e of s.exercises) delete S.nextLoad[e.ex];
   Object.entries(A.inc||{}).forEach(([k,v])=>{ if(v!=null) S.nextLoad[k]=v });
@@ -1338,11 +1357,11 @@ function viewLog(){
   }
   }
   const gI=groupIdx(A.cur), gDone=gI.every(j=>itemDone(A.items[j]));
-  const atEnd = (gDone ? Math.max(...gI) : A.cur) >= A.items.length-1;
+  const atEnd = nextIdx()<0;
   const allDone = (cur<0 || it.skipped) && gDone;
   const main = allDone ? (atEnd ? `<button class="btn primary" data-act="finish">Finish workout</button>` : `<button class="btn primary" data-act="next">Next exercise ›</button>`)
                        : `<button class="btn primary" data-act="logSet">${it.rows[cur].warm?'Log warm-up':it.rows[cur].drop?'Log drop '+it.rows[cur].drop:'Log set '+(workRows(it).indexOf(it.rows[cur])+1)}</button>`;
-  h+=`<div class="actbar"><div class="in"><button class="nav" data-act="prev" ${A.cur===0?'disabled':''} aria-label="Previous exercise">‹</button>${main}<button class="nav" data-act="next" ${A.cur>=A.items.length-1?'disabled':''} aria-label="Next exercise">›</button></div></div>`;
+  h+=`<div class="actbar"><div class="in"><button class="nav" data-act="prev" ${prevIdx()<0?'disabled':''} aria-label="Previous exercise">‹</button>${main}<button class="nav" data-act="next" ${nextIdx()<0?'disabled':''} aria-label="Next exercise">›</button></div></div>`;
   return h;
 }
 
@@ -1540,7 +1559,7 @@ function manSaveNow(){
   ui.tab='history'; ui.histOpen=sess.id; manClose(); toast(`Saved · ${n} sets on ${fmtDate(sess.end)}`);
 }
 function viewHistory(){
-  const ss=liveSessions(); const lifts=ss.filter(s=>s.type==='lift');
+  const ss=liveSessions(true); const lifts=ss.filter(s=>s.type==='lift');
   const d30=lifts.filter(s=>Date.now()-s.end<30*864e5).length;
   const cardio=ss.filter(s=>Date.now()-s.end<30*864e5).reduce((n,s)=>n+(s.cardio||0),0);
   const bst=bwStats();
@@ -1552,7 +1571,7 @@ function viewHistory(){
     const open=ui.histOpen===s.id;
     const sets=(s.exercises||[]).reduce((n,e)=>n+e.sets.length,0);
     const vol=(s.exercises||[]).reduce((n,e)=>{ const k=dbCount(lib(e.ex))===2?2:1; return n+e.sets.reduce((m,x)=>m+(x.w||0)*k*((x.r??Math.min(x.rl||0,x.rr||0))||0),0) },0);
-    h+=`<div class="hcard"><button class="hh" data-act="histOpen" data-id="${s.id}"><div><div class="hd">${fmtDate(s.end)} · Day ${s.dayIdx+1}</div><div class="ht">${esc(s.dayName)}${s.prs&&s.prs.length?`<span class="prbadge">★ ${s.prs.length} PR${s.prs.length>1?'s':''}</span>`:''}</div></div>
+    h+=`<div class="hcard"><button class="hh" data-act="histOpen" data-id="${s.id}"><div><div class="hd">${fmtDate(s.end)} · Day ${s.dayIdx+1}${S.histFrom && s.end<S.histFrom ? ' · <span class="arch">archived</span>' : ''}</div><div class="ht">${esc(s.dayName)}${s.prs&&s.prs.length?`<span class="prbadge">★ ${s.prs.length} PR${s.prs.length>1?'s':''}</span>`:''}</div></div>
       <div class="num" style="font-size:16px;text-align:right">${s.manual&&s.type==='lift'?'<span class="small muted" style="font-family:var(--f-body)">entered · </span>':''}${s.type==='skip'?'Skipped':s.type==='rest'?(s.cardio?s.cardio+' min cardio':'Rest'):`${fmtDur(s.dur||0)} · ${sets} sets`}</div></button>`;
     if(open){
       if(s.type==='lift'){ h+=`<div class="hx">${s.exercises.map(e=>{const ex=lib(e.ex);return `<div><div style="font-weight:600">${esc(ex.name)}${dbCount(ex)===2?' <span class="small muted" style="font-weight:500">(per dumbbell)</span>':''}</div>${e.warm&&e.warm.length?`<div class="small muted">Warm-up ${e.warm.map(x=>fmtSet(x,ex)).join(' · ')}</div>`:''}<div class="num muted">${e.sets.map(x=>fmtSetFull(x,ex)+(x.rir!=null?` @${x.rir}`:'')).join('  ·  ')}</div></div>`}).join('')}${vol?`<div class="small muted">Volume ${Math.round(vol).toLocaleString()} ${S.unit}</div>`:''}</div>` }
@@ -1596,6 +1615,8 @@ function viewGear(){
     <div class="grid3">${[['db','Dumbbells'],['bb','Barbell & plates'],['mach','Machines & cables']].map(([k,l])=>`<label class="f">${l}<input data-step="${k}" inputmode="decimal" value="${fmtW(stepFor({cat:k==='bb'?'bb':k}))}"> </label>`).join('')}</div>
     <div class="small muted" style="margin-top:6px">Most gym weight stacks go up 10 lb; some go up 5 or 2.5. Check the sticker on yours.</div>` }
   h+=`<div class="sec">Units</div><div class="seg"><button data-act="unit" data-k="lb" class="${S.unit==='lb'?'on':''}">Pounds (lb)</button><button data-act="unit" data-k="kg" class="${S.unit==='kg'?'on':''}">Kilograms (kg)</button></div>`;
+  h+=`<div class="sec">Fresh start</div>${S.histFrom ? `<div class="card small">Logging fresh since <b>${fmtDate(S.histFrom)}</b>. Older workouts are archived: still in History, but not used for targets, 1RM or records. <button class="link" data-act="freshUndo">Undo fresh start</button></div>`
+     : `<div class="small muted" style="margin-bottom:6px">Start logging over without deleting anything. Older workouts stay in History (marked archived) but stop feeding targets, 1RM and records. You can undo it.</div><button class="btn sm ghost" data-act="freshStart">${ui.freshArm?'Tap again to start fresh now':'Start logging fresh now'}</button>`}`;
   h+=`<div class="sec">Data</div><div class="small muted" style="margin-bottom:6px">App version ${APP_VERSION}${window.POT_STANDALONE?' · <button class="link" data-act="checkUpdate">Check for update</button>':''}${ui.newVersion?` · <button class="btn sm primary" data-act="forceUpdate">Update now to ${esc(ui.newVersion)}</button>`:''}</div>`;
   h+=`<div class="card stack small"><div>${syncState==='on'?'Your plan and logs sync through your claude.ai account, so your phone and computer show the same data.':syncState==='err'?'Sync is paused. Everything is still saved on this device and will sync when the connection returns.':window.POT_STANDALONE?'Saved on this phone only. Save a backup file now and then, and use it to move your logs to another device.':'Saved on this device.'}</div>
     ${window.POT_STANDALONE?'<div class="rowline"><button class="btn sm primary" data-act="backupFile">Save backup file</button><label class="btn sm ghost" style="cursor:pointer">Open backup file<input type="file" id="restoreFile" accept=".json,application/json,text/plain" hidden></label></div>':''}
@@ -1802,6 +1823,8 @@ const H = {
     if(it && it.ph && !swapped){ openSheet({type:'add', ...c, replace:it.uid, uid:it.uid, ph:it.ph, sugs:it.phSug||[], q:'', cat:'all', mus:it.phMus||'all'}); return }
     openSheet({type:'rowMenu', uid:el.dataset.uid, ...c, useSub: el.dataset.sub==='1'}) },
   editDay:el=>{ ui.editDay=+el.dataset.i; ui.viewDay=+el.dataset.i; closeSheet(); render(); window.scrollTo(0,0) },
+  freshStart:()=>{ if(!ui.freshArm){ ui.freshArm=true; render(); return } ui.freshArm=false; S.histFrom=Date.now(); S.nextLoad={}; saveState(); render(); toast('Fresh start: older workouts archived') },
+  freshUndo:()=>{ delete S.histFrom; saveState(); render(); toast('Fresh start undone') },
   editDone:()=>{ ui.editDay=null; ui.reorder=false; render(); toast('Day saved') },
   reorderToggle:()=>{ ui.reorder=!ui.reorder; const y=window.scrollY; render(); window.scrollTo(0,y); if(ui.reorder) toast('Drag the handles to reorder') },
   standMenu:el=>{ const c=sheetCtx(); openSheet({type:'standMenu', uid:el.dataset.uid, day:c.day}) },
@@ -1821,8 +1844,8 @@ const H = {
   ssSplit:()=>{ const s=ui.sheet; const l=ctxList(s.ctx,s.day); const it=sheetItem(s); const p=partnerOf(l,it); if(it) delete it.ss; if(p) delete p.ss; saveCtx(s.ctx); closeSheet(); render(); toast('Superset split') },
   jumpUid:el=>{ A.cur=A.items.findIndex(x=>x.uid===el.dataset.uid); ui.mode='log'; closeSheet(); saveActive(); render(); window.scrollTo(0,0) },
   jump:el=>{ A.cur=+el.dataset.i; saveActive(); render() },
-  prev:()=>{ if(A.cur>0){A.cur--; saveActive(); render(); window.scrollTo(0,0)} },
-  next:()=>{ const g=groupIdx(A.cur); const t = g.every(j=>itemDone(A.items[j])) ? Math.max(...g)+1 : A.cur+1; if(t<A.items.length){ A.cur=t; saveActive(); render(); window.scrollTo(0,0) } },
+  prev:()=>{ const t=prevIdx(); if(t>=0){ A.cur=t; saveActive(); render(); window.scrollTo(0,0) } },
+  next:()=>{ const t=nextIdx(); if(t>=0){ A.cur=t; saveActive(); render(); window.scrollTo(0,0) } },
   swToggle:el=>{ const it=curItem(), i=+el.dataset.i; const row=it.rows[i]; if(!row) return;
     if(A.sw && A.sw.uid===it.uid && A.sw.i===i){ const secs=Math.max(1,Math.round((Date.now()-A.sw.t0)/1000)); A.sw=null;
       const f = lib(it.ex).u ? (row.rl===''||row.rl==null ? 'rl' : 'rr') : 'r'; row[f]=String(secs); if(f==='rl' && !row.rrSet) row.rr=String(secs); row.autoR=false; row.sugR=false;
@@ -2100,7 +2123,7 @@ document.addEventListener('input',e=>{
       if(f==='w' && !row.warm && workRows(it)[0]===row){ const o=ormFor(it); it.rows.forEach((wr,j)=>{ if(wr.warm && wr.autoW && !wr.done){ wr.w = o ? String(roundW(o*(wr.pct||50)/100,ex)) : ''; touched.add(j) } }) }
       if(!row.warm){ const before=it.rows.map(r=>r.w); refreshDrops(it); it.rows.forEach((r,j)=>{ if(r.drop && r.w!==before[j]) touched.add(j) }) }
       // reps belong to a weight: look them up again (or clear them) wherever you haven't typed reps yourself
-      touched.forEach(j=>{ const rj=it.rows[j]; if(rj.autoR!==false && !rj.done) fillReps(rj,ex, rj.warm?it.rows.filter(x=>x.warm).indexOf(rj):rj.drop?rj.drop-1:workRows(it).indexOf(rj), rj.warm?'warm':rj.drop?'drops':'sets') });
+      PREF=it.pref||null; touched.forEach(j=>{ const rj=it.rows[j]; if(rj.autoR!==false && !rj.done) fillReps(rj,ex, rj.warm?it.rows.filter(x=>x.warm).indexOf(rj):rj.drop?rj.drop-1:workRows(it).indexOf(rj), rj.warm?'warm':rj.drop?'drops':'sets') });
       touched.forEach(j=>{ const rj=it.rows[j]; ['w','band','add','r','rl','rr'].forEach(k=>{ if(j===i && k===f) return; const o=document.querySelector(`[data-set="${j}"][data-f="${k}"]`); if(o && o.value!==String(rj[k]??'')) o.value=rj[k]??'' }); const rowEl=document.querySelector(`[data-set="${j}"]`); const pv=rowEl&&rowEl.closest('.setrow')&&rowEl.closest('.setrow').querySelector('.pv .pvt'); if(pv) pv.textContent=rj.prev||'—' });
     }
     if(f==='w') refreshTargets(it);
