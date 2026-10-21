@@ -159,7 +159,7 @@ body.dragging-now{-webkit-user-select:none;user-select:none}
 #restbar.over .in{background:var(--accent);color:var(--accent-ink)}
 /* tabs */
 #tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:15}
-#tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+#tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 #tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em}
 #tabs button svg{width:22px;height:22px}
 #tabs button.on{color:var(--accent)}
@@ -436,6 +436,36 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 html,body,button,input,select,textarea,a,label,.row,.setrow{touch-action:manipulation}
 input,select,textarea{font-size:max(16px,1em)}
 .setrow input,.setrow select,.ormline input,.pctgrid input{font-size:16px}
+
+/* food */
+.fdate{display:flex;align-items:center;justify-content:space-between;margin:10px 0 8px}
+.fdate b{font-size:17px}
+.fdate .nav{width:44px;height:40px;border-radius:12px;background:var(--surface);font-size:22px;font-weight:700}
+.fdate .nav:disabled{opacity:.3}
+.fsum{padding:14px}
+.fsum .fk{display:flex;justify-content:space-between;align-items:flex-end}
+.fsum .v{font-weight:800;font-size:32px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.fsum .v.over{color:var(--danger)}
+.fsum .k{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+.fbar{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;margin-top:10px;font-size:14px}
+.fbar .bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.fbar i{display:block;height:100%;border-radius:4px}
+.m-p{background:#64d2ff}.m-c{background:var(--warn)}.m-f{background:#c97a76}
+.card.fmeal{margin-top:10px;padding:12px 14px}
+.fmh{display:flex;justify-content:space-between;align-items:baseline}
+.fmh b{font-size:17px}
+.fent{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:10px 0;border-bottom:.5px solid var(--line);gap:10px}
+.fent .fn{font-weight:600}.fent .fm{font-size:12px;color:var(--muted)}
+.fk2{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.fk2 small{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.fadd{margin-top:8px;display:block}
+.scanbox{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanline{position:absolute;left:10%;right:10%;top:50%;height:2px;background:var(--danger);opacity:.8;box-shadow:0 0 8px var(--danger)}
+.fnut{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+.fnut div{background:var(--surface2);border-radius:12px;padding:8px 4px;text-align:center}
+.fnut b{display:block;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.fnut span{font-size:11px;color:var(--muted);font-weight:600}
+#tabs button{font-size:10.5px}
 </style>
 </head>
 <body>
@@ -449,7 +479,7 @@ input,select,textarea{font-size:max(16px,1em)}
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.10.27-a';
+const APP_VERSION = '2026.10.27-b';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -784,6 +814,7 @@ const num = v => (v===''||v==null||isNaN(Number(v))) ? null : Number(v);
 const lsGet = k => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null }catch(e){ return null } };
 const lsSet = (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){} };
 const ICON = {
+ food:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3.5 4-3.5 8H17"/></svg>',
  drag:'<svg viewBox="0 0 14 18" fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></svg>',
  check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>',
  pen:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg>',
@@ -1224,10 +1255,10 @@ function renderInner(){
   const app=$('#app'); const st0=$('#strip'); const sl0 = st0 ? st0.scrollLeft : null;
   if(ui.mode==='manual' && ui.man) app.innerHTML=viewManual();
   else if(ui.mode==='log' && A) app.innerHTML=viewLog();
-  else { if(ui.mode==='manual') ui.mode='overview'; if(ui.mode==='log') ui.mode='overview'; app.innerHTML=({train:viewTrain,history:viewHistory,lib:viewLib,gear:viewGear})[ui.tab]() }
+  else { if(ui.mode==='manual') ui.mode='overview'; if(ui.mode==='log') ui.mode='overview'; app.innerHTML=({train:viewTrain,history:viewHistory,food:viewFood,lib:viewLib,gear:viewGear}[ui.tab]||viewTrain)() }
   const st1=$('#strip'); if(st1 && sl0!=null) st1.scrollLeft=sl0;
   const tabs=$('#tabs'); tabs.hidden = ui.mode==='log' || ui.mode==='manual';
-  tabs.innerHTML=`<div class="in">${[['train','Train'],['history','History'],['lib','Exercises'],['gear','Equipment']].map(([k,l])=>`<button data-act="tab" data-k="${k}" class="${ui.tab===k?'on':''}">${ICON[k==='history'?'hist':k]}${l}</button>`).join('')}</div>`;
+  tabs.innerHTML=`<div class="in">${[['train','Train'],['history','History'],['food','Food'],['lib','Exercises'],['gear','Equipment']].map(([k,l])=>`<button data-act="tab" data-k="${k}" class="${ui.tab===k?'on':''}">${ICON[k==='history'?'hist':k]}${l}</button>`).join('')}</div>`;
   renderSheet(); tick(true);
 }
 function showRecovery(err){
@@ -1625,8 +1656,8 @@ function viewGear(){
 }
 
 /* ---------- sheets ---------- */
-function openSheet(s){ if(s.uid && s.ctx){ const l=ctxList(s.ctx,s.day); s.idx=l.findIndex(x=>x.uid===s.uid); s.exId=l[s.idx]?.ex } ui.sheet=s; renderSheet() }
-function closeSheet(){ ui.sheet=null; renderSheet(); if(pendingRS && ui.mode!=='manual' && applyPending()) setTimeout(render,0) }
+function openSheet(s){ stopScan(); if(s.uid && s.ctx){ const l=ctxList(s.ctx,s.day); s.idx=l.findIndex(x=>x.uid===s.uid); s.exId=l[s.idx]?.ex } ui.sheet=s; renderSheet() }
+function closeSheet(){ stopScan(); ui.sheet=null; renderSheet(); if(pendingRS && ui.mode!=='manual' && applyPending()) setTimeout(render,0) }
 // find the exercise a popup refers to, even if the list was refreshed underneath it
 function sheetItem(s){ const l=ctxList(s.ctx,s.day); let it=l.find(x=>x.uid===s.uid); if(!it && s.exId){ it = (l[s.idx] && l[s.idx].ex===s.exId) ? l[s.idx] : l.find(x=>x.ex===s.exId); if(it) s.uid=it.uid } return it }
 function ctxList(ctx,dayIdx){ if(ctx==='T'){ const d=S.days[dayIdx]; d.tmpAdd=d.tmpAdd||[]; return d.tmpAdd } return ctx==='M' ? ui.man.items : ctx==='A' ? A.items : S.days[dayIdx].items }
@@ -1645,7 +1676,8 @@ function renderSheet(){
   w.hidden=false; const s=ui.sheet; let h='';
   const findIt = () => sheetItem(s);
   const exOfS = it => (s.useSub && it && (s.ctx==='P'||s.ctx==='T')) ? (effItem(S.days[s.day],it).ex || it.ex) : it.ex;
-  if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=e!==it; s.useSub = sw && !it.ph;
+  if(String(s.type||'').startsWith('f:')){ h=foodSheet(s); if(h==null){ closeSheet(); return } }
+  else if(s.type==='rowMenu' && s.tmp){ const it=findIt(); if(!it){closeSheet();return} const d=S.days[s.day]; const e=effItem(d,it); const ex=lib(e.ex); const sw=e!==it; s.useSub = sw && !it.ph;
     const goalName = it.ph ? 'Pick: '+it.ph : lib(it.ex).name;
     h=`<h3>${esc(ex.name)}</h3><div class="shsub">${targetText(e)} · rest ${fmtRest(e.rest)} · ${e.focus?esc(e.focus):ex.m.map(m=>MUS[m]).join(', ')}</div>
      ${sw?`<div class="needs" style="padding-top:8px"><span>${e.tmpSwap?'Next workout only':'Stand-in'} for ${esc(goalName)}</span></div>`:''}
@@ -1802,7 +1834,7 @@ const H = {
   exEditSave:()=>{ keepEd(); const s=ui.sheet; saveExFields(s.ex,s); closeSheet(); render(); toast('Saved') },
   setArm:el=>{ keepEd(); S.arm=S.arm||{}; const e=LIB[el.dataset.ex]; const k=el.dataset.k; if(e && (k==='one')===!!e.u0) delete S.arm[el.dataset.ex]; else S.arm[el.dataset.ex]=k; applyDeg(); saveState(); render(); toast(k==='one'?'One arm at a time: log left and right':'Both arms together') },
   setDeg:el=>{ keepEd(); S.deg=S.deg||{}; S.deg[el.dataset.ex]=+el.dataset.d; applyDeg(); saveState(); render(); toast(`${lib(el.dataset.ex).name}`) },
-  tab:el=>{ ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
+  tab:el=>{ stopScan(); ui.tab=el.dataset.k; ui.editDay=null; ui.sheet=null; window.scrollTo(0,0); render() },
   closeSheet:()=>closeSheet(),
   viewDay:el=>{ ui.viewDay=+el.dataset.i; ui.editDay=null; render() },
   goLive:()=>{ ui.viewDay=null; ui.mode='log'; ui.tab='train'; render(); window.scrollTo(0,0) },
@@ -2096,6 +2128,9 @@ document.addEventListener('click',e=>{
 let setSaveT=null;
 document.addEventListener('input',e=>{
   const el=e.target;
+  if(el.dataset.fd && ui.sheet && ui.sheet.draft){ ui.sheet.draft[el.dataset.fd]=el.value; return }
+  if(el.dataset.fq && ui.sheet){ ui.sheet.qa=ui.sheet.qa||{}; ui.sheet.qa[el.dataset.fq]=el.value; return }
+  if(el.dataset.fa && ui.sheet && ui.sheet.type==='f:item'){ ui.sheet.amt=el.value; const box=$('#fNut'); if(box) box.innerHTML=nutHTML(nutrOf(ui.sheet.food, el.value, ui.sheet.unit)); return }
   if(el.dataset.mi!=null && ui.man){
     const it=ui.man.items[+el.dataset.mi], k=+el.dataset.ms, f=el.dataset.mf; it.rows[k][f]=el.value;
     if(f==='w'||f==='band'||f==='add'){ for(let j=k+1;j<it.rows.length;j++){ const rr=it.rows[j]; if(rr.r===''&&rr.rl===''&&rr.rr===''){ rr[f]=el.value; const o=document.querySelector(`[data-mi="${el.dataset.mi}"][data-ms="${j}"][data-mf="${f}"]`); if(o) o.value=el.value } } }
@@ -2239,6 +2274,153 @@ function endSheetDrag(){ if(!sheetDrag) return; const d=sheetDrag; sheetDrag=nul
   if(d.dy>110 || (v>0.6 && d.dy>40)){ sh.style.transform='translateY(100%)'; setTimeout(()=>{ sh.style.transform=''; sh.style.transition=''; if(bd) bd.style.opacity=''; closeSheet() },190) }
   else { sh.style.transform=''; if(bd) bd.style.opacity=''; setTimeout(()=>{ sh.style.transition='' },220) } }
 document.addEventListener('touchend',endSheetDrag); document.addEventListener('touchcancel',endSheetDrag);
+
+/* ---------- food tracker ---------- */
+const MEALS=[['b','Breakfast'],['l','Lunch'],['d','Dinner'],['s','Snacks']];
+const NUTR=[['kcal','Calories','kcal'],['p','Protein','g'],['c','Carbs','g'],['f','Fat','g']];
+function fState(){ S.food=S.food||{}; const F=S.food; F.my=F.my||{}; F.recent=F.recent||[]; F.targets=F.targets||{kcal:null,p:null,c:null,f:null}; S.flog=S.flog||{}; return F }
+const ymd=d=>{ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0') };
+function fDay(){ return ui.fday || ymd(Date.now()) }
+const r1=v=>Math.round(v*10)/10;
+const mealName=m=>(MEALS.find(x=>x[0]===m)||MEALS[3])[1];
+// nutrients for an amount: grams use the per-100 g values, servings use per-serving values (or per-100 g × serving grams)
+function nutrOf(food,amt,unit){ const a=num(amt)||0; const z={kcal:0,p:0,c:0,f:0}; let base=null, k=0;
+  if(unit==='g'){ if(food.per100){ base=food.per100; k=a/100 } else if(food.perSrv && food.srvG){ base=food.perSrv; k=a/food.srvG } }
+  else { if(food.perSrv){ base=food.perSrv; k=a } else if(food.per100 && food.srvG){ base=food.per100; k=a*food.srvG/100 } else if(food.per100){ base=food.per100; k=a } }
+  if(!base) return z; for(const n in z) z[n]=(num(base[n])||0)*k; return z }
+const entryNutr = e => nutrOf(e.food, e.amt, e.unit);
+function sumN(list){ const t={kcal:0,p:0,c:0,f:0}; list.forEach(e=>{ const n=entryNutr(e); for(const k in t) t[k]+=n[k] }); return t }
+const canSrv = f => !!(f.perSrv || (f.per100 && f.srvG));
+const amtLabel = e => e.unit==='g' ? `${fmtW(num(e.amt)||0)} g` : `${fmtW(num(e.amt)||0)} ${num(e.amt)===1?'serving':'servings'}`;
+const nutHTML = n => NUTR.map(([k,l])=>`<div><b>${k==='kcal'?Math.round(n[k]):r1(n[k])}</b><span>${k==='kcal'?'kcal':l+' g'}</span></div>`).join('');
+
+/* Open Food Facts (free, crowd-sourced; ODbL) */
+const OFF_FIELDS='code,product_name,brands,nutriments,serving_size,serving_quantity';
+function offToFood(p,code){ const n=p.nutriments||{}; const kcal100 = n['energy-kcal_100g']!=null ? +n['energy-kcal_100g'] : (n['energy_100g']!=null ? +n['energy_100g']/4.184 : null);
+  const has100 = kcal100!=null || n.proteins_100g!=null || n.carbohydrates_100g!=null || n.fat_100g!=null;
+  const per100 = has100 ? {kcal:r1(kcal100||0), p:r1(+n.proteins_100g||0), c:r1(+n.carbohydrates_100g||0), f:r1(+n.fat_100g||0)} : null;
+  const hasS = n['energy-kcal_serving']!=null || n.proteins_serving!=null;
+  const perSrv = !per100 && hasS ? {kcal:r1(+n['energy-kcal_serving']||0), p:r1(+n.proteins_serving||0), c:r1(+n.carbohydrates_serving||0), f:r1(+n.fat_serving||0)} : null;
+  return {id:'off_'+(p.code||code), code:String(p.code||code||''), name:(p.product_name||'Unnamed product').trim(), brand:String(p.brands||'').split(',')[0].trim(), per100, perSrv, srvG:num(p.serving_quantity)||null, srvLabel:String(p.serving_size||'').trim()} }
+async function offLookup(code){ const tries=[code]; if(/^\d{12}$/.test(code)) tries.push('0'+code); if(/^0\d{12}$/.test(code)) tries.push(code.slice(1));
+  for(const c of tries){ const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${c}.json?fields=${OFF_FIELDS}`); if(!r.ok && r.status!==404) throw new Error('busy');
+    const j=await r.json(); if(j && j.status===1 && j.product) return offToFood(j.product,c) } return null }
+async function offSearch(q){ const qs=`search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=${OFF_FIELDS}`;
+  for(const host of ['us','world']){ try{ const r=await fetch(`https://${host}.openfoodfacts.org/cgi/search.pl?${qs}`); if(!r.ok) continue; const j=await r.json();
+    return (j.products||[]).filter(p=>p.product_name).map(p=>offToFood(p,p.code)) }catch(e){} } throw new Error('busy') }
+
+/* camera barcode scanner: the phone's own detector where it has one, otherwise the ZXing library (iPhone) */
+let SCAN=null;
+function stopScan(){ if(!SCAN) return; const s=SCAN; SCAN=null; try{ s.stop() }catch(e){} }
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load')); document.head.appendChild(s) }) }
+async function startScan(){ stopScan(); const v=document.getElementById('scanVideo'), msg=document.getElementById('scanMsg'); if(!v||!msg) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ msg.textContent='The camera isn’t available here. Type the barcode number below.'; return }
+  let done=false; const found=code=>{ if(done) return; done=true; stopScan(); try{ navigator.vibrate && navigator.vibrate(60) }catch(e){} fLookup(code) };
+  msg.textContent='Starting camera…'; v.setAttribute('playsinline',''); v.muted=true;
+  try{
+    if('BarcodeDetector' in window){ const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}); v.srcObject=stream; await v.play();
+      const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']}); let on=true; SCAN={stop:()=>{ on=false; stream.getTracks().forEach(t=>t.stop()) }};
+      msg.textContent='Point the camera at the barcode';
+      const loop=async()=>{ if(!on) return; try{ const r=await det.detect(v); if(r && r[0]) return found(r[0].rawValue) }catch(e){} setTimeout(loop,200) }; loop() }
+    else { if(!window.ZXing) await loadScript('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js');
+      const hints=new Map(); hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E]);
+      const reader=new ZXing.BrowserMultiFormatReader(hints); SCAN={stop:()=>{ try{ reader.reset() }catch(e){} }};
+      await reader.decodeFromConstraints({video:{facingMode:{ideal:'environment'}},audio:false}, v, res=>{ if(res) found(res.getText()) });
+      if(SCAN) msg.textContent='Point the camera at the barcode' }
+  }catch(e){ stopScan(); const n=String(e && (e.name||e.message) || e); msg.textContent = /NotAllowed|denied|Permission/i.test(n) ? 'Camera access was blocked. Allow the camera for this app in Settings, or type the barcode below.' : 'Couldn’t start the camera. Type the barcode number below.' } }
+async function fLookup(code){ code=String(code||'').replace(/\D/g,''); if(code.length<6){ toast('Enter the barcode number'); return } const meal=(ui.sheet && ui.sheet.meal) || 's'; const F=fState();
+  const mine=Object.values(F.my).find(x=>x.code===code) || F.recent.find(x=>x.code===code);
+  if(mine){ openSheet({type:'f:item', food:JSON.parse(JSON.stringify(mine)), meal, amt:canSrv(mine)?1:100, unit:canSrv(mine)?'srv':'g'}); return }
+  openSheet({type:'f:add', meal, tab:'scan', busy:'Looking up '+code+'…'});
+  try{ const food=await offLookup(code);
+    if(!food){ openSheet({type:'f:new', meal, code, basis:'srv', note:'Not in Open Food Facts yet. Copy it from the label; it’s saved to My foods so the next scan finds it.', draft:{name:'',brand:'',srvLabel:'1 serving',srvG:'',kcal:'',p:'',c:'',f:''}}); return }
+    openSheet({type:'f:item', food, meal, amt:canSrv(food)?1:100, unit:canSrv(food)?'srv':'g'}) }
+  catch(e){ openSheet({type:'f:add', meal, tab:'scan', err:'Couldn’t reach Open Food Facts. Check your connection and try again.'}) } }
+
+function viewFood(){ const F=fState(); const day=fDay(); const list=S.flog[day]||[]; const tot=sumN(list); const T=F.targets; const today=ymd(Date.now());
+  const lbl = day===today ? 'Today' : day===ymd(Date.now()-864e5) ? 'Yesterday' : new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  let h=topbar()+`<div class="rowline" style="justify-content:space-between"><div class="h2">Food</div><button class="btn sm ghost" data-act="fTargets">Targets</button></div>`;
+  h+=`<div class="fdate"><button class="nav" data-act="fDayShift" data-d="-1" aria-label="Previous day">‹</button><b>${lbl}</b><button class="nav" data-act="fDayShift" data-d="1" ${day>=today?'disabled':''} aria-label="Next day">›</button></div>`;
+  const left = T.kcal ? Math.round(T.kcal - tot.kcal) : null;
+  h+=`<div class="card fsum"><div class="fk"><div><div class="v">${Math.round(tot.kcal)}</div><div class="k">kcal eaten</div></div><div style="text-align:right"><div class="v ${left!=null&&left<0?'over':''}">${left==null?'—':Math.abs(left)}</div><div class="k">${left==null?'set a calorie target':left<0?'over target':'left of '+T.kcal}</div></div></div>
+    ${[['p','Protein'],['c','Carbs'],['f','Fat']].map(([k,l])=>{ const v=tot[k], t=T[k]; const pct=t?Math.min(100,v/t*100):0; return `<div class="fbar"><span>${l}</span><div class="bar"><i class="m-${k}" style="width:${pct}%"></i></div><span class="num">${Math.round(v)}${t?' / '+t:''} g</span></div>` }).join('')}</div>`;
+  MEALS.forEach(([m,l])=>{ const es=list.filter(e=>e.meal===m); const mk=Math.round(sumN(es).kcal);
+    h+=`<div class="card fmeal"><div class="fmh"><b>${l}</b><span class="muted small">${es.length?mk+' kcal':''}</span></div>${es.map(e=>{ const n=entryNutr(e); return `<button class="fent" data-act="fEntry" data-id="${e.id}"><div><div class="fn">${esc(e.food.name)}</div><div class="fm">${esc([e.food.brand, amtLabel(e)].filter(Boolean).join(' · '))}</div></div><div class="fk2">${Math.round(n.kcal)}<small>P ${Math.round(n.p)} · C ${Math.round(n.c)} · F ${Math.round(n.f)}</small></div></button>` }).join('')}<button class="link fadd" data-act="fAdd" data-meal="${m}">+ Add food</button></div>` });
+  h+=`<div class="small muted" style="text-align:center;margin:14px 0">Food data from <a class="link" href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Labels can be wrong: tap Fix nutrition info.</div>`;
+  return h }
+function foodList(list,src){ return `<div class="pick">${list.map((f,i)=>{ const n=nutrOf(f, canSrv(f)?1:100, canSrv(f)?'srv':'g'); return `<button data-act="fPick" data-src="${src}" data-i="${i}" data-id="${esc(f.id)}"><div><div class="pn">${esc(f.name)}</div><div class="pm">${esc([f.brand, canSrv(f)?(f.srvLabel||'1 serving'):'per 100 g'].filter(Boolean).join(' · '))}</div></div><span class="tag ok">${Math.round(n.kcal)} kcal</span></button>` }).join('')}</div>` }
+function foodSheet(s){ const F=fState();
+  const mealSeg=`<div class="seg">${MEALS.map(([m,l])=>`<button data-act="fMeal" data-m="${m}" class="${s.meal===m?'on':''}">${l}</button>`).join('')}</div>`;
+  if(s.type==='f:add'){ const tab=s.tab||(F.recent.length?'recent':'scan'); s.tab=tab;
+    let h=`<h3>Add to ${mealName(s.meal)}</h3><div class="seg" style="margin-top:10px;flex-wrap:wrap">${[['scan','Scan'],['search','Search'],['recent','Recent'],['my','My foods'],['quick','Quick add']].map(([k,l])=>`<button data-act="fTab" data-k="${k}" class="${tab===k?'on':''}">${l}</button>`).join('')}</div>`;
+    if(tab==='scan') h+=`<div class="scanbox"><video id="scanVideo" playsinline muted autoplay></video><div class="scanline"></div></div><div class="small muted" id="scanMsg" style="text-align:center;margin-top:6px">${esc(s.busy||'Tap Start camera, then hold the barcode in the frame.')}</div>${s.err?`<div class="needs" style="margin-top:6px"><span>${esc(s.err)}</span></div>`:''}
+      <div class="stack" style="margin-top:8px"><button class="btn primary" data-act="fScan">Start camera</button><div class="rowline" style="flex-wrap:nowrap"><input id="fCode" inputmode="numeric" placeholder="Or type the barcode number" autocomplete="off"><button class="btn sm ghost" data-act="fCodeGo">Look up</button></div></div>`;
+    if(tab==='search') h+=`<div class="rowline" style="flex-wrap:nowrap;margin-top:10px"><input id="fQ" placeholder="e.g. Chobani greek yogurt" value="${esc(s.q||'')}" autocomplete="off" enterkeyhint="search"><button class="btn sm primary" data-act="fSearch">Search</button></div>
+      ${s.busy?`<div class="small muted" style="margin-top:8px">${esc(s.busy)}</div>`:''}${s.err?`<div class="needs" style="margin-top:8px"><span>${esc(s.err)}</span></div>`:''}${foodList(s.results||[],'res')}`;
+    if(tab==='recent') h+= F.recent.length ? foodList(F.recent,'recent') : `<div class="empty">Foods you log show up here for one-tap re-logging.</div>`;
+    if(tab==='my'){ const my=Object.values(F.my).sort((a,b)=>a.name.localeCompare(b.name)); h+=`<button class="addrow" data-act="fNew" style="margin-top:10px">+ New food</button>${my.length?foodList(my,'my'):'<div class="empty">Save foods you eat often, or ones that aren’t in the database.</div>'}` }
+    if(tab==='quick'){ const q=s.qa||{}; h+=`<div class="stack" style="margin-top:10px"><label class="f">Name (optional)<input data-fq="name" value="${esc(q.name||'')}" placeholder="Quick add"></label><div class="grid2">${NUTR.map(([k,l,u])=>`<label class="f">${l} (${u})<input data-fq="${k}" inputmode="decimal" value="${esc(q[k]??'')}"></label>`).join('')}</div><button class="btn primary" data-act="fQuickSave">Add to ${mealName(s.meal)}</button></div>` }
+    return h }
+  if(s.type==='f:item'){ const f=s.food; if(!canSrv(f)) s.unit='g'; const units = canSrv(f) ? [['srv','Servings'],['g','Grams']] : [['g','Grams']]; const n=nutrOf(f,s.amt,s.unit);
+    return `<h3>${esc(f.name)}</h3><div class="shsub">${esc([f.brand, canSrv(f)?('1 serving = '+(f.srvLabel||(f.srvG?f.srvG+' g':'1 serving'))):'', f.code?'Barcode '+f.code:''].filter(Boolean).join(' · '))}</div>
+      <div class="sec">Amount</div><div class="rowline" style="flex-wrap:nowrap"><input id="fAmt" data-fa="amt" inputmode="decimal" value="${esc(s.amt)}" style="max-width:110px;text-align:center"><div class="seg" style="flex:1">${units.map(([k,l])=>`<button data-act="fUnit" data-k="${k}" class="${s.unit===k?'on':''}">${l}</button>`).join('')}</div></div>
+      <div class="fnut" id="fNut">${nutHTML(n)}</div>
+      <div class="sec">Meal</div>${mealSeg}
+      <div class="stack" style="margin-top:14px"><button class="btn primary" data-act="fLog">${s.entry?'Save':'Add to '+mealName(s.meal)}</button>
+      <div class="rowline" style="justify-content:space-between"><button class="link small" data-act="fEditFood">Fix nutrition info</button>${F.my[f.id]?'<span class="small muted">In My foods</span>':'<button class="link small" data-act="fSaveMine">Save to My foods</button>'}</div>
+      ${s.entry?'<button class="btn danger" data-act="fDel">Remove from log</button>':''}</div>` }
+  if(s.type==='f:new'){ const d=s.draft; const basis=s.basis||'srv';
+    return `<h3>${s.editId?'Fix nutrition info':'New food'}</h3>${s.note?`<div class="shsub">${esc(s.note)}</div>`:''}${s.code?`<div class="small muted" style="margin-top:4px">Barcode ${esc(s.code)}</div>`:''}
+      <div class="stack" style="margin-top:10px"><label class="f">Name<input data-fd="name" value="${esc(d.name)}"></label><label class="f">Brand (optional)<input data-fd="brand" value="${esc(d.brand)}"></label>
+      <div class="grid2"><label class="f">Serving name<input data-fd="srvLabel" value="${esc(d.srvLabel)}" placeholder="1 cup"></label><label class="f">Serving size in grams (optional)<input data-fd="srvG" inputmode="decimal" value="${esc(d.srvG)}"></label></div>
+      <div class="small muted" style="font-weight:700">Nutrition per</div><div class="seg"><button data-act="fBasis" data-k="srv" class="${basis==='srv'?'on':''}">1 serving</button><button data-act="fBasis" data-k="100" class="${basis==='100'?'on':''}">100 g</button></div>
+      <div class="grid2">${NUTR.map(([k,l,u])=>`<label class="f">${l} (${u})<input data-fd="${k}" inputmode="decimal" value="${esc(d[k])}"></label>`).join('')}</div>
+      <button class="btn primary" data-act="fNewSave">${s.back?'Save':s.meal?'Save and add':'Save'}</button>${s.editId&&F.my[s.editId]&&!s.back?'<button class="btn danger" data-act="fMyDel">Delete from My foods</button>':''}</div>` }
+  if(s.type==='f:targets'){ const T=F.targets;
+    return `<h3>Daily targets</h3><div class="shsub">Leave any blank to just track it. Protein + carbs are 4 kcal per gram, fat is 9.</div><div class="grid2" style="margin-top:10px">${NUTR.map(([k,l,u])=>`<label class="f">${l} (${u})<input id="ft_${k}" inputmode="decimal" value="${esc(T[k]??'')}"></label>`).join('')}</div>
+      <button class="btn primary" style="margin-top:12px;width:100%" data-act="fTargetsSave">Save</button>` }
+  return null }
+function keepFA(){ const a=$('#fAmt'); if(a && ui.sheet) ui.sheet.amt=a.value }
+const FOOD_ACTIONS={
+  fDayShift:el=>{ const d=new Date(fDay()+'T12:00'); d.setDate(d.getDate()+ +el.dataset.d); const k=ymd(d); if(k>ymd(Date.now())) return; ui.fday=k; render() },
+  fAdd:el=>openSheet({type:'f:add', meal:el.dataset.meal}),
+  fTab:el=>{ stopScan(); const s=ui.sheet; s.tab=el.dataset.k; s.err=null; s.busy=null; renderSheet() },
+  fScan:()=>startScan(),
+  fCodeGo:()=>fLookup(($('#fCode')||{}).value),
+  fSearch:async()=>{ const s=ui.sheet; const q=(($('#fQ')||{}).value||'').trim(); if(!q) return; s.q=q; s.busy='Searching…'; s.err=null; s.results=[]; renderSheet();
+    try{ const r=await offSearch(q); if(ui.sheet!==s) return; s.results=r; s.busy=r.length?null:'No matches. Try fewer words, or scan the barcode.' }
+    catch(e){ if(ui.sheet!==s) return; s.busy=null; s.err='Search is busy right now (Open Food Facts allows about 10 searches a minute). Try again shortly, or scan the barcode.' } renderSheet() },
+  fPick:el=>{ const s=ui.sheet, F=fState(); const src=el.dataset.src; const f = src==='res' ? (s.results||[])[+el.dataset.i] : src==='recent' ? F.recent[+el.dataset.i] : F.my[el.dataset.id]; if(!f) return;
+    openSheet({type:'f:item', food:JSON.parse(JSON.stringify(f)), meal:s.meal, amt:canSrv(f)?1:100, unit:canSrv(f)?'srv':'g'}) },
+  fUnit:el=>{ keepFA(); const s=ui.sheet, f=s.food, k=el.dataset.k; if(s.unit!==k){ const a=num(s.amt)||0;
+      if(k==='g') s.amt = f.srvG ? r1(a*f.srvG) : 100; else s.amt = f.srvG ? r1(a/f.srvG) : 1; s.unit=k } renderSheet() },
+  fMeal:el=>{ keepFA(); ui.sheet.meal=el.dataset.m; renderSheet() },
+  fLog:()=>{ keepFA(); const s=ui.sheet, F=fState(); const amt=num(s.amt); if(!(amt>0)){ toast('Enter an amount'); return } const day=s.day||fDay(); S.flog[day]=S.flog[day]||[];
+    if(s.entry){ const e=S.flog[day].find(x=>x.id===s.entry); if(e){ e.amt=amt; e.unit=s.unit; e.meal=s.meal; e.food=s.food } }
+    else S.flog[day].push({id:uid(), meal:s.meal, amt, unit:s.unit, food:s.food, at:Date.now()});
+    F.recent=[s.food, ...F.recent.filter(x=>x.id!==s.food.id)].slice(0,30); saveState(); closeSheet(); render(); toast(s.entry?'Updated':`Added to ${mealName(s.meal)}`) },
+  fEntry:el=>{ const day=fDay(); const e=(S.flog[day]||[]).find(x=>x.id===el.dataset.id); if(!e) return; openSheet({type:'f:item', food:JSON.parse(JSON.stringify(e.food)), meal:e.meal, amt:e.amt, unit:e.unit, entry:e.id, day}) },
+  fDel:()=>{ const s=ui.sheet; const day=s.day||fDay(); S.flog[day]=(S.flog[day]||[]).filter(x=>x.id!==s.entry); saveState(); closeSheet(); render(); toast('Removed') },
+  fSaveMine:()=>{ keepFA(); const s=ui.sheet, F=fState(); F.my[s.food.id]=JSON.parse(JSON.stringify(s.food)); saveState(); renderSheet(); toast('Saved to My foods') },
+  fEditFood:()=>{ keepFA(); const s=ui.sheet, f=s.food; const basis=f.per100?'100':'srv'; const b=f.per100||f.perSrv||{};
+    openSheet({type:'f:new', editId:f.id, code:f.code, meal:s.meal, back:s, basis, draft:{name:f.name, brand:f.brand||'', srvLabel:f.srvLabel||'', srvG:f.srvG??'', kcal:b.kcal??'', p:b.p??'', c:b.c??'', f:b.f??''}}) },
+  fNew:()=>{ const s=ui.sheet; openSheet({type:'f:new', meal:s.meal, basis:'srv', draft:{name:'',brand:'',srvLabel:'1 serving',srvG:'',kcal:'',p:'',c:'',f:''}}) },
+  fBasis:el=>{ ui.sheet.basis=el.dataset.k; renderSheet() },
+  fNewSave:()=>{ const s=ui.sheet, F=fState(), d=s.draft; if(!(d.name||'').trim()){ toast('Give it a name'); return } const nb={kcal:num(d.kcal)||0, p:num(d.p)||0, c:num(d.c)||0, f:num(d.f)||0};
+    const id = s.editId || ('my_'+uid()); const f={id, code:s.code||'', name:d.name.trim(), brand:(d.brand||'').trim(), srvLabel:(d.srvLabel||'').trim(), srvG:num(d.srvG)||null, per100:s.basis==='100'?nb:null, perSrv:s.basis==='100'?null:nb};
+    F.my[id]=f; F.recent=F.recent.map(x=>x.id===id?f:x); saveState();
+    if(s.back && s.back.type==='f:item'){ const b=s.back; b.food=f; if(!canSrv(f)) b.unit='g'; ui.sheet=b; renderSheet(); toast('Saved'); return }
+    if(s.meal){ openSheet({type:'f:item', food:f, meal:s.meal, amt:canSrv(f)?1:100, unit:canSrv(f)?'srv':'g'}); return } closeSheet(); render() },
+  fMyDel:()=>{ const s=ui.sheet; delete fState().my[s.editId]; saveState(); closeSheet(); render(); toast('Deleted') },
+  fQuickSave:()=>{ const s=ui.sheet; const q=s.qa||{}; const nb={kcal:num(q.kcal)||0, p:num(q.p)||0, c:num(q.c)||0, f:num(q.f)||0}; if(!nb.kcal && !nb.p && !nb.c && !nb.f){ toast('Enter calories or macros'); return }
+    fState(); const day=fDay(); S.flog[day]=S.flog[day]||[]; S.flog[day].push({id:uid(), meal:s.meal, amt:1, unit:'srv', food:{id:'quick_'+uid(), name:(q.name||'').trim()||'Quick add', brand:'', perSrv:nb, per100:null, srvG:null, srvLabel:''}, at:Date.now()});
+    saveState(); closeSheet(); render(); toast(`Added to ${mealName(s.meal)}`) },
+  fTargets:()=>openSheet({type:'f:targets'}),
+  fTargetsSave:()=>{ const F=fState(); NUTR.forEach(([k])=>{ const v=num(($('#ft_'+k)||{}).value); F.targets[k]= v>0 ? v : null }); saveState(); closeSheet(); render(); toast('Targets saved') },
+};
+Object.assign(H, FOOD_ACTIONS);
+document.addEventListener('keydown',e=>{ if(e.key==='Enter' && e.target && e.target.id==='fQ'){ e.preventDefault(); H.fSearch() } if(e.key==='Enter' && e.target && e.target.id==='fCode'){ e.preventDefault(); H.fCodeGo() } });
+
 /* ---------- timers ---------- */
 let lastRestKey='';
 function tick(force){
