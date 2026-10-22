@@ -345,6 +345,13 @@ input,select,textarea{background:var(--surface2);border-color:transparent;border
 .mtgt .mt-p{color:#4a90e2}.mtgt .mt-c{color:#e0a030}.mtgt .mt-f{color:#c07ad8}.mtgt span.over{color:var(--danger)}
 .mrole{font-size:11px;font-weight:700;padding:2px 7px;border-radius:9px;margin-left:6px;vertical-align:2px;background:rgba(5,150,105,.15);color:var(--accent)}
 .mrole.pre{background:rgba(217,138,18,.15);color:#d98a12}.mrole.off{opacity:.45}
+.fbar .bar.stack{position:relative}.fbar .bar.stack i.seg{position:absolute;top:0;bottom:0;height:auto;border-radius:0;box-shadow:inset -1px 0 0 rgba(0,0,0,.45)}
+.mstack{margin-top:10px;border-top:1px solid var(--line);padding-top:6px;font-size:12px;font-variant-numeric:tabular-nums}
+.mstack div{display:grid;grid-template-columns:1fr 64px 40px 40px 36px;gap:4px;padding:2px 0}.mstack div span:not(:first-child){text-align:right}.mstack div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mstack .mt-p{color:#4a90e2}.mstack .mt-c{color:#e0a030}.mstack .mt-f{color:#c07ad8}
+.wkadj{margin-top:8px;font-size:12px;color:var(--muted)}
+.mtgt b{color:var(--ink)}
+label.chk{display:flex;gap:8px;align-items:center;font-size:14px}label.chk input{width:auto}
 .fit{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .fit button{text-align:left;font:inherit;font-size:13px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line);background:var(--surface2);color:var(--ink);cursor:pointer}
 .wkrow .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
@@ -550,7 +557,7 @@ input,select,textarea{font-size:max(16px,1em)}
 <script>
 /* ---------- Exercise library ---------- */
 // [id, name, category, muscles (primary first), equipment needed, flags: c=compound u=one side at a time t=timed f=to failure]
-const APP_VERSION = '2026.11.02-b';
+const APP_VERSION = '2026.11.03-a';
 const LIB_RAW = [
  // Lats / back
  ['latpd_close','Lat pulldown (close neutral grip)','mach','lats bi','cable','c'],
@@ -1955,6 +1962,7 @@ function renderSheet(){
   else if(s.type==='bw'){ const l=bwSorted(); const st=bwStats(); const td=new Date(); const ds=`${td.getFullYear()}-${String(td.getMonth()+1).padStart(2,'0')}-${String(td.getDate()).padStart(2,'0')}`;
     h=`<h3>Body weight</h3><div class="shsub">Counted in pull-ups, dips and other body-weight exercises.</div>
      <div class="rowline" style="margin-top:12px;flex-wrap:nowrap"><input id="bwIn" inputmode="decimal" placeholder="${st?st.L.w:'Weight'}" style="flex:1;font-family:var(--f-num);font-size:20px;text-align:center" aria-label="Body weight"><span class="muted">${S.unit}</span><input id="bwDate" type="date" value="${ds}" style="width:auto;flex:1" aria-label="Date"></div>
+     <div class="rowline" style="margin-top:8px;flex-wrap:nowrap"><input id="bfIn" inputmode="decimal" placeholder="Body fat % (optional)" style="flex:1;text-align:center" aria-label="Body fat percent"><span class="small muted">From a smart scale, DEXA or calipers. Used for lean mass.</span></div>
      <div style="margin-top:10px"><button class="btn primary" data-act="bwLog">Log weight</button></div>
      ${(()=>{ const rg=s.range||'m3'; const L=l.filter(e=>inRange(e.t,rg)); if(!l.length) return ''; const ws=L.map(e=>e.w);
         return `<div class="tiles">${tile('list','b',L.length,'entries')}${tile('down','gr',ws.length?Math.min(...ws):'–','min',S.unit)}${tile('up','o',ws.length?Math.max(...ws):'–','max',S.unit)}</div>
@@ -2082,7 +2090,7 @@ const H = {
   manRmEx:el=>{ ui.man.items.splice(+el.dataset.i,1); saveDraft(); render() },
   bwLog:()=>{ const v=num($('#bwIn').value); if(v==null||v<=0){ toast('Enter your weight'); return }
     const dv=$('#bwDate').value; let t=Date.now(); if(dv){ const [yy,mm,dd]=dv.split('-').map(Number); const dt=new Date(yy,mm-1,dd,12); if(dt.toDateString()!==new Date().toDateString()) t=dt.getTime() }
-    S.bw.push({t,w:v}); saveState(); render(); toast(`Logged ${v} ${S.unit}`) },
+    const bf=num(($('#bfIn')||{}).value); const e={t,w:v}; if(bf>2 && bf<70) e.bf=bf; S.bw.push(e); saveState(); render(); toast(`Logged ${v} ${S.unit}${e.bf?' · '+bf+'% body fat':''}`) },
   bwDel:el=>{ const t=+el.dataset.t; S.bw=S.bw.filter(e=>e.t!==t); saveState(); render() },
   bandAdd:()=>{ S.bands.push({id:'b_'+uid(), name:'New band', lo:10, hi:30}); saveState(); render() },
   bandDel:el=>{ S.bands=S.bands.filter(b=>b.id!==el.dataset.id); saveState(); render() },
@@ -2516,7 +2524,12 @@ const planKcal = pl => !pl || (pl.p==null && pl.c==null && pl.f==null) ? null : 
 // which rotation day a date belongs to: the workout you logged that day, or today's next workout
 function dayOfDate(date){ const s=liveSessions(true).find(x=>(x.type==='lift'||(x.type==='rest'&&!x.extra)) && ymd(x.end)===date); if(s) return s.dayIdx; return date===ymd(Date.now()) ? S.next : null }
 // a day's budget: the budget for the workout day it belongs to, else the "no workout" budget
-function budgetFor(date){ const F=fState(); const t=typeFor(date); const b=F.btype[t]||{}; return {kcal:budKcal(b), p:num(b.p), c:num(b.c), f:num(b.f), type:t} }
+function budgetFor(date){ const F=fState(); const t=typeFor(date); const b=F.btype[t]||{}; const o={kcal:budKcal(b), p:num(b.p), c:num(b.c), f:num(b.f), type:t};
+  // heavier or lighter workout than your average: the difference goes to carbs
+  if(t==='workout' && F.wkAdj!==false && o.kcal){ const avg=avgBurn(), wb=workoutBurn(date); if(avg && wb && wb.kcal){ const d=Math.round((wb.kcal-avg)/10)*10;
+    if(o.c!=null) o.c=Math.max(0,Math.round(o.c+d/4)); o.kcal+=d;
+    o.wk={d, burn:wb.kcal, avg, txt:`${wb.done?'Workout':wb.live?'Workout so far':'Planned'}: ${wb.n} exercises · ${wb.sets} sets ≈ ${wb.kcal} kcal (average ${avg}) → ${d===0?'no change':(d>0?'+':'−')+Math.abs(d)+' kcal, '+(d>0?'+':'−')+Math.abs(Math.round(d/4))+' g carbs'}`} } }
+  return o }
 const targetsFor = budgetFor;
 const planFor = date => budgetFor(date).plan;
 // the estimator: maintenance calories ± your surplus/deficit, protein per lb of body weight, fat as a % of calories, carbs fill the rest
@@ -2534,7 +2547,20 @@ function rebalance(b,m){ const k=num(b.kcal);
   else if(m==='c'){ if(k==null){ b.kcal=planKcal(b); return } b.f=Math.max(0, Math.round((k-4*(num(b.p)||0)-4*(num(b.c)||0))/9)) }
   else if(m==='f'){ if(k==null) b.kcal=planKcal(b) } }
 function budNote(b){ const k=num(b.kcal), m=planKcal(b); if(k==null || m==null) return ''; const d=Math.round(m-k); return Math.abs(d)>8 ? `grams add up to ${m.toLocaleString()} kcal (${d>0?d+' over':(-d)+' under'})` : '' }
-function estMaint(){ const bw=bwNow(); return bw ? Math.round(bw*(S.unit==='kg'?33:15)) : null }
+/* lean mass from your latest body-fat reading (last 120 days) and your current weight; Katch-McArdle BMR = 370 + 21.6 × lean kg */
+function leanMass(){ const l=bwSorted(); const bw=bwNow(); if(bw==null) return null; const b=[...l].reverse().find(e=>num(e.bf)>0 && Date.now()-e.t<120*864e5); if(!b) return null;
+  const lbm=Math.round(bw*(1-b.bf/100)*10)/10; const kg=S.unit==='kg'?lbm:lbm/2.2046; return {lbm, bf:b.bf, t:b.t, bmr:Math.round(370+21.6*kg)} }
+/* lifting burn: net kcal per hard working set (incl. its rest), scaled to body weight; compound ≈ 12, isolation ≈ 7 at 80 kg */
+function setKcal(comp){ const bw=bwNow(); const kg = bw ? (S.unit==='kg'?bw:bw/2.2046) : 80; return (comp?12:7)*kg/80 }
+function dayBurn(di){ const d=S.days[di]; if(!d || d.rest) return 0; let k=0, n=0, sets=0; expandDay(d).forEach(it=>{ if(it.ghost || it.ph) return; const ex=lib(it.ex); n++; sets+=it.sets||0; k+=(it.sets||0)*setKcal(!!ex.c) }); return {kcal:Math.round(k), n, sets} }
+function sessBurn(s){ let k=0, n=0, sets=0; (s.exercises||[]).forEach(e=>{ const ex=lib(e.ex); if(!e.sets.length) return; n++; sets+=e.sets.length; k+=e.sets.length*setKcal(!!ex.c) }); return {kcal:Math.round(k), n, sets} }
+function avgBurn(){ const tr=(S.days||[]).map((d,i)=>dayBurn(i)).filter(b=>b && b.kcal>0); return tr.length ? Math.round(tr.reduce((a,b)=>a+b.kcal,0)/tr.length) : 0 }
+function rotIdx(date){ const today=ymd(Date.now()); if(date<today) return null; let k=Math.round((new Date(date+'T12:00')-new Date(today+'T12:00'))/864e5);
+  if(k>0 && liveSessions(true).some(x=>ymd(x.end)===today && ['lift','rest','skip'].includes(x.type))) k--; const n=(S.days||[]).length||1; return (S.next+k)%n }
+function workoutBurn(date){ const ls=liveSessions(true).filter(x=>x.type==='lift' && ymd(x.end)===date); if(ls.length){ const b=ls.map(sessBurn).reduce((a,b)=>({kcal:a.kcal+b.kcal,n:a.n+b.n,sets:a.sets+b.sets}),{kcal:0,n:0,sets:0}); b.done=true; return b }
+  if(A && ymd(Date.now())===date){ const b={kcal:0,n:0,sets:0,live:true}; A.items.forEach(it=>{ if(it.skipped||it.ghost) return; const c=workRows(it).filter(r=>r.done).length; if(!c) return; b.n++; b.sets+=c; b.kcal+=c*setKcal(!!lib(it.ex).c) }); b.kcal=Math.round(b.kcal); const plan=dayBurn(A.dayIdx); return b.kcal>=((plan&&plan.kcal)||0) ? b : {...plan, plan:true} }
+  const i=rotIdx(date); if(i==null) return null; const b=dayBurn(i); return b && b.kcal ? {...b, plan:true} : null }
+function estMaint(){ const L=leanMass(); if(L){ const tr=(S.days||[]).filter(d=>!d.rest).length, n=(S.days||[]).length||1; return Math.round(L.bmr*1.3 + avgBurn()*tr/n) } const bw=bwNow(); return bw ? Math.round(bw*(S.unit==='kg'?33:15)) : null }
 // estimator: maintenance + this goal's adjustment for the kind of day; protein per lb at maintenance, scaled with calories (and held to your cap)
 function calcBudget(type,C){ const bw=bwNow(); const maint=num(C.maint)||estMaint(); if(!maint) return null;
   const adj=(((C.adj||{})[C.goal||'maintain'])||{})[type]; const kcal=Math.round(maint+(num(adj)||0));
@@ -2547,10 +2573,15 @@ const r1=v=>Math.round(v*10)/10;
 const mealName=m=>{ const c=((S.food&&S.food.meals)||[])[(+m||1)-1]; return (c&&c.name)||'Meal '+(+m||1) };
 const MROLE={pre:'Pre-workout',post:'Post-workout'};
 const mealRole=m=>{ const c=((S.food&&S.food.meals)||[])[(+m||1)-1]; return (c&&c.role)||'' };
-/* each meal's share of the day's budget: protein split evenly; on workout days pre- and post-workout meals get more of the carbs and less fat */
-function mealTargets(day){ const T=targetsFor(day); const n=mealsFor(day); if(!T || !(T.p||T.c||T.f)) return null; const wk=T.type==='workout';
-  const roles=Array.from({length:n},(_,i)=>wk?mealRole(i+1):''); const wC=roles.map(r=>r==='post'?2:r==='pre'?1.5:1), wF=roles.map(r=>r?0.5:1); const sum=a=>a.reduce((x,y)=>x+y,0);
-  return roles.map((r,i)=>{ const p=T.p?Math.round(T.p/n):0, c=T.c?Math.round(T.c*wC[i]/sum(wC)):0, f=T.f?Math.round(T.f*wF[i]/sum(wF)):0; return {p,c,f,kcal:Math.round(p*4+c*4+f*9),role:r} }) }
+/* each meal's share of the day's budget, set per meal: None / Low / Normal / High / Most for protein, carbs and fat */
+const MLEV=[[0,'None'],[0.5,'Low'],[1,'Normal'],[1.5,'High'],[2,'Most']];
+const ROLE_W={pre:{p:0.5,c:2,f:0.5}, post:{p:2,c:1,f:1}};
+function mealW(m){ const c=((S.food&&S.food.meals)||[])[(+m||1)-1]||{}; return {p:1,c:1,f:1, ...(c.role?ROLE_W[c.role]:{}), ...(c.w||{})} }
+function mealTargets(day){ const T=targetsFor(day); const n=mealsFor(day); if(!T || !(T.p||T.c||T.f)) return null;
+  const W=Array.from({length:n},(_,i)=>mealW(i+1)); const tot=k=>W.reduce((a,w)=>a+w[k],0)||1;
+  return W.map((w,i)=>{ const p=T.p?Math.round(T.p*w.p/tot('p')):0, c=T.c?Math.round(T.c*w.c/tot('c')):0, f=T.f?Math.round(T.f*w.f/tot('f')):0; return {p,c,f,kcal:Math.round(p*4+c*4+f*9),role:mealRole(i+1)} }) }
+// your typical day, in order
+const MY_DAY=[{name:'Breakfast · protein shake',w:{p:1,c:0,f:0.5}},{name:'Lunch · yogurt + grains',w:{p:1,c:1,f:1}},{name:'Protein snack',w:{p:0.5,c:0.5,f:0.5}},{name:'Pre-workout',role:'pre',w:{p:0.5,c:2,f:0.5}},{name:'Post-workout',role:'post',w:{p:2,c:1,f:1}}];
 function mealLeft(day,m,skipId){ const mt=mealTargets(day); if(!mt||!mt[m-1]) return null; const t=mt[m-1]; const e=sumN((S.flog[day]||[]).filter(x=>(+x.meal||1)===m && x.id!==skipId)); return {t, e, p:t.p-e.p, c:t.c-e.c, f:t.f-e.f} }
 // nutrients for an amount: grams use the per-100 g values, servings use per-serving values (or per-100 g × serving grams)
 function nutrOf(food,amt,unit){ const a=num(amt)||0; const z={kcal:0,p:0,c:0,f:0}; let base=null, k=0;
@@ -2632,11 +2663,16 @@ function viewFood(){ const F=fState(); const day=fDay(); const list=S.flog[day]|
   h+=checkinHTML();
   const left = T.kcal ? Math.round(T.kcal - tot.kcal) : null;
   h+=`<div class="card fsum"><div class="fk"><div><div class="v">${Math.round(tot.kcal)}</div><div class="k">kcal eaten</div></div><div style="text-align:right"><div class="v ${left!=null&&left<0?'over':''}">${left==null?'—':Math.abs(left)}</div><div class="k">${left==null?'set this day’s budget':left<0?'over budget':'left of '+T.kcal}</div></div></div>
-    ${[['p','Protein'],['c','Carbs'],['f','Fat']].map(([k,l])=>{ const v=tot[k], t=T[k]; const pct=t?Math.min(100,v/t*100):0; return `<div class="fbar"><span>${l}</span><div class="bar"><i class="m-${k}" style="width:${pct}%"></i></div><span class="num">${Math.round(v)}${t?' / '+t:''} g</span></div>` }).join('')}</div>`;
+    ${(()=>{ const per=Array.from({length:nM},(_,i)=>sumN(list.filter(e=>(+e.meal||1)===i+1)));
+      return [['p','Protein'],['c','Carbs'],['f','Fat']].map(([k,l])=>{ const v=tot[k], t=T[k]; const den=Math.max(t||0, v)||1;
+        let acc=0; const segs=per.map((x,i)=>{ if(!(x[k]>0)) return ''; const l=acc; acc+=x[k]/den*100; return `<i class="m-${k} seg" style="left:${l}%;width:${Math.min(100-l,x[k]/den*100)}%;opacity:${1-(i%2)*0.4}" title="${esc(mealName(i+1))}: ${Math.round(x[k])} g"></i>` }).join('');
+        return `<div class="fbar"><span>${l}</span><div class="bar stack">${segs}</div><span class="num">${Math.round(v)}${t?' / '+t:''} g</span></div>` }).join('') +
+        (list.length?`<div class="mstack">${per.map((x,i)=>x.kcal>0?`<div><span>${esc(mealName(i+1))}</span><span>${Math.round(x.kcal)} kcal</span><span class="mt-p">P ${Math.round(x.p)}</span><span class="mt-c">C ${Math.round(x.c)}</span><span class="mt-f">F ${Math.round(x.f)}</span></div>`:'').join('')}</div>`:'') })()}
+    ${T.wk?`<div class="wkadj">${T.wk.txt}</div>`:''}</div>`;
   const MT=mealTargets(day);
   for(let m=1;m<=nM;m++){ const l=mealName(m); const es=list.filter(e=>(+e.meal||1)===m); const se=sumN(es), mk=Math.round(se.kcal); const mt=MT&&MT[m-1]; const ro=mealRole(m);
-    const aim = mt ? `<div class="mtgt"><span class="lbl">${es.length?'Left':'Aim'}</span>${[['p','P'],['c','C'],['f','F']].map(([k,L])=>{ const v=es.length?Math.round(mt[k]-se[k]):mt[k]; return `<span class="mt-${k} ${v<0?'over':''}">${L} ${v<0?'+'+Math.abs(v):v} g</span>` }).join('')}<span class="muted">of ${mt.p}/${mt.c}/${mt.f}</span></div>` : '';
-    h+=`<div class="card fmeal"><div class="fmh"><b>${esc(l)}${ro&&l!==MROLE[ro]?` <span class="mrole ${ro} ${T.type!=='workout'?'off':''}">${MROLE[ro]}</span>`:''}</b><span class="muted small">${es.length?mk+' kcal':''} <button class="mmenu" data-act="fMealMenu" data-m="${m}" aria-label="${esc(l)} options">•••</button></span></div>${aim}${es.map(e=>{ const n=entryNutr(e); return `<button class="fent" data-act="fEntry" data-id="${e.id}"><div><div class="fn">${esc(e.food.name)}</div><div class="fm">${esc([e.food.brand, amtLabel(e)].filter(Boolean).join(' · '))}</div></div><div class="fk2">${Math.round(n.kcal)}<small>P ${Math.round(n.p)} · C ${Math.round(n.c)} · F ${Math.round(n.f)}</small></div></button>` }).join('')}<button class="link fadd" data-act="fAdd" data-meal="${m}">+ Add food</button></div>` }
+    const aim = `<div class="mtgt"><span class="lbl">${mt?'Eaten / target':'Eaten'}</span>${[['p','P'],['c','C'],['f','F']].map(([k,L])=>{ const v=Math.round(se[k]); const t=mt?mt[k]:null; return `<span class="mt-${k} ${t!=null&&v>t+3?'over':''}">${L} <b>${v}</b>${t!=null?' / '+t:''} g</span>` }).join('')}</div>`;
+    h+=`<div class="card fmeal"><div class="fmh"><b>${esc(l)}${ro&&l!==MROLE[ro]?` <span class="mrole ${ro}">${MROLE[ro]}</span>`:''}</b><span class="muted small">${es.length?mk+' kcal':''} <button class="mmenu" data-act="fMealMenu" data-m="${m}" aria-label="${esc(l)} options">•••</button></span></div>${aim}${es.map(e=>{ const n=entryNutr(e); return `<button class="fent" data-act="fEntry" data-id="${e.id}"><div><div class="fn">${esc(e.food.name)}</div><div class="fm">${esc([e.food.brand, amtLabel(e)].filter(Boolean).join(' · '))}</div></div><div class="fk2">${Math.round(n.kcal)}<small>P ${Math.round(n.p)} · C ${Math.round(n.c)} · F ${Math.round(n.f)}</small></div></button>` }).join('')}<button class="link fadd" data-act="fAdd" data-meal="${m}">+ Add food</button></div>` }
   h+=`<div class="rowline" style="justify-content:center;gap:18px;margin-top:10px"><button class="link" data-act="fMealAdd">+ Add meal</button>${list.length?'<button class="link" data-act="fCopyDay">Copy day</button>':''}${nM>1?'<button class="link" style="color:var(--muted)" data-act="fMealRm">− Remove meal</button>':''}</div>`;
   h+=`<div class="partial"><button class="link small" data-act="fPartial">${F.partial[day]?'☑ Not fully logged · left out of the maintenance estimate':'☐ Mark this day as not fully logged'}</button></div>`;
   h+=`<div class="small muted" style="text-align:center;margin:14px 0">Food data from <a class="link" href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Labels can be wrong: tap Fix nutrition info.</div>`;
@@ -2714,14 +2750,21 @@ function foodSheet(s){ const F=fState();
       ${(()=>{ const e=estTDEE(); return e&&e.tdee?`<div class="small" style="margin-top:6px">From your logs (${e.n} days): maintenance ≈ <b>${e.tdee.toLocaleString()} kcal</b> <button class="link small" data-act="fUseTDEE" data-v="${e.tdee}">Use it</button></div>`:`<div class="small muted" style="margin-top:6px">Maintenance from your logs needs ${e?e.need:'more data'}.</div>` })()}
       <button class="btn sm primary" data-act="fFill" style="margin-top:8px">Fill all three budgets</button></div>`;
     h+=`<div class="sec">Meals per day</div><div class="stepper"><button data-act="fMealsDef" data-d="-1">−</button><span class="v">${D.mealsDef}</span><button data-act="fMealsDef" data-d="1">+</button><span class="small muted" style="margin-left:6px">You can still add or remove meals on any day.</span></div>
+      <button class="btn sm ghost" style="margin-top:8px" data-act="fMyDay">Use my typical day: shake · yogurt lunch · protein snack · pre-workout · post-workout</button>
+      <div class="small muted" style="margin-top:4px">Breakfast shake with no carbs, most carbs pre-workout, most protein in the last (post-workout) meal. Change any meal from its ••• menu.</div>
+      <div class="sec">Workout size</div><label class="chk"><input type="checkbox" ${fState().wkAdj===false?'':'checked'} data-act="fWkAdj"> Adjust workout days for how much you train</label>
+      <div class="small muted" style="margin-top:4px">${(()=>{ const a=avgBurn(); return a?`Your average training day ≈ <b>${a} kcal</b> of lifting (${Math.round(setKcal(true))} kcal per compound set, ${Math.round(setKcal(false))} per isolation set at your weight). Heavier days get more carbs, lighter days fewer; your Workout day budget is the average.`:'Needs a training plan.' })()}</div>
+      ${(()=>{ const L=leanMass(); return L?`<div class="small" style="margin-top:8px">Lean mass ≈ <b>${L.lbm} ${S.unit}</b> (${L.bf}% body fat on ${fmtDate(L.t)}) → resting burn (BMR) ≈ <b>${L.bmr.toLocaleString()} kcal</b> · estimated maintenance ≈ <b>${estMaint().toLocaleString()} kcal</b> with your training.</div>`:`<div class="small muted" style="margin-top:8px">Add a body-fat % when you log your weight to base maintenance on lean mass.</div>` })()}
       <button class="btn primary" style="margin-top:14px;width:100%" data-act="fTargetsSave">Save</button>`;
     return h }
   if(s.type==='f:mealset'){ const m=s.m, role=s.role??mealRole(m); const mt=mealTargets(fDay());
-    return `<h3>Meal ${m}</h3><div class="shsub">Name and role apply to Meal ${m} on every day.</div>
+    return `<h3>Meal ${m}</h3><div class="shsub">Name and macro split apply to Meal ${m} on every day.</div>
       <label class="f" style="margin-top:10px">Name<input id="fMsName" value="${esc(s.name??(((S.food.meals||[])[m-1]||{}).name||''))}" placeholder="Meal ${m}" autocomplete="off"></label>
       <div class="pills" style="margin-top:8px">${['Breakfast','Lunch','Dinner','Snack','Pre-workout','Post-workout','Before bed'].map(x=>`<button data-act="fMsPick" data-v="${x}">${x}</button>`).join('')}</div>
-      <div class="sec">Role on workout days</div><div class="seg">${[['','Regular'],['pre','Pre-workout'],['post','Post-workout']].map(([k,l])=>`<button data-act="fMsRole" data-k="${k}" class="${role===k?'on':''}">${l}</button>`).join('')}</div>
-      <div class="small muted" style="margin-top:6px">Protein is split evenly across your meals. On workout days, pre-workout meals get 1.5× and post-workout meals 2× the carbs of a regular meal, with half the fat (fat slows digestion around training). Cardio and rest days split everything evenly.</div>
+      <div class="sec">Tag</div><div class="seg">${[['','None'],['pre','Pre-workout'],['post','Post-workout']].map(([k,l])=>`<button data-act="fMsRole" data-k="${k}" class="${role===k?'on':''}">${l}</button>`).join('')}</div>
+      ${(()=>{ const w=s.w||mealW(m); return [['p','Protein'],['c','Carbs'],['f','Fat']].map(([k,l])=>`<div class="sec">${l} in this meal</div><div class="seg">${MLEV.map(([v,L])=>`<button data-act="fMsW" data-k="${k}" data-v="${v}" class="${w[k]===v?'on':''}">${L}</button>`).join('')}</div>`).join('') })()}
+      ${mt&&mt[m-1]?`<div class="small" style="margin-top:8px">Today this meal gets about <b>P ${mt[m-1].p} · C ${mt[m-1].c} · F ${mt[m-1].f} g</b> (saved values).</div>`:''}
+      <div class="small muted" style="margin-top:6px">Each macro is shared out by these levels: Most gets 2×, High 1.5×, Normal 1×, Low ½, None 0. Picking Pre- or Post-workout fills in a typical split you can change.</div>
       <button class="btn primary" style="margin-top:14px;width:100%" data-act="fMsSave">Save</button>` }
   if(s.type==='f:mealmenu'){ const day=s.day, m=s.m; const es=(S.flog[day]||[]).filter(e=>(+e.meal||1)===m); const last=lastMealBefore(day,m); const C=clip();
     return `<h3>${esc(mealName(m))}</h3><div class="shsub">${fmtDay(day)}${es.length?' · '+Math.round(sumN(es).kcal)+' kcal':''}</div><div class="menu">
@@ -2769,10 +2812,13 @@ const FOOD_ACTIONS={
   fMeal:el=>{ keepFA(); ui.sheet.meal=+el.dataset.m||1; renderSheet() },
   fFit:el=>{ const s=ui.sheet; s.amt=+el.dataset.v; renderSheet() },
   fMealSet:el=>openSheet({type:'f:mealset', m:+el.dataset.m}),
-  fMsPick:el=>{ const s=ui.sheet, v=el.dataset.v; s.name=v; if(v==='Pre-workout') s.role='pre'; else if(v==='Post-workout') s.role='post'; renderSheet() },
-  fMsRole:el=>{ const s=ui.sheet; const nm=$('#fMsName'); if(nm) s.name=nm.value; s.role=el.dataset.k; renderSheet() },
+  fMsPick:el=>{ const s=ui.sheet, v=el.dataset.v; s.name=v; if(v==='Pre-workout'){ s.role='pre'; s.w={...ROLE_W.pre} } else if(v==='Post-workout'){ s.role='post'; s.w={...ROLE_W.post} } renderSheet() },
+  fMsRole:el=>{ const s=ui.sheet; const nm=$('#fMsName'); if(nm) s.name=nm.value; s.role=el.dataset.k; s.w = s.role ? {...ROLE_W[s.role]} : {p:1,c:1,f:1}; renderSheet() },
+  fMsW:el=>{ const s=ui.sheet; const nm=$('#fMsName'); if(nm) s.name=nm.value; s.w={...(s.w||mealW(s.m))}; s.w[el.dataset.k]=+el.dataset.v; const st=$('#sheet').scrollTop; renderSheet(); $('#sheet').scrollTop=st },
+  fMyDay:()=>{ const F=fState(); F.meals=MY_DAY.map(x=>JSON.parse(JSON.stringify(x))); F.mealsDef=MY_DAY.length; if(ui.sheet&&ui.sheet.draft) ui.sheet.draft.mealsDef=MY_DAY.length; saveState(); if(ui.sheet) renderSheet(); render(); toast('5 meals set up: shake, lunch, snack, pre- and post-workout') },
+  fWkAdj:()=>{ const F=fState(); F.wkAdj = F.wkAdj===false; saveState(); if(ui.sheet) renderSheet(); render() },
   fMsSave:()=>{ const s=ui.sheet, F=fState(); F.meals=F.meals||[]; const nm=(($('#fMsName')||{}).value||'').trim(); const role=s.role??mealRole(s.m);
-    while(F.meals.length<s.m) F.meals.push({}); const o={}; if(nm) o.name=nm; if(role) o.role=role; F.meals[s.m-1]=o; saveState(); closeSheet(); render(); toast(`Meal ${s.m}: ${nm||'Meal '+s.m}${role?' · '+MROLE[role]:''}`) },
+    while(F.meals.length<s.m) F.meals.push({}); const o={}; if(nm) o.name=nm; if(role) o.role=role; if(s.w) o.w={...s.w}; else if(F.meals[s.m-1]&&F.meals[s.m-1].w) o.w=F.meals[s.m-1].w; F.meals[s.m-1]=o; saveState(); closeSheet(); render(); toast(`Meal ${s.m}: ${nm||'Meal '+s.m}${role?' · '+MROLE[role]:''}`) },
   fLog:()=>{ keepFA(); const s=ui.sheet, F=fState(); const amt=num(s.amt); if(!(amt>0)){ toast('Enter an amount'); return } const day=s.day||fDay(); S.flog[day]=S.flog[day]||[];
     if(s.entry){ const e=S.flog[day].find(x=>x.id===s.entry); if(e){ e.amt=amt; e.unit=s.unit; e.meal=s.meal; e.food=s.food } }
     else S.flog[day].push({id:uid(), meal:s.meal, amt, unit:s.unit, food:s.food, at:Date.now()});
